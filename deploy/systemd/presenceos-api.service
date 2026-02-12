@@ -1,0 +1,30 @@
+[Unit]
+Description=PresenceOS FastAPI Backend
+After=network.target postgresql.service redis.service
+Requires=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=presenceos
+Group=presenceos
+WorkingDirectory=/opt/presenceos/backend
+EnvironmentFile=/opt/presenceos/backend/.env.production
+ExecStart=/opt/presenceos/backend/venv/bin/uvicorn app.main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --workers 4 \
+    --access-log \
+    --log-level info
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=presenceos-api
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/presenceos /tmp/presenceos_videos
+
+[Install]
+WantedBy=multi-user.target

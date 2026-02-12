@@ -1,0 +1,70 @@
+# PresenceOS Backend Dependencies
+
+# Web Framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.17
+httpx>=0.28.0
+
+# Database
+sqlalchemy[asyncio]>=2.0.36
+asyncpg>=0.30.0
+psycopg[binary]>=3.2.0
+alembic>=1.14.0
+pgvector>=0.3.6
+
+# Validation & Settings
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+email-validator>=2.2.0
+
+# Authentication & Security
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.2.0
+cryptography>=44.0.0
+
+# Redis & Task Queue
+redis>=5.2.0
+celery>=5.4.0
+
+# Rate Limiting
+slowapi>=0.1.9
+
+# AI Providers
+openai>=1.57.0
+anthropic>=0.40.0
+tiktoken>=0.8.0
+
+# Storage
+boto3>=1.35.0
+python-magic>=0.4.27
+
+# Media Processing
+Pillow>=11.0.0
+pydub>=0.25.1
+
+# Messaging
+python-telegram-bot>=22.0
+
+# Utilities
+python-dateutil>=2.9.0
+pytz>=2024.2
+tenacity>=9.0.0
+structlog>=24.4.0
+
+# Testing
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+pytest-cov>=6.0.0
+factory-boy>=3.3.0
+
+# AI Agents
+crewai>=0.102.0
+crewai[tools]>=0.102.0
+firecrawl-py>=1.5.0
+composio>=0.7.0
+crawl4ai>=0.4.0
+
+# Linting
+ruff>=0.8.0
+black>=24.10.0

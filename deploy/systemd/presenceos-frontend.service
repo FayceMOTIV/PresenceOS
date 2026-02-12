@@ -1,0 +1,25 @@
+[Unit]
+Description=PresenceOS Next.js Frontend
+After=network.target presenceos-api.service
+
+[Service]
+Type=simple
+User=presenceos
+Group=presenceos
+WorkingDirectory=/opt/presenceos/frontend
+Environment=NODE_ENV=production
+Environment=PORT=3001
+EnvironmentFile=/opt/presenceos/frontend/.env.production
+ExecStart=/usr/bin/node /opt/presenceos/frontend/.next/standalone/server.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=presenceos-frontend
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/presenceos/frontend
+
+[Install]
+WantedBy=multi-user.target

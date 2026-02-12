@@ -1,0 +1,352 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Loader2, Plus, Sparkles, Lightbulb } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ideasApi } from "@/lib/api";
+import { ContentIdea, IdeaStatus } from "@/types";
+import { toast } from "@/hooks/use-toast";
+
+import { IdeasTable } from "./components/ideas-table";
+import { GenerateIdeasDialog, IdeasTableSkeleton } from "./components/generate-ideas-dialog";
+import { EditIdeaDialog } from "./components/edit-idea-dialog";
+
+const statusTabs: { value: IdeaStatus | "all"; label: string }[] = [
+  { value: "all", label: "Toutes" },
+  { value: "new", label: "Nouvelles" },
+  { value: "approved", label: "Approuvees" },
+  { value: "in_progress", label: "En cours" },
+  { value: "drafted", label: "Redigees" },
+  { value: "rejected", label: "Rejetees" },
+];
+
+export default function IdeasPage() {
+  const router = useRouter();
+  const [ideas, setIdeas] = useState<ContentIdea[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<IdeaStatus | "all">("all");
+
+  // Dialog states
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedIdea, setSelectedIdea] = useState<ContentIdea | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingCount, setGeneratingCount] = useState(0);
+
+  // Fetch ideas
+  const fetchIdeas = useCallback(async () => {
+    const brandId = localStorage.getItem("brand_id");
+    if (!brandId) return;
+
+    setIsLoading(true);
+    try {
+      const params = activeTab !== "all" ? { status: activeTab } : undefined;
+      const response = await ideasApi.list(brandId, params);
+      setIdeas(response.data || []);
+    } catch (error) {
+      console.error("Error fetching ideas:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les idees",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    fetchIdeas();
+  }, [fetchIdeas]);
+
+  // Handle approve with optimistic update
+  const handleApprove = useCallback(async (idea: ContentIdea) => {
+    // Optimistic update
+    setIdeas((prev) =>
+      prev.map((i) =>
+        i.id === idea.id ? { ...i, status: "approved" as IdeaStatus } : i
+      )
+    );
+
+    try {
+      await ideasApi.approve(idea.id);
+      toast({
+        title: "Idee approuvee",
+        description: `"${idea.title}" a ete approuvee`,
+      });
+    } catch (error) {
+      // Rollback
+      setIdeas((prev) =>
+        prev.map((i) => (i.id === idea.id ? idea : i))
+      );
+      toast({
+        title: "Erreur",
+        description: "Impossible d'approuver l'idee",
+        variant: "destructive",
+      });
+    }
+  }, []);
+
+  // Handle reject with optimistic update
+  const handleReject = useCallback(async (idea: ContentIdea) => {
+    // Optimistic update
+    setIdeas((prev) =>
+      prev.map((i) =>
+        i.id === idea.id ? { ...i, status: "rejected" as IdeaStatus } : i
+      )
+    );
+
+    try {
+      await ideasApi.reject(idea.id);
+      toast({
+        title: "Idee rejetee",
+        description: `"${idea.title}" a ete rejetee`,
+      });
+    } catch (error) {
+      // Rollback
+      setIdeas((prev) =>
+        prev.map((i) => (i.id === idea.id ? idea : i))
+      );
+      toast({
+        title: "Erreur",
+        description: "Impossible de rejeter l'idee",
+        variant: "destructive",
+      });
+    }
+  }, []);
+
+  // Handle edit
+  const handleEdit = useCallback((idea: ContentIdea) => {
+    setSelectedIdea(idea);
+    setEditDialogOpen(true);
+  }, []);
+
+  // Handle idea updated from edit dialog
+  const handleIdeaUpdated = useCallback((updatedIdea: ContentIdea) => {
+    setIdeas((prev) =>
+      prev.map((i) => (i.id === updatedIdea.id ? updatedIdea : i))
+    );
+  }, []);
+
+  // Handle convert to draft
+  const handleConvertToDraft = useCallback(
+    (idea: ContentIdea) => {
+      // Navigate to studio with idea context
+      const params = new URLSearchParams({
+        idea_id: idea.id,
+        title: idea.title,
+      });
+      if (idea.target_platforms && idea.target_platforms.length > 0) {
+        params.set("platform", idea.target_platforms[0]);
+      }
+      router.push(`/studio?${params.toString()}`);
+    },
+    [router]
+  );
+
+  // Handle ideas generated from AI
+  const handleIdeasGenerated = useCallback((newIdeas: ContentIdea[]) => {
+    // Add new ideas at the beginning with animation
+    setIdeas((prev) => [...newIdeas, ...prev]);
+  }, []);
+
+  // Handle bulk approve
+  const handleBulkApprove = useCallback(async (ideasToApprove: ContentIdea[]) => {
+    // Optimistic update
+    const idsToApprove = ideasToApprove.map((i) => i.id);
+    setIdeas((prev) =>
+      prev.map((i) =>
+        idsToApprove.includes(i.id) ? { ...i, status: "approved" as IdeaStatus } : i
+      )
+    );
+
+    try {
+      // Call API in parallel
+      await Promise.all(ideasToApprove.map((idea) => ideasApi.approve(idea.id)));
+      toast({
+        title: "Idees approuvees",
+        description: `${ideasToApprove.length} idee(s) approuvee(s)`,
+      });
+    } catch (error) {
+      // Rollback all
+      setIdeas((prev) =>
+        prev.map((i) => {
+          const original = ideasToApprove.find((o) => o.id === i.id);
+          return original ? original : i;
+        })
+      );
+      toast({
+        title: "Erreur",
+        description: "Impossible d'approuver certaines idees",
+        variant: "destructive",
+      });
+    }
+  }, []);
+
+  // Handle bulk reject
+  const handleBulkReject = useCallback(async (ideasToReject: ContentIdea[]) => {
+    // Optimistic update
+    const idsToReject = ideasToReject.map((i) => i.id);
+    setIdeas((prev) =>
+      prev.map((i) =>
+        idsToReject.includes(i.id) ? { ...i, status: "rejected" as IdeaStatus } : i
+      )
+    );
+
+    try {
+      // Call API in parallel
+      await Promise.all(ideasToReject.map((idea) => ideasApi.reject(idea.id)));
+      toast({
+        title: "Idees rejetees",
+        description: `${ideasToReject.length} idee(s) rejetee(s)`,
+      });
+    } catch (error) {
+      // Rollback all
+      setIdeas((prev) =>
+        prev.map((i) => {
+          const original = ideasToReject.find((o) => o.id === i.id);
+          return original ? original : i;
+        })
+      );
+      toast({
+        title: "Erreur",
+        description: "Impossible de rejeter certaines idees",
+        variant: "destructive",
+      });
+    }
+  }, []);
+
+  // Filter ideas based on active tab
+  const filteredIdeas =
+    activeTab === "all"
+      ? ideas
+      : ideas.filter((idea) => idea.status === activeTab);
+
+  // Count by status
+  const countByStatus = ideas.reduce(
+    (acc, idea) => {
+      acc[idea.status] = (acc[idea.status] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-6"
+    >
+      {/* Page header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Idees</h1>
+          <p className="text-muted-foreground">
+            Gerez vos idees de contenu et transformez-les en posts
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setGenerateDialogOpen(true)}>
+            <Sparkles className="w-4 h-4 mr-2" />
+            Generer avec l&apos;IA
+          </Button>
+          <Button variant="gradient" onClick={() => router.push("/ideas/new")}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nouvelle idee
+          </Button>
+        </div>
+      </div>
+
+      {/* Status tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as IdeaStatus | "all")}
+      >
+        <TabsList>
+          {statusTabs.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value} className="gap-2">
+              {tab.label}
+              {tab.value !== "all" && countByStatus[tab.value] > 0 && (
+                <span className="text-xs bg-muted-foreground/20 px-1.5 py-0.5 rounded-full">
+                  {countByStatus[tab.value]}
+                </span>
+              )}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value={activeTab} className="mt-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredIdeas.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-12"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-muted mx-auto mb-4 flex items-center justify-center">
+                <Lightbulb className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-semibold mb-2">Aucune idee</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
+                {activeTab === "all"
+                  ? "Commencez par generer des idees avec l'IA ou creez-en une manuellement."
+                  : `Aucune idee avec le statut "${statusTabs.find((t) => t.value === activeTab)?.label}".`}
+              </p>
+              {activeTab === "all" && (
+                <div className="flex items-center justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setGenerateDialogOpen(true)}
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Generer avec l&apos;IA
+                  </Button>
+                  <Button
+                    variant="gradient"
+                    onClick={() => router.push("/ideas/new")}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Creer manuellement
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <IdeasTable
+              ideas={filteredIdeas}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              onEdit={handleEdit}
+              onConvertToDraft={handleConvertToDraft}
+              onBulkApprove={handleBulkApprove}
+              onBulkReject={handleBulkReject}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* Generate Ideas Dialog */}
+      <GenerateIdeasDialog
+        open={generateDialogOpen}
+        onOpenChange={setGenerateDialogOpen}
+        onIdeasGenerated={handleIdeasGenerated}
+      />
+
+      {/* Edit Idea Dialog */}
+      <EditIdeaDialog
+        idea={selectedIdea}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onIdeaUpdated={handleIdeaUpdated}
+      />
+    </motion.div>
+  );
+}

@@ -1,0 +1,28 @@
+[Unit]
+Description=PresenceOS Celery Worker
+After=network.target postgresql.service redis.service
+Requires=redis.service
+
+[Service]
+Type=simple
+User=presenceos
+Group=presenceos
+WorkingDirectory=/opt/presenceos/backend
+EnvironmentFile=/opt/presenceos/backend/.env.production
+ExecStart=/opt/presenceos/backend/venv/bin/celery \
+    -A app.workers.celery_app worker \
+    --loglevel=info \
+    --concurrency=4 \
+    --max-tasks-per-child=100
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=presenceos-worker
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/presenceos /tmp/presenceos_videos
+
+[Install]
+WantedBy=multi-user.target

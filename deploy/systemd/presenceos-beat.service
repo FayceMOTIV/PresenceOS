@@ -1,0 +1,27 @@
+[Unit]
+Description=PresenceOS Celery Beat Scheduler
+After=network.target redis.service
+Requires=redis.service
+
+[Service]
+Type=simple
+User=presenceos
+Group=presenceos
+WorkingDirectory=/opt/presenceos/backend
+EnvironmentFile=/opt/presenceos/backend/.env.production
+ExecStart=/opt/presenceos/backend/venv/bin/celery \
+    -A app.workers.celery_app beat \
+    --loglevel=info \
+    --schedule=/opt/presenceos/backend/celerybeat-schedule
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=presenceos-beat
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/presenceos
+
+[Install]
+WantedBy=multi-user.target
