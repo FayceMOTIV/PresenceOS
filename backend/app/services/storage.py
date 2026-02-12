@@ -131,7 +131,12 @@ class StorageService:
     def get_public_url(self, key: str) -> str:
         """Get the public URL for a stored file."""
         if self.public_url:
-            return f"{self.public_url.rstrip('/')}/{self.bucket_name}/{key}"
+            base = self.public_url.rstrip("/")
+            # Avoid duplicating bucket name if public_url already includes it
+            # e.g. S3_PUBLIC_URL=http://localhost:9000/presenceos-media
+            if base.endswith(f"/{self.bucket_name}"):
+                return f"{base}/{key}"
+            return f"{base}/{self.bucket_name}/{key}"
         return f"https://{self.bucket_name}.s3.{settings.s3_region}.amazonaws.com/{key}"
 
     def generate_presigned_url(

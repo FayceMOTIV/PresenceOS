@@ -9,8 +9,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
 from app.workers.celery_app import celery_app
-from app.core.database import async_session_maker
+from app.core.config import settings
 from app.connectors.factory import get_connector_handler
 from app.models.publishing import (
     ScheduledPost,
@@ -37,6 +39,22 @@ from app.services.whatsapp import WhatsAppService
 logger = structlog.get_logger()
 
 
+def _make_session_maker():
+    """Create a fresh engine + session maker for each Celery task.
+
+    This avoids the 'Future attached to a different loop' error that happens
+    when the module-level engine (created at import time) is reused across
+    Celery forked workers with different event loops.
+    """
+    eng = create_async_engine(
+        settings.database_url,
+        pool_pre_ping=True,
+        pool_size=2,
+        max_overflow=3,
+    )
+    return async_sessionmaker(eng, class_=AsyncSession, expire_on_commit=False), eng
+
+
 def run_async(coro):
     """Helper to run async code in Celery tasks."""
     loop = asyncio.new_event_loop()
@@ -58,131 +76,134 @@ def publish_post_task(self, scheduled_post_id: str):
 
 async def _publish_post(task, scheduled_post_id: str):
     """Async implementation of post publishing."""
-    async with async_session_maker() as db:
-        try:
-            # Get scheduled post with connector
-            result = await db.execute(
-                select(ScheduledPost)
-                .options(selectinload(ScheduledPost.connector))
-                .where(ScheduledPost.id == scheduled_post_id)
-            )
-            post = result.scalar_one_or_none()
-
-            if not post:
-                logger.error("Scheduled post not found", post_id=scheduled_post_id)
-                return {"status": "error", "message": "Post not found"}
-
-            if post.status != PostStatus.QUEUED:
-                logger.info("Post not in queued status", post_id=scheduled_post_id, status=post.status)
-                return {"status": "skipped", "message": f"Post status is {post.status}"}
-
-            connector = post.connector
-            if not connector or connector.status != ConnectorStatus.CONNECTED:
-                post.status = PostStatus.FAILED
-                post.last_error = "Connector not connected"
-                await db.commit()
-                return {"status": "error", "message": "Connector not connected"}
-
-            # Create publish job
-            job = PublishJob(
-                scheduled_post_id=post.id,
-                status=JobStatus.PROCESSING,
-                attempt_number=post.retry_count + 1,
-                started_at=datetime.now(timezone.utc),
-                celery_task_id=task.request.id,
-            )
-            db.add(job)
-            post.status = PostStatus.PUBLISHING
-            await db.commit()
-
-            # Get connector handler
-            handler = get_connector_handler(connector.platform)
-
-            # Decrypt access token
-            access_token = handler.decrypt_token(connector.access_token_encrypted)
-
-            # Prepare content
-            content = post.content_snapshot.copy()
-            content["account_id"] = connector.account_id
-            if connector.platform_data:
-                content.update(connector.platform_data)
-
-            # Publish
+    session_maker, engine = _make_session_maker()
+    try:
+        async with session_maker() as db:
             try:
-                result = await handler.publish(
-                    access_token=access_token,
-                    content=content,
-                    media_urls=post.content_snapshot.get("media_urls"),
+                # Get scheduled post with connector
+                result = await db.execute(
+                    select(ScheduledPost)
+                    .options(selectinload(ScheduledPost.connector))
+                    .where(ScheduledPost.id == scheduled_post_id)
                 )
+                post = result.scalar_one_or_none()
 
-                # Update post with success
-                post.status = PostStatus.PUBLISHED
-                post.platform_post_id = result["post_id"]
-                post.platform_post_url = result.get("post_url")
-                post.published_at = result["published_at"]
+                if not post:
+                    logger.error("Scheduled post not found", post_id=scheduled_post_id)
+                    return {"status": "error", "message": "Post not found"}
 
-                # Update job
-                job.status = JobStatus.SUCCESS
-                job.completed_at = datetime.now(timezone.utc)
-                job.platform_response = result.get("platform_response")
+                if post.status != PostStatus.QUEUED:
+                    logger.info("Post not in queued status", post_id=scheduled_post_id, status=post.status)
+                    return {"status": "skipped", "message": f"Post status is {post.status}"}
 
-                # Update connector daily count
-                connector.daily_posts_count += 1
+                connector = post.connector
+                if not connector or connector.status != ConnectorStatus.CONNECTED:
+                    post.status = PostStatus.FAILED
+                    post.last_error = "Connector not connected"
+                    await db.commit()
+                    return {"status": "error", "message": "Connector not connected"}
 
+                # Create publish job
+                job = PublishJob(
+                    scheduled_post_id=post.id,
+                    status=JobStatus.PROCESSING,
+                    attempt_number=post.retry_count + 1,
+                    started_at=datetime.now(timezone.utc),
+                    celery_task_id=task.request.id,
+                )
+                db.add(job)
+                post.status = PostStatus.PUBLISHING
                 await db.commit()
 
-                logger.info(
-                    "Post published successfully",
-                    post_id=scheduled_post_id,
-                    platform_post_id=result["post_id"],
-                )
+                # Get connector handler
+                handler = get_connector_handler(connector.platform)
 
-                return {"status": "success", "post_id": result["post_id"]}
+                # Decrypt access token
+                access_token = handler.decrypt_token(connector.access_token_encrypted)
+
+                # Prepare content
+                content = post.content_snapshot.copy()
+                content["account_id"] = connector.account_id
+                content["account_username"] = connector.account_username
+                if connector.platform_data:
+                    content.update(connector.platform_data)
+
+                # Publish
+                try:
+                    result = await handler.publish(
+                        access_token=access_token,
+                        content=content,
+                        media_urls=post.content_snapshot.get("media_urls"),
+                    )
+
+                    # Update post with success
+                    post.status = PostStatus.PUBLISHED
+                    post.platform_post_id = result["post_id"]
+                    post.platform_post_url = result.get("post_url")
+                    post.published_at = result["published_at"]
+
+                    # Update job
+                    job.status = JobStatus.SUCCESS
+                    job.completed_at = datetime.now(timezone.utc)
+                    job.platform_response = result.get("platform_response")
+
+                    # Update connector daily count
+                    connector.daily_posts_count += 1
+
+                    await db.commit()
+
+                    logger.info(
+                        "Post published successfully",
+                        post_id=scheduled_post_id,
+                        platform_post_id=result["post_id"],
+                    )
+
+                    return {"status": "success", "post_id": result["post_id"]}
+
+                except Exception as e:
+                    error_msg = str(e)
+                    logger.error("Publishing failed", post_id=scheduled_post_id, error=error_msg)
+
+                    job.status = JobStatus.FAILED
+                    job.completed_at = datetime.now(timezone.utc)
+                    job.error_message = error_msg
+
+                    post.retry_count += 1
+                    post.last_error = error_msg
+
+                    if post.retry_count < 3:
+                        post.status = PostStatus.QUEUED
+                        job.status = JobStatus.RETRYING
+                        countdown = PUBLISH_RETRY_DELAYS[min(post.retry_count - 1, len(PUBLISH_RETRY_DELAYS) - 1)]
+                        await db.commit()
+                        task.retry(countdown=countdown)
+                    else:
+                        post.status = PostStatus.FAILED
+
+                        audit_entry = AuditLog(
+                            user_id=None,
+                            action=AuditAction.POST_FAIL,
+                            resource_type="scheduled_post",
+                            resource_id=post.id,
+                            details={
+                                "connector_id": str(connector.id),
+                                "platform": connector.platform.value if hasattr(connector.platform, "value") else str(connector.platform),
+                                "retry_count": post.retry_count,
+                                "error": error_msg[:500],
+                            },
+                            success=False,
+                            error_message=error_msg[:1000],
+                        )
+                        db.add(audit_entry)
+
+                    await db.commit()
+                    raise
 
             except Exception as e:
-                error_msg = str(e)
-                logger.error("Publishing failed", post_id=scheduled_post_id, error=error_msg)
-
-                job.status = JobStatus.FAILED
-                job.completed_at = datetime.now(timezone.utc)
-                job.error_message = error_msg
-
-                post.retry_count += 1
-                post.last_error = error_msg
-
-                if post.retry_count < 3:
-                    post.status = PostStatus.QUEUED
-                    job.status = JobStatus.RETRYING
-                    # Exponential backoff: 10s, 30s, 90s
-                    countdown = PUBLISH_RETRY_DELAYS[min(post.retry_count - 1, len(PUBLISH_RETRY_DELAYS) - 1)]
-                    await db.commit()
-                    task.retry(countdown=countdown)
-                else:
-                    post.status = PostStatus.FAILED
-
-                    # Write to audit_logs on final failure
-                    audit_entry = AuditLog(
-                        user_id=None,
-                        action=AuditAction.POST_FAIL,
-                        resource_type="scheduled_post",
-                        resource_id=post.id,
-                        details={
-                            "connector_id": str(connector.id),
-                            "platform": connector.platform.value if hasattr(connector.platform, "value") else str(connector.platform),
-                            "retry_count": post.retry_count,
-                            "error": error_msg[:500],
-                        },
-                        success=False,
-                        error_message=error_msg[:1000],
-                    )
-                    db.add(audit_entry)
-
-                await db.commit()
+                logger.exception("Publish task failed", post_id=scheduled_post_id)
                 raise
-
-        except Exception as e:
-            logger.exception("Publish task failed", post_id=scheduled_post_id)
-            raise
+    finally:
+        await engine.dispose()
 
 
 @celery_app.task
@@ -193,30 +214,34 @@ def check_scheduled_posts():
 
 async def _check_scheduled_posts():
     """Find and queue posts scheduled for now."""
-    async with async_session_maker() as db:
-        now = datetime.now(timezone.utc)
-        window = now + timedelta(minutes=1)
+    session_maker, engine = _make_session_maker()
+    try:
+        async with session_maker() as db:
+            now = datetime.now(timezone.utc)
+            window = now + timedelta(minutes=1)
 
-        result = await db.execute(
-            select(ScheduledPost)
-            .where(
-                ScheduledPost.status == PostStatus.SCHEDULED,
-                ScheduledPost.scheduled_at <= window,
+            result = await db.execute(
+                select(ScheduledPost)
+                .where(
+                    ScheduledPost.status == PostStatus.SCHEDULED,
+                    ScheduledPost.scheduled_at <= window,
+                )
             )
-        )
-        posts = result.scalars().all()
+            posts = result.scalars().all()
 
-        queued_count = 0
-        for post in posts:
-            post.status = PostStatus.QUEUED
-            queued_count += 1
-            # Dispatch publish task
-            publish_post_task.delay(str(post.id))
+            queued_count = 0
+            for post in posts:
+                post.status = PostStatus.QUEUED
+                queued_count += 1
+                # Dispatch publish task
+                publish_post_task.delay(str(post.id))
 
-        await db.commit()
+            await db.commit()
 
-        logger.info("Checked scheduled posts", queued=queued_count)
-        return {"queued": queued_count}
+            logger.info("Checked scheduled posts", queued=queued_count)
+            return {"queued": queued_count}
+    finally:
+        await engine.dispose()
 
 
 @celery_app.task

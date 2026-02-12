@@ -17,7 +17,8 @@ from app.core.config import settings
 
 logger = structlog.get_logger()
 
-UPLOAD_POST_API_URL = "https://api.upload-post.com/api/upload"
+UPLOAD_POST_VIDEO_URL = "https://api.upload-post.com/api/upload"
+UPLOAD_POST_PHOTO_URL = "https://api.upload-post.com/api/upload_photos"
 
 
 class UploadPostConnector(BaseConnector):
@@ -35,6 +36,10 @@ class UploadPostConnector(BaseConnector):
         super().__init__()
         self.api_key = settings.upload_post_api_key
         self.platform = platform
+
+    def decrypt_token(self, encrypted_token: str) -> str:
+        """Upload-Post uses API key, not per-account OAuth tokens."""
+        return self.api_key or ""
 
     # ── OAuth stubs (not used — Upload-Post uses API key auth) ──────────
 
@@ -77,6 +82,116 @@ class UploadPostConnector(BaseConnector):
             },
         }
 
+    # ── Helpers ─────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _download_media(url: str) -> tuple[bytes, str]:
+        """Download media from a URL, using S3 client for MinIO URLs.
+
+        Returns (bytes, content_type).
+        """
+        s3_key = UploadPostConnector._extract_s3_key(url)
+        if s3_key:
+            # Use S3 client for authenticated access to MinIO
+            import boto3
+            from botocore.client import Config as BotoConfig
+            import io
+
+            client = boto3.client(
+                "s3",
+                endpoint_url=settings.s3_endpoint_url,
+                aws_access_key_id=settings.s3_access_key,
+                aws_secret_access_key=settings.s3_secret_key,
+                region_name=settings.s3_region,
+                config=BotoConfig(signature_version="s3v4"),
+            )
+            buf = io.BytesIO()
+            client.download_fileobj(settings.s3_bucket_name, s3_key, buf)
+            buf.seek(0)
+
+            # Guess content type from extension
+            import mimetypes
+            ct, _ = mimetypes.guess_type(s3_key)
+            content_type = ct or "application/octet-stream"
+
+            logger.info("Downloaded media via S3", key=s3_key, size=buf.getbuffer().nbytes)
+            return buf.read(), content_type
+
+        # Fallback: plain HTTP GET for external URLs
+        import httpx as _httpx
+        with _httpx.Client(timeout=60.0) as http:
+            resp = http.get(url)
+            resp.raise_for_status()
+            return resp.content, resp.headers.get("content-type", "application/octet-stream")
+
+    @staticmethod
+    def _extract_s3_key(url: str) -> str | None:
+        """Extract S3 object key from a MinIO/S3 URL, or return None if not an S3 URL."""
+        from urllib.parse import urlparse
+        bucket = settings.s3_bucket_name  # e.g. presenceos-media
+        s3_public = settings.s3_public_url or ""
+        s3_internal = settings.s3_endpoint_url or ""
+
+        parsed = urlparse(url)
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+
+        # Check if URL is from our MinIO (public or internal)
+        public_origin = urlparse(s3_public).netloc if s3_public else ""
+        internal_origin = urlparse(s3_internal).netloc if s3_internal else ""
+
+        if parsed.netloc not in (public_origin, internal_origin):
+            return None
+
+        # Path is like /presenceos-media/brands/... or /presenceos-media/presenceos-media/brands/...
+        path = parsed.path.lstrip("/")
+
+        # Strip bucket name prefix (possibly duplicated)
+        if path.startswith(f"{bucket}/{bucket}/"):
+            path = path[len(f"{bucket}/{bucket}/"):]
+        elif path.startswith(f"{bucket}/"):
+            path = path[len(f"{bucket}/"):]
+
+        return path if path else None
+
+    @staticmethod
+    def _resolve_internal_url(url: str) -> str:
+        """Rewrite localhost MinIO URLs to Docker-internal hostname.
+
+        Media URLs stored in DB use S3_PUBLIC_URL (e.g. http://localhost:9000/...)
+        but workers inside Docker need the internal hostname (minio:9000).
+        Also fixes duplicate bucket name in path (legacy bug).
+        """
+        s3_internal = settings.s3_endpoint_url  # e.g. http://minio:9000
+        s3_public = settings.s3_public_url       # e.g. http://localhost:9000/presenceos-media
+        bucket = settings.s3_bucket_name          # e.g. presenceos-media
+
+        if s3_public and s3_internal:
+            from urllib.parse import urlparse
+            parsed_public = urlparse(s3_public)
+            public_origin = f"{parsed_public.scheme}://{parsed_public.netloc}"
+
+            parsed_internal = urlparse(s3_internal)
+            internal_origin = f"{parsed_internal.scheme}://{parsed_internal.netloc}"
+
+            if url.startswith(public_origin):
+                resolved = url.replace(public_origin, internal_origin, 1)
+
+                # Fix duplicate bucket name in path (legacy bug):
+                # e.g. /presenceos-media/presenceos-media/brands/... -> /presenceos-media/brands/...
+                if bucket:
+                    dup = f"/{bucket}/{bucket}/"
+                    if dup in resolved:
+                        resolved = resolved.replace(dup, f"/{bucket}/", 1)
+
+                logger.debug(
+                    "Resolved media URL for Docker",
+                    original=url[:80],
+                    resolved=resolved[:80],
+                )
+                return resolved
+
+        return url
+
     # ── Publishing ──────────────────────────────────────────────────────
 
     async def publish(
@@ -106,6 +221,9 @@ class UploadPostConnector(BaseConnector):
         caption = content.get("caption", "")
         hashtags = content.get("hashtags", [])
         account_username = content.get("account_username") or content.get("account_id", "")
+        # Upload-Post expects username without @ prefix
+        if account_username and account_username.startswith("@"):
+            account_username = account_username[1:]
         platform = content.get("platform") or self.platform
 
         # Build full caption with hashtags
@@ -139,24 +257,34 @@ class UploadPostConnector(BaseConnector):
             # Add platform(s)
             files_payload.append(("platform[]", (None, target_platform)))
 
-            # Add media if present
+            # Add media if present — determines which endpoint to use
+            is_video = False
             if media_urls:
-                # Download the first media file and send it
                 media_url = media_urls[0]
+
                 try:
-                    media_response = await client.get(media_url)
-                    media_response.raise_for_status()
+                    media_bytes, content_type = self._download_media(media_url)
 
                     # Determine if video or image
-                    content_type = media_response.headers.get("content-type", "")
                     is_video = "video" in content_type or media_url.endswith(
                         (".mp4", ".mov", ".webm", ".avi")
                     )
-                    field_name = "video" if is_video else "image"
-                    filename = f"media.{'mp4' if is_video else 'jpg'}"
 
-                    files_payload.append(
-                        (field_name, (filename, media_response.content, content_type or "application/octet-stream"))
+                    if is_video:
+                        # Video endpoint uses field "video"
+                        files_payload.append(
+                            ("video", (f"media.mp4", media_bytes, content_type or "video/mp4"))
+                        )
+                    else:
+                        # Photo endpoint uses field "photos[]"
+                        files_payload.append(
+                            ("photos[]", (f"media.jpg", media_bytes, content_type or "image/jpeg"))
+                        )
+
+                    logger.info(
+                        "Media prepared for Upload-Post",
+                        is_video=is_video,
+                        size=len(media_bytes),
                     )
                 except Exception as e:
                     logger.warning(
@@ -166,13 +294,22 @@ class UploadPostConnector(BaseConnector):
                     )
                     # Continue without media — some platforms allow text-only
 
+            # Select endpoint based on media type
+            api_url = UPLOAD_POST_VIDEO_URL if is_video else UPLOAD_POST_PHOTO_URL
+
             headers = {
                 "Authorization": f"Apikey {api_key}",
             }
 
             try:
+                logger.info(
+                    "Sending to Upload-Post",
+                    endpoint=api_url,
+                    is_video=is_video,
+                    platform=target_platform,
+                )
                 response = await client.post(
-                    UPLOAD_POST_API_URL,
+                    api_url,
                     data=data,
                     files=files_payload,
                     headers=headers,
