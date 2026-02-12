@@ -16,6 +16,7 @@ from app.schemas.brand import (
     BrandResponse,
     BrandVoiceUpdate,
     BrandVoiceResponse,
+    BrandOnboardingRequest,
 )
 
 router = APIRouter()
@@ -172,3 +173,96 @@ async def update_brand_voice(
     brand = result.scalar_one()
 
     return BrandVoiceResponse.model_validate(brand.voice)
+
+
+@router.post("/{brand_id}/onboard", response_model=BrandResponse)
+async def onboard_brand(
+    brand_id: UUID,
+    data: BrandOnboardingRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+):
+    """Simplified onboarding endpoint that updates brand and voice in one call."""
+    brand = await get_brand(brand_id, current_user, db)
+
+    # Tone voice mapping
+    tone_mappings = {
+        "chaleureux": {
+            "tone_formal": 30,
+            "tone_playful": 60,
+            "tone_bold": 40,
+            "tone_emotional": 80,
+        },
+        "premium": {
+            "tone_formal": 80,
+            "tone_playful": 20,
+            "tone_bold": 60,
+            "tone_emotional": 40,
+        },
+        "fun": {
+            "tone_formal": 10,
+            "tone_playful": 90,
+            "tone_bold": 70,
+            "tone_emotional": 60,
+        },
+        "professionnel": {
+            "tone_formal": 80,
+            "tone_playful": 30,
+            "tone_bold": 50,
+            "tone_emotional": 30,
+        },
+        "inspirant": {
+            "tone_formal": 40,
+            "tone_playful": 50,
+            "tone_bold": 70,
+            "tone_emotional": 80,
+        },
+    }
+
+    # Update brand fields
+    brand.name = data.name
+    brand.brand_type = data.business_type
+    brand.description = f"{data.name} - {data.business_type.value}"
+    if data.website_url:
+        brand.website_url = data.website_url
+
+    # Update or create brand voice
+    tone_values = tone_mappings.get(data.tone_voice, tone_mappings["professionnel"])
+
+    if not brand.voice:
+        voice = BrandVoice(
+            brand_id=brand.id,
+            tone_formal=tone_values["tone_formal"],
+            tone_playful=tone_values["tone_playful"],
+            tone_bold=tone_values["tone_bold"],
+            tone_emotional=tone_values["tone_emotional"],
+            custom_instructions=f"Cible: {data.target_audience}",
+        )
+        db.add(voice)
+    else:
+        brand.voice.tone_formal = tone_values["tone_formal"]
+        brand.voice.tone_playful = tone_values["tone_playful"]
+        brand.voice.tone_bold = tone_values["tone_bold"]
+        brand.voice.tone_emotional = tone_values["tone_emotional"]
+        brand.voice.custom_instructions = f"Cible: {data.target_audience}"
+
+    # Set target_persona from target_audience string
+    brand.target_persona = {
+        "name": data.target_audience,
+        "age_range": None,
+        "interests": [],
+        "pain_points": [],
+        "goals": [],
+    }
+
+    await db.commit()
+
+    # Reload with relationships
+    result = await db.execute(
+        select(Brand)
+        .options(selectinload(Brand.voice))
+        .where(Brand.id == brand.id)
+    )
+    brand = result.scalar_one()
+
+    return BrandResponse.model_validate(brand)

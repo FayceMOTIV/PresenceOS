@@ -57,6 +57,10 @@ class VariantStyle(str, enum.Enum):
     BALANCED = "balanced"
     BOLD = "bold"
     FAICAL_STYLE = "faical_style"  # Special "Faïçal style" variant
+    # Photo caption styles
+    GOURMANDE = "gourmande"
+    PROMO = "promo"
+    STORY = "story"
 
 
 class ContentIdea(BaseModel):

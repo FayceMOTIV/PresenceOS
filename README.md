@@ -1,187 +1,290 @@
+<div align="center">
+
 # PresenceOS
 
-Agent Marketing IA pour entrepreneurs - SaaS qui planifie, genere et publie du contenu adapte sur les reseaux sociaux.
+**L'agent marketing IA qui transforme vos photos en campagnes sociales completes**
 
-## Description
+[![Docker](https://img.shields.io/badge/docker-ready-blue?logo=docker)](https://docker.com)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green?logo=fastapi)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
+[![Python](https://img.shields.io/badge/python-3.11+-blue?logo=python)](https://python.org)
+[![TypeScript](https://img.shields.io/badge/typescript-5.0+-blue?logo=typescript)](https://typescriptlang.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-PresenceOS est une plateforme SaaS alimentee par l'IA qui aide les entrepreneurs a gerer leur presence sur les reseaux sociaux. Elle planifie, genere et publie automatiquement du contenu adapte a chaque plateforme sociale.
+[Features](#features) &bull; [Architecture](#architecture) &bull; [Quick Start](#quick-start) &bull; [API](#api-endpoints) &bull; [Roadmap](#roadmap)
 
-## Stack Technique
+</div>
 
-- **Frontend**: Next.js 14, React 18, Tailwind CSS, shadcn/ui, Framer Motion
-- **Backend**: FastAPI, Python 3.11+
-- **Base de donnees**: PostgreSQL 16 avec pgvector
-- **Cache & Files**: Redis 7, Celery
-- **Stockage**: MinIO (S3-compatible)
-- **IA**: OpenAI, Anthropic Claude
-- **Infrastructure**: Docker, Docker Compose
+---
+
+## Qu'est-ce que PresenceOS ?
+
+PresenceOS est une plateforme SaaS de marketing automation qui permet aux entreprises (restaurants, e-commerce, coaching, immobilier, etc.) de **generer, optimiser et publier du contenu social en quelques clics**.
+
+### Le probleme
+
+Les entrepreneurs passent des heures a :
+- Trouver quoi poster sur les reseaux sociaux
+- Ecrire des captions engageantes
+- Adapter le contenu pour chaque plateforme
+- Trouver les bons hashtags
+- Publier au bon moment
+
+### La solution
+
+**Upload une photo &rarr; Recois 3 variations de posts pretes a publier**
+
+PresenceOS analyse votre photo, comprend votre marque, et genere automatiquement :
+- 3 variations de captions (Gourmande, Promo, Story)
+- Scores d'engagement predictifs (jusqu'a 92/100)
+- Hashtags pertinents par secteur
+- Suggestions d'emojis strategiques
+- Meilleurs horaires de publication
+- Adaptation multi-plateformes (Instagram, Facebook, LinkedIn, TikTok)
+
+---
+
+## Features
+
+### IA Marketing de Pointe
+
+- **Vision AI** : Analyse automatique des photos (produits, ambiance, couleurs)
+- **3 Styles de Captions** :
+  - **Gourmande** : Focus produit, sensoriel, desir
+  - **Promo** : Urgence, offre limitee, FOMO
+  - **Story** : Storytelling, emotion, authenticite
+- **Scores d'Engagement** : Prediction 1-100 basee sur 15+ facteurs marketing
+- **Regeneration Intelligente** :
+  - Hashtags adaptes a votre secteur
+  - Changement de ton (fun, premium, urgent)
+  - Suggestions d'emojis pertinents
+
+### Publication Automatisee
+
+- **Multi-plateformes** : Instagram, Facebook, LinkedIn, TikTok
+- **Scheduling Intelligent** : Detection automatique des meilleurs horaires
+- **Publication en 1 clic** via Upload-Post API
+- **Preview Multi-plateforme** : Voir le rendu exact sur chaque reseau
+
+### Business Brain
+
+- **Onboarding 5 Questions** : Capture l'identite de marque
+- **Adaptation Automatique** : Ton de voix, valeurs, audience cible
+- **6 Industries Supportees** : Restaurant, SaaS, E-commerce, Services, Coaching, Artisanat
+- **Knowledge Base** : Se souvient des preferences et s'ameliore dans le temps
+
+### Analytics & Insights
+
+- Suivi des performances par post
+- Engagement tracking (likes, comments, shares, reach)
+- Suggestions basees sur ce qui marche
+
+---
 
 ## Architecture
 
+### Stack Technique
+
+| Composant | Technologie |
+|-----------|-------------|
+| **Frontend** | Next.js 14, TypeScript, TailwindCSS, shadcn/ui, Framer Motion |
+| **Backend** | FastAPI, SQLAlchemy async, Pydantic v2 |
+| **Database** | PostgreSQL 16 + pgvector |
+| **Queue** | Celery + Redis |
+| **Storage** | MinIO (S3-compatible) |
+| **AI** | OpenAI GPT-4 Vision + Anthropic Claude Sonnet 4.5 |
+| **Publication** | Upload-Post API (Instagram, Facebook, TikTok) + LinkedIn natif |
+| **Infrastructure** | Docker Compose (7 services) |
+
+### 7 Services Docker
+
 ```
-presenceos/
-├── frontend/          # Application Next.js 14
-├── backend/           # API FastAPI
-│   ├── app/
-│   │   ├── api/       # Endpoints API
-│   │   ├── models/    # Modeles SQLAlchemy
-│   │   ├── schemas/   # Schemas Pydantic
-│   │   ├── services/  # Logique metier
-│   │   ├── workers/   # Taches Celery
-│   │   └── core/      # Configuration & auth
-│   ├── alembic/       # Migrations DB
-│   ├── scripts/       # Scripts utilitaires
-│   └── tests/         # Tests
-└── docker-compose.yml # Orchestration services
+                    +-----------+
+                    | Frontend  |  Next.js 14 (:3001)
+                    |  (Web UI) |
+                    +-----+-----+
+                          |
+                          | HTTP
+                          v
+                    +-----------+
+                    |  Backend  |  FastAPI (:8000)
+                    | (API REST)|
+                    +-----+-----+
+                          |
+          +-------+-------+-------+-------+-------+
+          |       |       |       |       |       |
+          v       v       v       v       v       v
+      +------+ +-----+ +-----+ +------+ +------+
+      |Postgr| |Redis| |MinIO| |Celery| |Celery|
+      |  SQL  | |     | | (S3)| |Worker| | Beat |
+      +------+ +-----+ +-----+ +------+ +------+
 ```
 
-## Demarrage Rapide
+---
+
+## Quick Start
 
 ### Prerequis
 
 - Docker & Docker Compose
-- Git
+- Node.js 18+
+- Python 3.11+
 
 ### Installation
 
-1. Cloner le depot:
 ```bash
-git clone <repository-url>
-cd presenceos
+# 1. Cloner le repo
+git clone https://github.com/FayceMOTIV/PresenceOS.git
+cd PresenceOS
+
+# 2. Configurer les variables d'environnement
+cp .env.example .env
+# Editer .env et ajouter :
+#   OPENAI_API_KEY=sk-...
+#   UPLOAD_POST_API_KEY=... (optionnel, pour publication)
+
+# 3. Lancer l'infrastructure
+docker compose up -d
+
+# 4. Attendre que tous les services demarrent (~30 secondes)
+docker compose ps
+
+# 5. Acceder a l'application
+open http://localhost:3001
 ```
 
-2. Demarrer tous les services:
-```bash
-docker-compose up -d
-```
-
-Cela demarre automatiquement:
-- PostgreSQL (port 5432)
-- Redis (port 6379)
-- MinIO (ports 9000, 9001)
-- Backend FastAPI (port 8000)
-- Celery Worker
-- Celery Beat
-- Frontend Next.js (port 3001)
-
-3. Initialiser la base de donnees (premiere fois):
-```bash
-docker exec -it presenceos-backend alembic upgrade head
-docker exec -it presenceos-backend python scripts/seed.py
-```
-
-### URLs d'acces
-
-- **Frontend**: http://localhost:3001
-- **Backend API**: http://localhost:8000
-- **Documentation API**: http://localhost:8000/docs
-- **Console MinIO**: http://localhost:9001
-
-### Identifiants Demo
-
-- **Email**: demo@presenceos.com
-- **Mot de passe**: Demo123!
-
-### Identifiants MinIO
-
-- **Username**: minioadmin
-- **Password**: minioadmin
-
-## Services
-
-### Frontend (Next.js)
-Application web moderne avec interface utilisateur reactive.
-
-### Backend (FastAPI)
-API REST asynchrone avec documentation Swagger automatique.
-
-### PostgreSQL + pgvector
-Base de donnees avec support des vecteurs pour les embeddings IA.
-
-### Redis
-Cache et broker de messages pour Celery.
-
-### MinIO
-Stockage S3-compatible pour les medias (images, videos).
-
-### Celery Worker
-Traitement asynchrone des taches (generation de contenu, publication).
-
-### Celery Beat
-Planificateur de taches periodiques.
-
-## Developpement Local
-
-### Sans Docker
-
-Voir les README specifiques:
-- [Backend README](/Users/faicalkriouar/presenceos/backend/README.md)
-- [Frontend README](/Users/faicalkriouar/presenceos/frontend/README.md)
-
-### Commandes Docker Utiles
+### Verification
 
 ```bash
-# Demarrer les services
-docker-compose up -d
+# Backend health
+curl http://localhost:8000/health
 
-# Arreter les services
-docker-compose down
-
-# Voir les logs
-docker-compose logs -f [service-name]
-
-# Reconstruire les images
-docker-compose build
-
-# Reinitialiser completement
-docker-compose down -v
-docker-compose up -d --build
+# API docs (Swagger)
+open http://localhost:8000/docs
 ```
 
-## Variables d'Environnement
+---
 
-Les variables d'environnement sont configurees dans `docker-compose.yml` pour le developpement.
+## API Endpoints
 
-Pour la production, configurez:
-- `DATABASE_URL`: URL PostgreSQL
-- `REDIS_URL`: URL Redis
-- `S3_ENDPOINT_URL`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`: Configuration S3/MinIO
-- `OPENAI_API_KEY`: Cle API OpenAI
-- `ANTHROPIC_API_KEY`: Cle API Anthropic
+### Captions IA
+
+| Endpoint | Methode | Description |
+|----------|---------|-------------|
+| `/api/v1/ai/brands/{id}/photo/captions` | POST | Genere 3 variations de captions |
+| `/api/v1/ai/brands/{id}/captions/regenerate-hashtags` | POST | Regenere des hashtags |
+| `/api/v1/ai/brands/{id}/captions/change-tone` | POST | Change le ton (fun, premium, urgent) |
+| `/api/v1/ai/brands/{id}/captions/suggest-emojis` | POST | Suggere des emojis pertinents |
+| `/api/v1/ai/brands/{id}/captions/engagement-score` | POST | Calcule le score d'engagement |
+
+### Publication
+
+| Endpoint | Methode | Description |
+|----------|---------|-------------|
+| `/api/v1/posts/brands/{id}` | POST | Programmer un post |
+| `/api/v1/connectors/oauth/url` | POST | URL OAuth pour connecter un reseau |
+| `/api/v1/connectors/oauth/callback` | POST | Callback OAuth |
+| `/api/v1/scheduling/optimal-times/{id}` | GET | Horaires optimaux |
+
+### Brands & Content
+
+| Endpoint | Methode | Description |
+|----------|---------|-------------|
+| `/api/v1/brands` | POST | Creer une marque |
+| `/api/v1/brands/{id}/onboard` | POST | Onboarding IA (5 questions) |
+| `/api/v1/ai/brands/{id}/ideas/generate` | POST | Generer des idees de contenu |
+| `/api/v1/ai/brands/{id}/drafts/generate` | POST | Generer un brouillon |
+
+Documentation complete : `http://localhost:8000/docs`
+
+---
+
+## Structure du Projet
+
+```
+presenceos/
+|-- backend/                  # API FastAPI
+|   |-- app/
+|   |   |-- api/v1/endpoints/ # Endpoints REST (20+)
+|   |   |-- models/           # SQLAlchemy models
+|   |   |-- services/         # Business logic (AI, Vision, Publishing)
+|   |   |-- prompts/          # Systeme de prompts IA
+|   |   |-- connectors/       # Instagram, LinkedIn, TikTok, Facebook
+|   |   +-- workers/          # Taches Celery (publish, metrics)
+|   |-- tests/                # Tests pytest (390+)
+|   +-- Dockerfile
+|-- frontend/                 # Application Next.js
+|   |-- src/
+|   |   |-- app/              # Pages (App Router, 20 pages)
+|   |   |-- components/       # Composants React
+|   |   +-- hooks/            # Custom hooks
+|   +-- Dockerfile
+|-- docker-compose.yml        # Orchestration 7 services
+|-- .env.example              # Variables d'environnement
++-- README.md
+```
+
+---
 
 ## Tests
 
 ```bash
-# Backend
-docker exec -it presenceos-backend pytest tests/ -v
+# Backend (pytest)
+cd backend && pytest -v
 
-# Frontend
-cd frontend
-npm test
+# Frontend build check
+cd frontend && npx next build
 ```
 
-## Documentation
+---
 
-- **API Documentation**: http://localhost:8000/docs (Swagger UI)
-- **API Redoc**: http://localhost:8000/redoc
+## Roadmap
 
-## Structure des Pages
+### v1.0 (Fevrier 2026) - Actuel
 
-- **Landing**: Page d'accueil marketing
-- **Auth**: Inscription / Connexion
-- **Dashboard**: Vue d'ensemble
-- **Studio**: Creation de contenu
-- **Planner**: Calendrier de publication
-- **Ideas**: Generateur d'idees
-- **Analytics**: Statistiques
-- **Settings**: Parametres
-- **Brain**: Base de connaissances IA
-- **Trends**: Tendances et insights
+- [x] Upload photo & analyse vision
+- [x] 3 variations de captions IA (gourmande/promo/story)
+- [x] Scores d'engagement predictifs
+- [x] Regeneration intelligente (hashtags, tone, emojis)
+- [x] Publication Instagram/Facebook/TikTok via Upload-Post
+- [x] Publication LinkedIn native
+- [x] Brand onboarding (5 questions)
+- [x] Docker 7 services
+- [x] 20 pages frontend
 
-## Support
+### v1.1
 
-Pour toute question ou probleme, veuillez ouvrir une issue sur le depot GitHub.
+- [ ] Calendrier de publications drag & drop
+- [ ] Analytics dashboard
+- [ ] Historique des posts publies
+- [ ] Templates par industrie
 
-## Licence
+### v2.0
 
-Proprietary - Tous droits reserves
+- [ ] Generation video automatique
+- [ ] WhatsApp/Telegram bot
+- [ ] A/B Testing de captions
+- [ ] Competitor Intelligence
+- [ ] Trends Radar
+
+---
+
+## Contribution
+
+1. Fork le projet
+2. Cree une branche (`git checkout -b feature/ma-feature`)
+3. Commit (`git commit -m 'feat: ma feature'`)
+4. Push (`git push origin feature/ma-feature`)
+5. Ouvre une Pull Request
+
+---
+
+## License
+
+MIT License - voir [LICENSE](LICENSE) pour plus de details.
+
+---
+
+Construit par [Faical Kriouar](https://github.com/FayceMOTIV)
+
+**Technologies** : [OpenAI](https://openai.com) | [Anthropic](https://anthropic.com) | [Upload-Post](https://upload-post.com) | [FastAPI](https://fastapi.tiangolo.com) | [Next.js](https://nextjs.org)

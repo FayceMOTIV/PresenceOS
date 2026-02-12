@@ -76,6 +76,7 @@ export const brandsApi = {
   update: (id: string, data: any) => api.patch(`/brands/${id}`, data),
   getVoice: (id: string) => api.get(`/brands/${id}/voice`),
   updateVoice: (id: string, data: any) => api.patch(`/brands/${id}/voice`, data),
+  onboard: (id: string, data: any) => api.post(`/brands/${id}/onboard`, data),
 };
 
 // Knowledge
@@ -216,6 +217,28 @@ export const aiApi = {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
+
+  // Photo Caption Generation (visual flow)
+  generatePhotoCaptions: (brandId: string, file: File, platforms: string = "instagram_post") => {
+    const formData = new FormData();
+    formData.append("photo", file);
+    formData.append("platforms", platforms);
+    return api.post(`/ai/brands/${brandId}/photo/captions`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+
+  regenerateHashtags: (brandId: string, data: { caption: string; platform?: string; count?: number }) =>
+    api.post(`/ai/brands/${brandId}/captions/regenerate-hashtags`, data),
+
+  changeTone: (brandId: string, data: { caption: string; tone: string; platform?: string }) =>
+    api.post(`/ai/brands/${brandId}/captions/change-tone`, data),
+
+  suggestEmojis: (brandId: string, data: { caption: string }) =>
+    api.post(`/ai/brands/${brandId}/captions/suggest-emojis`, data),
+
+  getEngagementScore: (brandId: string, data: { caption: string; hashtags: string[]; platform: string }) =>
+    api.post(`/ai/brands/${brandId}/captions/engagement-score`, data),
 };
 
 // Media Storage

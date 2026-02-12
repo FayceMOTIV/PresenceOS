@@ -392,3 +392,51 @@ export interface MediaLibraryStats {
   from_upload: number;
   ai_analyzed_count: number;
 }
+
+// Photo Caption Generation (visual flow)
+export type CaptionStyle = "gourmande" | "promo" | "story";
+export type ToneOption = "fun" | "premium" | "urgence";
+
+export interface PhotoCaptionSuggestion {
+  style: CaptionStyle;
+  caption: string;
+  hashtags: string[];
+  ai_notes: string;
+}
+
+export interface ImageAnalysis {
+  description: string;
+  tags: string[];
+  detected_objects: string[];
+  mood: string;
+  suitable_platforms: string[];
+}
+
+export interface EngagementScore {
+  total: number;
+  has_hook: number;
+  has_cta: number;
+  hashtag_score: number;
+  emoji_score: number;
+  length_score: number;
+  readability_score: number;
+  trending_score: number;
+}
+
+export interface PhotoCaptionsResponse {
+  image_analysis: ImageAnalysis;
+  photo_url: string;
+  suggestions: PhotoCaptionSuggestion[];
+  engagement_scores: Record<string, EngagementScore>;
+  model_used: string;
+  prompt_version: string;
+}
+
+export const PLATFORM_CHAR_LIMITS: Record<string, number> = {
+  instagram_post: 2200,
+  instagram_story: 2200,
+  instagram_reel: 2200,
+  facebook: 63206,
+  linkedin: 3000,
+  tiktok: 150,
+};

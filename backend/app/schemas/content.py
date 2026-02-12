@@ -1,6 +1,7 @@
 """
 PresenceOS - Content Schemas (Ideas, Drafts, Generation)
 """
+import enum
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -235,3 +236,98 @@ class TrendAnalysisResponse(BaseModel):
     summary: str
     key_themes: list[str]
     ideas: list[GeneratedIdea] | None = None
+
+
+# ── Photo Caption Generation (visual flow) ─────────────────────────
+
+
+class CaptionStyle(str, enum.Enum):
+    GOURMANDE = "gourmande"
+    PROMO = "promo"
+    STORY = "story"
+
+
+class ToneOption(str, enum.Enum):
+    FUN = "fun"
+    PREMIUM = "premium"
+    URGENCE = "urgence"
+
+
+class PhotoCaptionSuggestion(BaseModel):
+    """One of the 3 caption suggestions from photo analysis."""
+
+    style: CaptionStyle
+    caption: str
+    hashtags: list[str]
+    ai_notes: str
+
+
+class ImageAnalysis(BaseModel):
+    """Result of VisionService analysis."""
+
+    description: str
+    tags: list[str]
+    detected_objects: list[str]
+    mood: str
+    suitable_platforms: list[str]
+
+
+class EngagementScore(BaseModel):
+    """Predicted engagement score breakdown."""
+
+    total: int = Field(ge=0, le=100)
+    has_hook: int = 0
+    has_cta: int = 0
+    hashtag_score: int = 0
+    emoji_score: int = 0
+    length_score: int = 0
+    readability_score: int = 0
+    trending_score: int = 0
+
+
+class PhotoCaptionsResponse(BaseModel):
+    """Full response for photo -> 3 captions endpoint."""
+
+    image_analysis: ImageAnalysis
+    photo_url: str
+    suggestions: list[PhotoCaptionSuggestion]
+    engagement_scores: dict[str, EngagementScore]
+    model_used: str
+    prompt_version: str
+
+
+class RegenerateHashtagsRequest(BaseModel):
+    caption: str
+    platform: str = "instagram_post"
+    count: int = Field(10, ge=3, le=20)
+
+
+class RegenerateHashtagsResponse(BaseModel):
+    hashtags: list[str]
+
+
+class ChangeToneRequest(BaseModel):
+    caption: str
+    tone: ToneOption
+    platform: str = "instagram_post"
+
+
+class ChangeToneResponse(BaseModel):
+    caption: str
+    tone_applied: ToneOption
+    changes_made: list[str]
+
+
+class SuggestEmojisRequest(BaseModel):
+    caption: str
+
+
+class SuggestEmojisResponse(BaseModel):
+    suggestions: list[dict[str, str]]
+    caption_with_emojis: str
+
+
+class EngagementScoreRequest(BaseModel):
+    caption: str
+    hashtags: list[str] = []
+    platform: str = "instagram_post"

@@ -75,7 +75,7 @@ async def test_photo_moves_to_enriching():
         })
 
     # Mock _generate_photo_reaction
-    async def mock_reaction(analysis, brand_name):
+    async def mock_reaction(analysis, brand_name, brand_type="other"):
         return "Superbe tajine, ca a l'air delicieux ! 😍"
 
     # Mock _get_brand_name

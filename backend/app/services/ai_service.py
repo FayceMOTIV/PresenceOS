@@ -13,8 +13,20 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from app.core.config import settings
 from app.models.brand import Brand
 from app.models.content import Platform, VariantStyle
-from app.prompts.caption_generator import build_draft_generation_prompt, PROMPT_VERSION
-from app.schemas.content import GeneratedIdea, GeneratedDraft, GeneratedVariant
+from app.prompts.caption_generator import (
+    build_draft_generation_prompt,
+    build_photo_captions_prompt,
+    CAPTION_STYLE_DESCRIPTIONS,
+    TONE_DESCRIPTIONS,
+    PROMPT_VERSION,
+)
+from app.schemas.content import (
+    CaptionStyle,
+    GeneratedIdea,
+    GeneratedDraft,
+    GeneratedVariant,
+    PhotoCaptionSuggestion,
+)
 
 logger = structlog.get_logger()
 
@@ -440,3 +452,137 @@ Réponds en JSON:
         response = await self._complete(prompt)
         data = self._parse_json_response(response)
         return data.get("replies", [])
+
+    # ── Photo Caption Methods (visual flow) ─────────────────────────
+
+    async def generate_photo_captions(
+        self,
+        brand: Brand,
+        image_analysis: dict,
+        platforms: list[str] | None = None,
+    ) -> list[PhotoCaptionSuggestion]:
+        """Generate 3 caption styles from photo analysis in ONE AI call."""
+        brand_context = self._build_brand_context(brand)
+
+        prompt = build_photo_captions_prompt(
+            brand_context=brand_context,
+            image_analysis=image_analysis,
+            platforms=platforms,
+        )
+
+        response = await self._complete(prompt, temperature=0.8, max_tokens=4000)
+        data = self._parse_json_response(response)
+
+        suggestions = []
+        for s in data.get("suggestions", []):
+            suggestions.append(
+                PhotoCaptionSuggestion(
+                    style=CaptionStyle(s["style"]),
+                    caption=s["caption"],
+                    hashtags=s.get("hashtags", []),
+                    ai_notes=s.get("ai_notes", ""),
+                )
+            )
+
+        return suggestions
+
+    async def regenerate_hashtags(
+        self,
+        brand: Brand,
+        caption: str,
+        platform: str = "instagram_post",
+        count: int = 10,
+    ) -> list[str]:
+        """Regenerate just hashtags for a given caption."""
+        brand_context = self._build_brand_context(brand)
+
+        prompt = f"""Genere exactement {count} hashtags optimises pour cette caption sur {platform}.
+
+Caption: {caption}
+
+Marque: {brand_context['brand_name']} ({brand_context['brand_type']})
+Style hashtags: {brand_context['hashtag_style']}
+
+Regles:
+- Mix de hashtags populaires (portee) et niche (ciblage)
+- Pertinents pour le contenu et la marque
+- Sans le symbole # (juste les mots)
+
+Reponds en JSON:
+{{
+  "hashtags": ["hashtag1", "hashtag2", "..."]
+}}"""
+
+        response = await self._complete(prompt, temperature=0.7, max_tokens=500)
+        data = self._parse_json_response(response)
+        return data.get("hashtags", [])
+
+    async def change_caption_tone(
+        self,
+        brand: Brand,
+        caption: str,
+        tone: str,
+        platform: str = "instagram_post",
+    ) -> dict:
+        """Rewrite caption in a new tone (fun/premium/urgence)."""
+        brand_context = self._build_brand_context(brand)
+        tone_desc = TONE_DESCRIPTIONS.get(tone, "")
+
+        prompt = f"""Reecris cette caption avec le ton "{tone}".
+
+Caption originale:
+{caption}
+
+Ton demande: {tone_desc}
+
+Marque: {brand_context['brand_name']}
+Plateforme: {platform}
+
+IMPORTANT: Garde la meme structure (Hook + Body + CTA) et les memes informations cles.
+Change UNIQUEMENT le ton, le vocabulaire et le style.
+
+Reponds en JSON:
+{{
+  "caption": "nouvelle caption reecrite",
+  "changes_made": ["changement 1", "changement 2", "..."]
+}}"""
+
+        response = await self._complete(prompt, temperature=0.8, max_tokens=2000)
+        data = self._parse_json_response(response)
+        return {
+            "caption": data.get("caption", caption),
+            "changes_made": data.get("changes_made", []),
+        }
+
+    async def suggest_emojis(
+        self,
+        brand: Brand,
+        caption: str,
+    ) -> dict:
+        """Suggest strategic emoji placements for a caption."""
+        brand_context = self._build_brand_context(brand)
+        max_emojis = brand_context.get("max_emojis", 3)
+
+        prompt = f"""Suggere des emojis strategiques pour cette caption.
+
+Caption: {caption}
+
+Marque: {brand_context['brand_name']}
+Maximum emojis: {max_emojis}
+
+Regles:
+- Place les emojis de facon strategique (hook, transitions, CTA)
+- Maximum {max_emojis} emojis au total
+- Chaque emoji doit renforcer le message, pas decorer
+
+Reponds en JSON:
+{{
+  "suggestions": [
+    {{"emoji": "emoji_ici", "position": "hook|body|cta", "reason": "pourquoi cet emoji"}},
+    ...
+  ],
+  "caption_with_emojis": "la caption complete avec les emojis integres"
+}}"""
+
+        response = await self._complete(prompt, temperature=0.7, max_tokens=2000)
+        return self._parse_json_response(response)

@@ -26,6 +26,7 @@ from app.prompts.caption_generator import (
     build_caption_system_prompt,
     build_caption_user_prompt,
     build_photo_reaction_prompt,
+    get_platform_instructions,
     INDUSTRY_GUIDELINES,
 )
 
@@ -745,15 +746,35 @@ class ConversationEngine:
         system_prompt = self._build_caption_system_prompt(brand_info)
         brand_type = brand_info.get("brand_type", "other")
 
+        # Fetch relevant knowledge for richer captions
+        knowledge_text = await self._get_relevant_knowledge(
+            brand_info.get("brand_id", ""),
+            analyses_text,
+        )
+
         user_prompt = build_caption_user_prompt(
             analyses_text=analyses_text,
             user_context=user_context,
             platforms=platforms,
             brand_type=brand_type,
+            knowledge_context=knowledge_text,
+        )
+
+        logger.info(
+            "[CAPTION DEBUG] Generating caption",
+            brand_name=brand_info.get("name"),
+            brand_type=brand_type,
+            has_voice=bool(brand_info.get("voice")),
+            has_knowledge=bool(knowledge_text),
+            user_context_len=len(user_context) if user_context else 0,
+            system_prompt_len=len(system_prompt),
+            user_prompt_len=len(user_prompt),
         )
 
         try:
-            return await self._call_gpt(system_prompt, user_prompt)
+            caption = await self._call_gpt(system_prompt, user_prompt)
+            logger.info("[CAPTION DEBUG] Generated caption", caption_preview=caption[:100])
+            return caption
         except Exception as e:
             logger.error("Caption generation failed", error=str(e))
             # Fallback caption with industry-appropriate hashtags
@@ -784,10 +805,49 @@ class ConversationEngine:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            max_tokens=500,
-            temperature=0.7,
+            max_tokens=700,
+            temperature=0.85,
         )
         return response.choices[0].message.content.strip()
+
+    # ── Knowledge Base ─────────────────────────────────────────────
+
+    async def _get_relevant_knowledge(self, brand_id: str, query: str) -> str:
+        """Fetch relevant knowledge items for the brand to enrich captions."""
+        if not brand_id or brand_id in ("dev-brand", ""):
+            return ""
+        try:
+            from app.core.database import async_session_maker
+            from app.models.knowledge import KnowledgeItem
+            from sqlalchemy import select
+
+            async with async_session_maker() as db:
+                result = await db.execute(
+                    select(KnowledgeItem)
+                    .where(
+                        KnowledgeItem.brand_id == brand_id,
+                        KnowledgeItem.is_active == True,
+                    )
+                    .order_by(KnowledgeItem.is_featured.desc())
+                    .limit(5)
+                )
+                items = result.scalars().all()
+                if not items:
+                    return ""
+
+                parts = []
+                for item in items:
+                    entry = f"- [{item.knowledge_type.value}] {item.title}"
+                    if item.content:
+                        # Truncate long content
+                        content = item.content[:200] + "..." if len(item.content) > 200 else item.content
+                        entry += f": {content}"
+                    parts.append(entry)
+
+                return "\n".join(parts)
+        except Exception as e:
+            logger.warning("Failed to load knowledge for caption", error=str(e))
+            return ""
 
     # ── DB Helpers ──────────────────────────────────────────────────
 
@@ -841,6 +901,7 @@ class ConversationEngine:
                     }
 
                 return {
+                    "brand_id": str(brand.id),
                     "name": brand.name,
                     "brand_type": brand.brand_type.value if brand.brand_type else "other",
                     "description": brand.description or "",

@@ -1,6 +1,7 @@
 """
 PresenceOS - AI Generation Endpoints
 """
+from io import BytesIO
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form, status
@@ -27,10 +28,24 @@ from app.schemas.content import (
     TrendAnalysisResponse,
     ContentIdeaResponse,
     ContentDraftResponse,
+    PhotoCaptionsResponse,
+    PhotoCaptionSuggestion,
+    ImageAnalysis,
+    EngagementScore,
+    RegenerateHashtagsRequest,
+    RegenerateHashtagsResponse,
+    ChangeToneRequest,
+    ChangeToneResponse,
+    SuggestEmojisRequest,
+    SuggestEmojisResponse,
+    EngagementScoreRequest,
 )
 from app.prompts.caption_generator import PROMPT_VERSION
 from app.services.ai_service import AIService
 from app.services.embeddings import EmbeddingService
+from app.services.engagement_scorer import compute_engagement_score
+from app.services.storage import StorageService
+from app.services.vision import VisionService
 
 router = APIRouter()
 
@@ -380,3 +395,241 @@ async def suggest_reply(
     )
 
     return {"suggestions": suggestions}
+
+
+# ── Photo Caption Endpoints (visual flow) ───────────────────────────
+
+
+@router.post("/brands/{brand_id}/photo/captions", response_model=PhotoCaptionsResponse)
+@limiter.limit("10/minute")
+async def generate_photo_captions(
+    request: Request,
+    brand_id: UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+    photo: UploadFile = File(...),
+    platforms: str = Form("instagram_post"),
+):
+    """Upload photo -> analyze -> generate 3 caption suggestions (gourmande/promo/story)."""
+    brand = await get_brand(brand_id, current_user, db)
+
+    # Load brand with voice
+    result = await db.execute(
+        select(Brand)
+        .options(selectinload(Brand.voice))
+        .where(Brand.id == brand_id)
+    )
+    brand = result.scalar_one()
+
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/heic"]
+    if photo.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Format non supporte. Formats acceptes: {', '.join(allowed_types)}",
+        )
+
+    # Read photo
+    image_data = await photo.read()
+    mime_type = photo.content_type or "image/jpeg"
+
+    # Upload to S3
+    try:
+        storage = StorageService()
+        key = storage.generate_key(str(brand_id), "image", photo.filename or "photo.jpg")
+        upload_result = await storage.upload_file(BytesIO(image_data), key, mime_type)
+        photo_url = upload_result["url"]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erreur lors de l'upload de la photo: {e}",
+        )
+
+    # Analyze image with Vision AI
+    try:
+        vision_service = VisionService()
+        analysis = await vision_service.analyze_image(
+            image_data, mime_type, brand_context=brand.description or ""
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erreur lors de l'analyse de la photo: {e}",
+        )
+
+    # Generate 3 captions in ONE AI call
+    try:
+        ai_service = AIService()
+        platform_list = [p.strip() for p in platforms.split(",")]
+        suggestions = await ai_service.generate_photo_captions(
+            brand=brand,
+            image_analysis=analysis,
+            platforms=platform_list,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erreur lors de la generation IA: {e}",
+        )
+
+    # Score each caption
+    engagement_scores = {}
+    for s in suggestions:
+        score = compute_engagement_score(s.caption, s.hashtags, platform_list[0])
+        engagement_scores[s.style.value] = EngagementScore(**score)
+
+    return PhotoCaptionsResponse(
+        image_analysis=ImageAnalysis(
+            description=analysis.get("description", ""),
+            tags=analysis.get("tags", []),
+            detected_objects=analysis.get("detected_objects", []),
+            mood=analysis.get("mood", ""),
+            suitable_platforms=analysis.get("suitable_platforms", []),
+        ),
+        photo_url=photo_url,
+        suggestions=suggestions,
+        engagement_scores=engagement_scores,
+        model_used=ai_service.model_name,
+        prompt_version=PROMPT_VERSION,
+    )
+
+
+@router.post(
+    "/brands/{brand_id}/captions/regenerate-hashtags",
+    response_model=RegenerateHashtagsResponse,
+)
+@limiter.limit("20/minute")
+async def regenerate_hashtags(
+    request: Request,
+    brand_id: UUID,
+    data: RegenerateHashtagsRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+):
+    """Regenerate just the hashtags for a caption."""
+    brand = await get_brand(brand_id, current_user, db)
+
+    result = await db.execute(
+        select(Brand)
+        .options(selectinload(Brand.voice))
+        .where(Brand.id == brand_id)
+    )
+    brand = result.scalar_one()
+
+    try:
+        ai_service = AIService()
+        hashtags = await ai_service.regenerate_hashtags(
+            brand=brand,
+            caption=data.caption,
+            platform=data.platform,
+            count=data.count,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erreur lors de la generation des hashtags: {e}",
+        )
+
+    return RegenerateHashtagsResponse(hashtags=hashtags)
+
+
+@router.post(
+    "/brands/{brand_id}/captions/change-tone",
+    response_model=ChangeToneResponse,
+)
+@limiter.limit("20/minute")
+async def change_tone(
+    request: Request,
+    brand_id: UUID,
+    data: ChangeToneRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+):
+    """Change the tone of a caption (fun/premium/urgence)."""
+    brand = await get_brand(brand_id, current_user, db)
+
+    result = await db.execute(
+        select(Brand)
+        .options(selectinload(Brand.voice))
+        .where(Brand.id == brand_id)
+    )
+    brand = result.scalar_one()
+
+    try:
+        ai_service = AIService()
+        result_data = await ai_service.change_caption_tone(
+            brand=brand,
+            caption=data.caption,
+            tone=data.tone.value,
+            platform=data.platform,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erreur lors du changement de ton: {e}",
+        )
+
+    return ChangeToneResponse(
+        caption=result_data["caption"],
+        tone_applied=data.tone,
+        changes_made=result_data.get("changes_made", []),
+    )
+
+
+@router.post(
+    "/brands/{brand_id}/captions/suggest-emojis",
+    response_model=SuggestEmojisResponse,
+)
+@limiter.limit("20/minute")
+async def suggest_emojis(
+    request: Request,
+    brand_id: UUID,
+    data: SuggestEmojisRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+):
+    """Suggest strategic emoji placements for a caption."""
+    brand = await get_brand(brand_id, current_user, db)
+
+    result = await db.execute(
+        select(Brand)
+        .options(selectinload(Brand.voice))
+        .where(Brand.id == brand_id)
+    )
+    brand = result.scalar_one()
+
+    try:
+        ai_service = AIService()
+        result_data = await ai_service.suggest_emojis(
+            brand=brand,
+            caption=data.caption,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erreur lors de la suggestion d'emojis: {e}",
+        )
+
+    return SuggestEmojisResponse(
+        suggestions=result_data.get("suggestions", []),
+        caption_with_emojis=result_data.get("caption_with_emojis", data.caption),
+    )
+
+
+@router.post(
+    "/brands/{brand_id}/captions/engagement-score",
+    response_model=EngagementScore,
+)
+@limiter.limit("30/minute")
+async def get_engagement_score(
+    request: Request,
+    brand_id: UUID,
+    data: EngagementScoreRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+):
+    """Compute engagement score for a caption (pure heuristic, no AI)."""
+    await get_brand(brand_id, current_user, db)
+
+    score = compute_engagement_score(data.caption, data.hashtags, data.platform)
+    return EngagementScore(**score)

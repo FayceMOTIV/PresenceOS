@@ -228,3 +228,14 @@ class KnowledgeImportResult(BaseModel):
     created: int
     updated: int
     errors: list[dict[str, Any]]
+
+
+# Brand Onboarding schema
+class BrandOnboardingRequest(BaseModel):
+    """Simplified onboarding wizard payload."""
+
+    name: str = Field(..., min_length=1, max_length=255)
+    business_type: BrandType
+    tone_voice: str  # "chaleureux" | "premium" | "fun" | "professionnel" | "inspirant"
+    target_audience: str
+    website_url: str | None = None

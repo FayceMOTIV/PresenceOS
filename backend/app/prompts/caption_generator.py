@@ -294,10 +294,14 @@ def build_caption_system_prompt(
     prompt += (
         "\nCONSIGNES STRICTES :\n"
         "- Maximum 150 mots (ideal 80-120) sauf indication contraire\n"
-        "- Toujours commencer par un hook percutant\n"
+        "- Toujours commencer par un hook percutant (question, stat, affirmation audacieuse)\n"
         "- Poser UNE question au lecteur pour engager\n"
+        "- Utiliser des sauts de ligne pour la lisibilite\n"
         "- Langue : francais par defaut, sauf indication contraire\n"
-        "- Ne jamais etre generique. Chaque caption doit etre specifique a cette marque et cette image/sujet.\n"
+        "- JAMAIS de phrases plates comme 'decouvrez notre X' ou 'notre X, dispo jusqu'a Y'\n"
+        "- JAMAIS de simple description produit. Chaque caption DOIT raconter une histoire ou creer une emotion.\n"
+        "- Etre SPECIFIQUE : utiliser les details de l'image, les noms de produits, les ingredients, les lieux\n"
+        "- Chaque caption doit donner ENVIE d'interagir (commenter, sauvegarder, partager)\n"
     )
 
     return prompt
@@ -308,6 +312,7 @@ def build_caption_user_prompt(
     user_context: str,
     platforms: list[str],
     brand_type: str,
+    knowledge_context: str = "",
 ) -> str:
     """
     Build the user prompt for caption generation in conversation_engine.
@@ -317,21 +322,41 @@ def build_caption_user_prompt(
     guidelines = INDUSTRY_GUIDELINES.get(brand_type, INDUSTRY_GUIDELINES["other"])
     platforms_str = ", ".join(platforms)
 
-    prompt = (
-        f"Analyse de l'image :\n{analyses_text}\n\n"
-    )
+    prompt = f"ANALYSE DE L'IMAGE :\n{analyses_text}\n\n"
+
     if user_context:
-        prompt += f"Contexte ajoute par {guidelines['terminology_label']} :\n{user_context}\n\n"
-    else:
-        prompt += "Aucun contexte additionnel fourni.\n\n"
+        prompt += (
+            f"INSTRUCTIONS DE {guidelines['terminology_label'].upper()} :\n"
+            f"{user_context}\n\n"
+        )
+
+    if knowledge_context:
+        prompt += (
+            f"CONNAISSANCES DE LA MARQUE (utilise ces infos pour etre specifique) :\n"
+            f"{knowledge_context}\n\n"
+        )
+
+    # Add platform-specific instructions
+    primary_platform = platforms[0] if platforms else "instagram_post"
+    platform_instr = get_platform_instructions(primary_platform)
+    prompt += f"INSTRUCTIONS PLATEFORME :\n{platform_instr}\n\n"
+
+    prompt += f"Plateformes cibles : {platforms_str}\n\n"
 
     prompt += (
-        f"Plateformes cibles : {platforms_str}\n\n"
-        "Genere UNE publication (caption) pour ces plateformes.\n"
-        "Suis EXACTEMENT la structure : Hook + Body + CTA + Hashtags.\n"
-        "Inclus 5-8 hashtags pertinents.\n"
-        "La publication doit etre en francais, engageante, et donner envie d'interagir.\n"
-        "Ne depasse pas 150 mots.\n"
+        "TACHE :\n"
+        "Genere UNE publication (caption) percutante et engageante.\n\n"
+        "REGLES STRICTES :\n"
+        "1. HOOK (1ere ligne) : Question provocante, chiffre surprenant, OU affirmation audacieuse + emoji\n"
+        "2. BODY (2-4 lignes) : Storytelling specifique, details sensoriels, benefices concrets. PAS de phrases generiques.\n"
+        "3. CTA (avant-derniere ligne) : Question qui pousse a commenter OU invitation a agir\n"
+        "4. HASHTAGS (derniere ligne) : 8-12 hashtags, mix populaires + niche\n\n"
+        "INTERDIT :\n"
+        "- Phrases plates comme 'decouvrez notre X' ou 'notre nouveau X, dispo jusqu'a...'\n"
+        "- Descriptions sans emotion ni storytelling\n"
+        "- Captions sans hook ni CTA\n\n"
+        "La publication doit etre en francais, faire entre 80 et 120 mots, "
+        "et donner ENVIE d'interagir.\n"
         "Reponds UNIQUEMENT avec le texte de la publication, rien d'autre."
     )
 
@@ -415,3 +440,125 @@ def build_draft_generation_prompt(
 def get_platform_instructions(platform: str) -> str:
     """Get enriched platform instructions."""
     return PLATFORM_INSTRUCTIONS.get(platform, "Adapte le contenu a cette plateforme.")
+
+
+# ── Photo Caption Styles (visual flow) ──────────────────────────────
+
+CAPTION_STYLE_DESCRIPTIONS: dict[str, str] = {
+    "gourmande": (
+        "STYLE GOURMANDE : Sensoriel et evocateur. "
+        "Decrit les textures, saveurs, aromes, couleurs avec un vocabulaire riche. "
+        "Utilise des mots comme : fondant, croustillant, genereux, parfume, "
+        "savoureux, delicat, gourmand, irresistible. "
+        "Ton : chaleureux, invitant, poetique. Fait saliver le lecteur."
+    ),
+    "promo": (
+        "STYLE PROMO : Oriente action et valeur. "
+        "Met en avant les offres, prix, urgence, exclusivite. "
+        "Utilise des CTA directs : 'Commande maintenant', 'Profite de -20%', "
+        "'Disponible ce weekend uniquement', 'Plus que 3 places'. "
+        "Ton : dynamique, urgent, persuasif. Cree le FOMO."
+    ),
+    "story": (
+        "STYLE STORY : Narratif et authentique. "
+        "Raconte l'histoire derriere l'image — le processus, la personne, l'inspiration. "
+        "Partage les coulisses, les anecdotes, le savoir-faire. "
+        "Commence par 'Ce matin...', 'Il y a 3 ans...', 'Quand on a decide de...'. "
+        "Ton : personnel, authentique, engageant comme une confidence entre amis."
+    ),
+}
+
+TONE_DESCRIPTIONS: dict[str, str] = {
+    "fun": (
+        "Joueur, emojis abondants, langage decontracte et familier, "
+        "jeux de mots, ton leger et amical. Comme un ami qui partage un bon plan."
+    ),
+    "premium": (
+        "Elegant, raffine, vocabulaire sophistique, peu d'emojis (1 max), "
+        "ton luxueux et exclusif. Comme une invitation a une experience d'exception."
+    ),
+    "urgence": (
+        "FOMO, temps limite, 'dernieres places', 'ne rate pas ca', "
+        "'plus que X disponibles'. Urgence et rarete. Capitalise sur la peur de manquer."
+    ),
+}
+
+
+def build_photo_captions_prompt(
+    brand_context: dict,
+    image_analysis: dict,
+    platforms: list[str] | None = None,
+) -> str:
+    """Build prompt for generating 3 caption styles from a single photo analysis.
+
+    Returns a prompt that asks the AI for all 3 styles in ONE JSON response.
+    """
+    brand_type = brand_context.get("brand_type", "other")
+    guidelines = INDUSTRY_GUIDELINES.get(brand_type, INDUSTRY_GUIDELINES["other"])
+    platform = (platforms or ["instagram_post"])[0]
+    platform_instr = get_platform_instructions(platform)
+
+    styles_section = "\n".join(
+        f"- {name.upper()}: {desc}"
+        for name, desc in CAPTION_STYLE_DESCRIPTIONS.items()
+    )
+
+    prompt = (
+        f"Tu es un {guidelines['role_description']}, specialise dans la creation "
+        f"de publications virales et engageantes.\n\n"
+        f"MARQUE : {brand_context.get('brand_name', 'Marque')}\n"
+        f"TYPE : {brand_context.get('brand_type', 'other')}\n"
+        f"DESCRIPTION : {brand_context.get('brand_description', '')}\n\n"
+        f"VOIX DE MARQUE :\n"
+        f"- Formel : {brand_context.get('tone_formal', 50)}/100\n"
+        f"- Joueur : {brand_context.get('tone_playful', 50)}/100\n"
+        f"- Audacieux : {brand_context.get('tone_bold', 50)}/100\n"
+        f"- Mots a eviter : {brand_context.get('words_to_avoid', 'Aucun')}\n"
+        f"- Mots a privilegier : {brand_context.get('words_to_prefer', 'Aucun')}\n"
+        f"- Max emojis : {brand_context.get('max_emojis', 3)}\n\n"
+        f"ANALYSE DE L'IMAGE :\n"
+        f"- Description : {image_analysis.get('description', '')}\n"
+        f"- Objets detectes : {', '.join(image_analysis.get('detected_objects', []))}\n"
+        f"- Tags : {', '.join(image_analysis.get('tags', []))}\n"
+        f"- Mood : {image_analysis.get('mood', '')}\n\n"
+        f"CONSEILS SECTEUR :\n{guidelines['caption_tips']}\n\n"
+    )
+
+    prompt += _CAPTION_STRUCTURE
+
+    prompt += (
+        f"\nINSTRUCTIONS PLATEFORME :\n{platform_instr}\n\n"
+        f"STYLES A GENERER :\n{styles_section}\n\n"
+        "TACHE :\n"
+        "Genere EXACTEMENT 3 captions differentes pour cette photo, "
+        "une pour chaque style (gourmande, promo, story).\n"
+        "Chaque caption doit suivre la structure Hook + Body + CTA + Hashtags.\n"
+        "Chaque caption doit etre unique et adaptee a son style.\n"
+        "Maximum 150 mots par caption.\n"
+        "Inclus 8-15 hashtags par caption.\n\n"
+        "Reponds en JSON STRICT :\n"
+        "{\n"
+        '  "suggestions": [\n'
+        "    {\n"
+        '      "style": "gourmande",\n'
+        '      "caption": "texte complet de la caption avec sauts de ligne",\n'
+        '      "hashtags": ["hashtag1", "hashtag2", "..."],\n'
+        '      "ai_notes": "pourquoi ce style fonctionne pour cette image"\n'
+        "    },\n"
+        "    {\n"
+        '      "style": "promo",\n'
+        '      "caption": "...",\n'
+        '      "hashtags": ["..."],\n'
+        '      "ai_notes": "..."\n'
+        "    },\n"
+        "    {\n"
+        '      "style": "story",\n'
+        '      "caption": "...",\n'
+        '      "hashtags": ["..."],\n'
+        '      "ai_notes": "..."\n'
+        "    }\n"
+        "  ]\n"
+        "}"
+    )
+
+    return prompt
