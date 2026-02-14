@@ -54,10 +54,10 @@ export function OptimalTimesWidget({
 
   if (isLoading) {
     return (
-      <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 animate-pulse">
-        <div className="h-4 bg-zinc-800 rounded w-32 mb-3" />
-        <div className="h-10 bg-zinc-800 rounded mb-2" />
-        <div className="h-6 bg-zinc-800 rounded w-24" />
+      <div className="bg-white border border-gray-200/60 rounded-xl p-4 animate-pulse shadow-sm">
+        <div className="h-4 bg-gray-100 rounded w-32 mb-3" />
+        <div className="h-10 bg-gray-100 rounded mb-2" />
+        <div className="h-6 bg-gray-100 rounded w-24" />
       </div>
     );
   }
@@ -68,11 +68,11 @@ export function OptimalTimesWidget({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3"
+      className="bg-white border border-gray-200/60 rounded-xl p-4 space-y-3 shadow-sm"
     >
       <div className="flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-amber-400" />
-        <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+        <h4 className="text-xs font-semibold text-gray-800 uppercase tracking-wider">
           Prochain creneau optimal
         </h4>
       </div>
@@ -89,7 +89,7 @@ export function OptimalTimesWidget({
           <div className="text-sm font-bold text-amber-400">
             {nextSlot.day_label} a {nextSlot.hour_label}
           </div>
-          <div className="text-xs text-zinc-500">
+          <div className="text-xs text-gray-500">
             {new Date(nextSlot.datetime).toLocaleDateString("fr-FR", {
               day: "numeric",
               month: "long",
@@ -105,19 +105,19 @@ export function OptimalTimesWidget({
       {/* Other slots */}
       {topSlots.length > 1 && (
         <div className="space-y-1.5">
-          <p className="text-[10px] text-zinc-600 uppercase tracking-wider">
+          <p className="text-[10px] text-gray-400 uppercase tracking-wider">
             Autres creneaux
           </p>
           {topSlots.slice(1).map((slot, i) => (
             <button
               key={`${slot.datetime}-${i}`}
               onClick={() => onSlotClick?.(slot)}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-zinc-800/40 hover:bg-zinc-800/60 border border-zinc-800 transition-colors text-left"
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200/60 transition-colors text-left"
             >
-              <span className="text-xs text-zinc-300">
+              <span className="text-xs text-gray-800">
                 {slot.day_label} a {slot.hour_label}
               </span>
-              <span className="text-[10px] text-zinc-500 font-medium">
+              <span className="text-[10px] text-gray-500 font-medium">
                 {slot.score}/100
               </span>
             </button>

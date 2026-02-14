@@ -21,6 +21,18 @@ export interface Workspace {
   created_at: string;
 }
 
+// Workspace Members
+export type UserRole = "owner" | "admin" | "member";
+
+export interface WorkspaceMember {
+  id: string;
+  user_id: string;
+  workspace_id: string;
+  role: UserRole;
+  user: User;
+  created_at: string;
+}
+
 // Brand
 export type BrandType = "restaurant" | "saas" | "ecommerce" | "service" | "personal" | "other";
 
@@ -430,6 +442,22 @@ export interface PhotoCaptionsResponse {
   engagement_scores: Record<string, EngagementScore>;
   model_used: string;
   prompt_version: string;
+}
+
+// Brand Interview
+export interface InterviewMessage {
+  role: "assistant" | "user";
+  content: string;
+  timestamp: string;
+  extracted_items?: Array<{ type: string; title: string }>;
+}
+
+export interface BrandCompleteness {
+  overall: number;
+  identity: number;
+  voice: number;
+  knowledge: number;
+  knowledge_by_type?: Record<string, number>;
 }
 
 export const PLATFORM_CHAR_LIMITS: Record<string, number> = {

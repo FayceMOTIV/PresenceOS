@@ -23,6 +23,20 @@ import { metricsApi, ideasApi, postsApi } from "@/lib/api";
 import { DashboardMetrics, ContentIdea, ScheduledPost } from "@/types";
 import { formatNumber, formatRelativeTime, getPlatformColor } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { SkeletonDashboard } from '@/components/loading/skeleton-dashboard';
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08 }
+  }
+};
+
+const item = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
+};
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -53,69 +67,87 @@ export default function DashboardPage() {
       title: "Posts publiés",
       value: metrics?.total_posts_published || 0,
       icon: BarChart3,
-      color: "from-blue-500 to-cyan-500",
+      gradient: "from-blue-500 to-cyan-400",
+      bg: "from-blue-50 to-cyan-50/50",
+      iconBg: "bg-blue-500/10",
+      iconColor: "text-blue-600",
     },
     {
-      title: "Impressions",
+      title: "Vues",
       value: formatNumber(metrics?.total_impressions || 0),
       icon: Eye,
-      color: "from-purple-500 to-pink-500",
+      gradient: "from-violet-500 to-purple-400",
+      bg: "from-violet-50 to-purple-50/50",
+      iconBg: "bg-violet-500/10",
+      iconColor: "text-violet-600",
     },
     {
-      title: "Engagement",
+      title: "Interactions",
       value: formatNumber(metrics?.total_engagement || 0),
       icon: Heart,
-      color: "from-orange-500 to-red-500",
+      gradient: "from-rose-500 to-pink-400",
+      bg: "from-rose-50 to-pink-50/50",
+      iconBg: "bg-rose-500/10",
+      iconColor: "text-rose-600",
     },
     {
-      title: "Taux d'engagement",
+      title: "Taux d'interaction",
       value: `${(metrics?.average_engagement_rate || 0).toFixed(1)}%`,
       icon: TrendingUp,
-      color: "from-green-500 to-emerald-500",
+      gradient: "from-emerald-500 to-green-400",
+      bg: "from-emerald-50 to-green-50/50",
+      iconBg: "bg-emerald-500/10",
+      iconColor: "text-emerald-600",
     },
   ];
 
+  if (isLoading) {
+    return <SkeletonDashboard />;
+  }
+
   return (
-    <div className="space-y-8">
+    <motion.div
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="space-y-8"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div variants={item} className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight">Accueil</h1>
+          <p className="text-muted-foreground mt-1">
             Vue d&apos;ensemble de vos performances
           </p>
         </div>
         <Link href="/studio">
-          <Button variant="gradient">
+          <Button variant="gradient" className="group">
             <Plus className="w-4 h-4 mr-2" />
             Créer du contenu
+            <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
           </Button>
         </Link>
-      </div>
+      </motion.div>
 
       {/* Agent Activity Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Card className="glass-card border-primary/20 bg-gradient-to-r from-primary/5 to-purple-500/5">
+      <motion.div variants={item}>
+        <Card className="overflow-hidden border-violet-200/40 bg-gradient-to-r from-violet-50/80 via-purple-50/40 to-fuchsia-50/30">
           <CardContent className="flex items-center justify-between p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Bot className="w-6 h-6 text-primary" />
+              <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center">
+                <Bot className="w-6 h-6 text-violet-600" />
               </div>
               <div>
                 <h3 className="font-semibold">Agents IA</h3>
                 <p className="text-sm text-muted-foreground">
-                  Generez du contenu avec votre equipe IA autonome
+                  Générez du contenu avec votre équipe IA autonome
                 </p>
               </div>
             </div>
             <Link href="/agents">
-              <Button variant="outline" size="sm">
-                Lancer un workflow
-                <ArrowRight className="w-4 h-4 ml-2" />
+              <Button variant="outline" size="sm" className="group border-violet-200/60 hover:bg-violet-50 hover:border-violet-300/60">
+                Démarrer
+                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
           </CardContent>
@@ -123,57 +155,46 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* Autopilot Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        <Card className="glass-card border-green-500/20 bg-gradient-to-r from-green-500/5 to-emerald-500/5">
+      <motion.div variants={item}>
+        <Card className="overflow-hidden border-emerald-200/40 bg-gradient-to-r from-emerald-50/80 via-green-50/40 to-teal-50/30">
           <CardContent className="flex items-center justify-between p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
-                <Zap className="w-6 h-6 text-green-500" />
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                <Zap className="w-6 h-6 text-emerald-600" />
               </div>
               <div>
-                <h3 className="font-semibold">Mode Autopilote</h3>
+                <h3 className="font-semibold">Pilote automatique</h3>
                 <p className="text-sm text-muted-foreground">
-                  Generation automatique + approbation WhatsApp
+                  Création automatique + approbation WhatsApp
                 </p>
               </div>
             </div>
             <Link href="/autopilot">
-              <Button variant="outline" size="sm" className="border-green-500/30 hover:bg-green-500/10">
+              <Button variant="outline" size="sm" className="group border-emerald-200/60 hover:bg-emerald-50 hover:border-emerald-300/60 text-emerald-700">
                 Configurer
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* Bento Grid */}
+      {/* KPI Bento Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiCards.map((card, index) => (
           <motion.div
             key={card.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
+            variants={item}
           >
-            <Card className="bento-card overflow-hidden">
+            <Card className={cn("bento-card overflow-hidden border-transparent bg-gradient-to-br", card.bg)}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">{card.title}</p>
-                    <p className="text-3xl font-bold mt-1">{card.value}</p>
+                    <p className="text-sm font-medium text-muted-foreground">{card.title}</p>
+                    <p className="text-3xl font-bold mt-2 tracking-tight">{card.value}</p>
                   </div>
-                  <div
-                    className={cn(
-                      "w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br",
-                      card.color
-                    )}
-                  >
-                    <card.icon className="w-6 h-6 text-white" />
+                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", card.iconBg)}>
+                    <card.icon className={cn("w-6 h-6", card.iconColor)} />
                   </div>
                 </div>
               </CardContent>
@@ -187,22 +208,20 @@ export default function DashboardPage() {
         {/* AI Insight */}
         {metrics?.ai_insight && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            variants={item}
             className="lg:col-span-2"
           >
-            <Card className="glass-card border-primary/20 bg-gradient-to-br from-primary/5 to-purple-600/5">
+            <Card className="border-violet-200/40 bg-gradient-to-br from-violet-50/60 to-purple-50/30 overflow-hidden">
               <CardHeader>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-primary" />
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-violet-600" />
                   </div>
-                  <CardTitle className="text-lg">Insight IA</CardTitle>
+                  <CardTitle className="text-lg">Conseil IA</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">{metrics.ai_insight}</p>
+                <p className="text-muted-foreground leading-relaxed">{metrics.ai_insight}</p>
               </CardContent>
             </Card>
           </motion.div>
@@ -210,21 +229,19 @@ export default function DashboardPage() {
 
         {/* Daily Ideas */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          variants={item}
           className={cn(!metrics?.ai_insight && "lg:col-span-2")}
         >
-          <Card className="h-full">
+          <Card className="h-full card-interactive">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-lg">Idées du jour</CardTitle>
                 <CardDescription>Suggestions IA pour aujourd&apos;hui</CardDescription>
               </div>
               <Link href="/ideas">
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="group text-violet-600 hover:text-violet-700 hover:bg-violet-50">
                   Voir tout
-                  <ArrowRight className="w-4 h-4 ml-1" />
+                  <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
             </CardHeader>
@@ -233,7 +250,7 @@ export default function DashboardPage() {
                 dailyIdeas.slice(0, 3).map((idea) => (
                   <div
                     key={idea.id}
-                    className="p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
+                    className="p-3 rounded-xl bg-gradient-to-r from-gray-50/80 to-transparent hover:from-violet-50/50 hover:to-transparent transition-colors cursor-pointer border border-transparent hover:border-violet-100"
                   >
                     <p className="font-medium text-sm">{idea.title}</p>
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
@@ -243,10 +260,12 @@ export default function DashboardPage() {
                 ))
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <div className="w-12 h-12 rounded-2xl bg-violet-50 mx-auto mb-3 flex items-center justify-center">
+                    <Sparkles className="w-6 h-6 text-violet-400" />
+                  </div>
                   <p className="text-sm">Aucune idée générée aujourd&apos;hui</p>
                   <Link href="/ideas">
-                    <Button variant="link" size="sm" className="mt-2">
+                    <Button variant="link" size="sm" className="mt-2 text-violet-600">
                       Générer des idées
                     </Button>
                   </Link>
@@ -257,19 +276,15 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Upcoming Posts */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <Card className="h-full">
+        <motion.div variants={item}>
+          <Card className="h-full card-interactive">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-lg">Posts à venir</CardTitle>
                 <CardDescription>Prochaines publications</CardDescription>
               </div>
               <Link href="/planner">
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="group text-violet-600 hover:text-violet-700 hover:bg-violet-50">
                   Calendrier
                   <Calendar className="w-4 h-4 ml-1" />
                 </Button>
@@ -280,12 +295,14 @@ export default function DashboardPage() {
                 upcomingPosts.map((post) => (
                   <div
                     key={post.id}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
+                    className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-gray-50/80 to-transparent"
                   >
                     <div
                       className={cn(
-                        "w-2 h-2 rounded-full",
-                        post.status === "scheduled" ? "bg-yellow-500" : "bg-green-500"
+                        "w-2.5 h-2.5 rounded-full ring-2 ring-offset-2",
+                        post.status === "scheduled"
+                          ? "bg-amber-400 ring-amber-200"
+                          : "bg-emerald-400 ring-emerald-200"
                       )}
                     />
                     <div className="flex-1 min-w-0">
@@ -300,10 +317,12 @@ export default function DashboardPage() {
                 ))
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <div className="w-12 h-12 rounded-2xl bg-gray-50 mx-auto mb-3 flex items-center justify-center">
+                    <Calendar className="w-6 h-6 text-gray-400" />
+                  </div>
                   <p className="text-sm">Aucun post programmé</p>
                   <Link href="/studio">
-                    <Button variant="link" size="sm" className="mt-2">
+                    <Button variant="link" size="sm" className="mt-2 text-violet-600">
                       Créer un post
                     </Button>
                   </Link>
@@ -315,32 +334,27 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: "Nouveau post", href: "/studio", icon: Plus },
-          { label: "Voir le calendrier", href: "/planner", icon: Calendar },
-          { label: "Générer des idées", href: "/ideas", icon: Sparkles },
-          { label: "Analytics", href: "/analytics", icon: BarChart3 },
-        ].map((action, index) => (
-          <motion.div
-            key={action.label}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.7 + index * 0.05 }}
-          >
-            <Link href={action.href}>
-              <Card className="bento-card hover:border-primary/50 cursor-pointer">
+      <motion.div variants={item}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: "Nouveau post", href: "/studio", icon: Plus, color: "text-violet-600", bg: "bg-violet-50" },
+            { label: "Voir le calendrier", href: "/planner", icon: Calendar, color: "text-blue-600", bg: "bg-blue-50" },
+            { label: "Générer des idées", href: "/ideas", icon: Sparkles, color: "text-fuchsia-600", bg: "bg-fuchsia-50" },
+            { label: "Statistiques", href: "/analytics", icon: BarChart3, color: "text-emerald-600", bg: "bg-emerald-50" },
+          ].map((action) => (
+            <Link key={action.label} href={action.href}>
+              <Card className="bento-card hover:border-violet-200/60 cursor-pointer group">
                 <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                    <action.icon className="w-5 h-5" />
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", action.bg)}>
+                    <action.icon className={cn("w-5 h-5", action.color)} />
                   </div>
                   <span className="font-medium text-sm">{action.label}</span>
                 </CardContent>
               </Card>
             </Link>
-          </motion.div>
-        ))}
-      </div>
-    </div>
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }

@@ -134,7 +134,7 @@ export function CaptionEditor({
             className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3 h-3 ${isRegeneratingHashtags ? "animate-spin" : ""}`} />
-            Regenerer
+            Régénérer
           </button>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -165,7 +165,7 @@ export function CaptionEditor({
         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-border/80 transition-all disabled:opacity-50"
       >
         <Smile className={`w-4 h-4 ${isSuggestingEmojis ? "animate-bounce" : ""}`} />
-        {isSuggestingEmojis ? "Suggestion en cours..." : "Suggerer des emojis"}
+        {isSuggestingEmojis ? "Suggestion en cours..." : "Suggérer des emojis"}
       </button>
 
       {/* Validate button */}
@@ -177,7 +177,7 @@ export function CaptionEditor({
         className="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl"
       >
         <Check className="w-4 h-4" />
-        Valider et previsualiser
+        Valider et prévisualiser
       </motion.button>
     </motion.div>
   );

@@ -12,6 +12,7 @@ import {
   Loader2,
   Sparkles,
 } from "lucide-react";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 import {
   Card,
   CardHeader,
@@ -27,6 +28,7 @@ import { Progress } from "@/components/ui/progress";
 import { agentsApi } from "@/lib/api";
 import { useAgentTask } from "@/hooks/use-agent-task";
 import type { GeneratedPost, ContentCrewResult } from "@/types/agents";
+import { fireConfetti } from "@/lib/confetti";
 
 const PLATFORM_COLORS = {
   linkedin: "#0A66C2",
@@ -41,23 +43,23 @@ const agents = [
     name: "Veilleur",
     description: "Scanne les tendances du secteur",
     icon: Search,
-    status: "Pret",
+    status: "Prêt",
     gradient: "from-blue-500 to-cyan-500",
   },
   {
     id: "redacteur",
-    name: "Redacteur",
-    description: "Redige du contenu adapte",
+    name: "Rédacteur",
+    description: "Rédige du contenu adapté",
     icon: PenTool,
-    status: "Pret",
+    status: "Prêt",
     gradient: "from-purple-500 to-pink-500",
   },
   {
     id: "critique",
     name: "Critique",
-    description: "Evalue et corrige le contenu",
+    description: "Évalue et corrige le contenu",
     icon: Shield,
-    status: "Pret",
+    status: "Prêt",
     gradient: "from-green-500 to-emerald-500",
   },
 ];
@@ -90,13 +92,13 @@ export default function AgentsPage() {
 
   const handleGenerateContent = async () => {
     if (selectedPlatforms.length === 0) {
-      alert("Veuillez selectionner au moins une plateforme");
+      alert("Veuillez sélectionner au moins une plateforme");
       return;
     }
 
     const brandId = localStorage.getItem("brand_id");
     if (!brandId) {
-      alert("Brand ID non trouve. Veuillez vous reconnecter.");
+      alert("Brand ID non trouvé. Veuillez vous reconnecter.");
       return;
     }
 
@@ -109,6 +111,7 @@ export default function AgentsPage() {
         topic: topic || undefined,
       });
 
+      fireConfetti();
       setTaskId(response.task_id);
     } catch (error) {
       console.error("Erreur lors du lancement du crew:", error);
@@ -168,10 +171,10 @@ export default function AgentsPage() {
         className="space-y-2"
       >
         <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
-          Agents IA
+          Mes assistants <HelpTooltip content="Des robots intelligents qui créent vos posts automatiquement pendant que vous cuisinez" />
         </h1>
         <p className="text-muted-foreground text-lg">
-          Votre equipe marketing autonome
+          Vos assistants de création
         </p>
       </motion.div>
 
@@ -227,7 +230,7 @@ export default function AgentsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-purple-500" />
-              Generer du contenu
+              Générer du contenu
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -306,7 +309,7 @@ export default function AgentsPage() {
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 mr-2" />
-                  Lancer le Crew
+                  Démarrer la création
                 </>
               )}
             </Button>
@@ -320,7 +323,7 @@ export default function AgentsPage() {
               >
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Generation en cours...
+                    Génération en cours...
                   </span>
                   <span className="text-purple-500 font-medium">
                     {taskData?.status === "pending" ? "En attente" : "En cours"}
@@ -344,7 +347,7 @@ export default function AgentsPage() {
               <div className="flex items-center gap-3 text-red-500">
                 <X className="w-5 h-5" />
                 <p>
-                  Erreur lors de la generation du contenu. Veuillez reessayer.
+                  Erreur lors de la génération du contenu. Veuillez réessayer.
                 </p>
               </div>
             </CardContent>
@@ -361,9 +364,9 @@ export default function AgentsPage() {
           className="space-y-4"
         >
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Resultats</h2>
+            <h2 className="text-2xl font-bold">Résultats</h2>
             <Badge variant="outline" className="text-sm">
-              {results.posts.length} post(s) genere(s)
+              {results.posts.length} post(s) généré(s)
             </Badge>
           </div>
 
@@ -420,7 +423,7 @@ export default function AgentsPage() {
                       {post.virality_score !== undefined && (
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-muted-foreground">
-                            Score de viralite:
+                            Chance de succès:
                           </span>
                           <Badge
                             variant="outline"

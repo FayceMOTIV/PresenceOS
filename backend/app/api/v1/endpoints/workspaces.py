@@ -160,6 +160,50 @@ async def invite_member(
     return WorkspaceMemberResponse.model_validate(member)
 
 
+class UpdateMemberRoleRequest(BaseModel):
+    role: UserRole
+
+
+@router.patch("/{workspace_id}/members/{user_id}", response_model=WorkspaceMemberResponse)
+async def update_member_role(
+    workspace_id: UUID,
+    user_id: UUID,
+    data: UpdateMemberRoleRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+):
+    """Update a member's role (admin only). Cannot change owner role."""
+    await get_workspace_admin(workspace_id, current_user, db)
+
+    result = await db.execute(
+        select(WorkspaceMember)
+        .options(selectinload(WorkspaceMember.user))
+        .where(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == user_id,
+        )
+    )
+    member = result.scalar_one_or_none()
+
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Member not found",
+        )
+
+    if member.role == UserRole.OWNER:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change the owner's role",
+        )
+
+    member.role = data.role
+    await db.commit()
+    await db.refresh(member, attribute_names=["user"])
+
+    return WorkspaceMemberResponse.model_validate(member)
+
+
 @router.delete("/{workspace_id}/members/{user_id}")
 async def remove_member(
     workspace_id: UUID,

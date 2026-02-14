@@ -113,7 +113,7 @@ function CompareSlider({
   return (
     <div
       ref={containerRef}
-      className="relative w-full aspect-square rounded-xl overflow-hidden cursor-col-resize select-none bg-zinc-900"
+      className="relative w-full aspect-square rounded-xl overflow-hidden cursor-col-resize select-none bg-gray-50"
       onMouseDown={() => setIsDragging(true)}
       onMouseUp={() => setIsDragging(false)}
       onMouseLeave={() => setIsDragging(false)}
@@ -145,9 +145,9 @@ function CompareSlider({
         className="absolute top-0 bottom-0 w-0.5 bg-white/80 z-10"
         style={{ left: `${sliderPos}%` }}
       >
-        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white/90 border-2 border-zinc-300 flex items-center justify-center shadow-lg">
-          <ChevronLeft className="w-3 h-3 text-zinc-700" />
-          <ChevronRight className="w-3 h-3 text-zinc-700" />
+        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white/90 border-2 border-gray-300 flex items-center justify-center shadow-lg">
+          <ChevronLeft className="w-3 h-3 text-gray-800" />
+          <ChevronRight className="w-3 h-3 text-gray-800" />
         </div>
       </div>
       {/* Labels */}
@@ -207,12 +207,12 @@ export function PhotoEnhancer({ file, onUseEnhanced, onDismiss }: PhotoEnhancerP
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-5 space-y-4"
+      className="bg-white border border-gray-200/60 rounded-2xl p-5 space-y-4 shadow-sm"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-amber-400" />
-          <h3 className="text-sm font-semibold text-zinc-100">
+          <h3 className="text-sm font-semibold text-gray-900">
             Photo Enhancement IA
           </h3>
         </div>
@@ -225,7 +225,7 @@ export function PhotoEnhancer({ file, onUseEnhanced, onDismiss }: PhotoEnhancerP
         {!result && file && (
           <button
             onClick={onDismiss}
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="text-xs text-gray-500 hover:text-gray-800 transition-colors"
           >
             Ignorer
           </button>
@@ -245,7 +245,7 @@ export function PhotoEnhancer({ file, onUseEnhanced, onDismiss }: PhotoEnhancerP
                 className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-all text-xs ${
                   active
                     ? "border-amber-500/60 bg-amber-500/10 text-amber-400"
-                    : "border-zinc-800 bg-zinc-800/50 text-zinc-400 hover:border-zinc-700"
+                    : "border-gray-200/60 bg-gray-100/60 text-gray-600 hover:bg-gray-100"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -265,7 +265,7 @@ export function PhotoEnhancer({ file, onUseEnhanced, onDismiss }: PhotoEnhancerP
         />
       ) : (
         previewUrl && (
-          <div className="relative aspect-square rounded-xl overflow-hidden bg-zinc-800">
+          <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100">
             <img
               src={previewUrl}
               alt="Preview"
@@ -290,10 +290,10 @@ export function PhotoEnhancer({ file, onUseEnhanced, onDismiss }: PhotoEnhancerP
             ].map((stat) => (
               <div
                 key={stat.label}
-                className="bg-zinc-800/60 rounded-lg p-2.5 text-center"
+                className="bg-gray-100/60 rounded-lg p-2.5 text-center"
               >
-                <div className="text-lg font-bold text-zinc-100">{stat.value}</div>
-                <div className="text-[10px] text-zinc-500 uppercase">{stat.label}</div>
+                <div className="text-lg font-bold text-gray-900">{stat.value}</div>
+                <div className="text-[10px] text-gray-500 uppercase">{stat.label}</div>
               </div>
             ))}
           </motion.div>
@@ -313,7 +313,7 @@ export function PhotoEnhancer({ file, onUseEnhanced, onDismiss }: PhotoEnhancerP
           <button
             onClick={handleEnhance}
             disabled={isEnhancing || !file}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-medium text-sm transition-colors disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-medium text-sm transition-colors disabled:opacity-50"
           >
             {isEnhancing ? (
               <>
@@ -331,14 +331,14 @@ export function PhotoEnhancer({ file, onUseEnhanced, onDismiss }: PhotoEnhancerP
           <>
             <button
               onClick={handleUse}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-medium text-sm transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-medium text-sm transition-colors"
             >
               <CheckCircle2 className="w-4 h-4" />
               Utiliser cette version
             </button>
             <button
               onClick={() => setResult(null)}
-              className="px-4 py-2.5 rounded-xl border border-zinc-700 text-zinc-300 text-sm hover:bg-zinc-800 transition-colors"
+              className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-800 text-sm hover:bg-gray-100 transition-colors"
             >
               Recommencer
             </button>

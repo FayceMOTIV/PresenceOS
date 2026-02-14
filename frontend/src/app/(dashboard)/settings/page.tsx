@@ -15,6 +15,8 @@ import {
   ExternalLink,
   Save,
   Loader2,
+  Building2,
+  Users,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -45,10 +47,15 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
-import { authApi, brandsApi, connectorsApi } from "@/lib/api";
-import { Brand, BrandVoice, User, SocialConnector, BrandType } from "@/types";
+import { authApi, brandsApi, connectorsApi, workspacesApi, usersApi } from "@/lib/api";
+import { Brand, BrandVoice, User, SocialConnector, BrandType, UserRole, WorkspaceMember } from "@/types";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+
+// Import new tab components
+import { AccountTab } from "./components/account-tab";
+import { WorkspaceTab } from "./components/workspace-tab";
+import { MembersTab } from "./components/members-tab";
 
 const brandTypeOptions: { value: BrandType; label: string }[] = [
   { value: "restaurant", label: "Restaurant" },
@@ -104,12 +111,17 @@ export default function SettingsPage() {
   const [brand, setBrand] = useState<Brand | null>(null);
   const [brandVoice, setBrandVoice] = useState<BrandVoice | null>(null);
   const [connectors, setConnectors] = useState<SocialConnector[]>([]);
-  const [activeTab, setActiveTab] = useState("profile");
+  const [activeTab, setActiveTab] = useState("account");
+  const [userRole, setUserRole] = useState<UserRole>("member");
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
 
   // Fetch data on mount
   useEffect(() => {
     const fetchData = async () => {
       const brandId = localStorage.getItem("brand_id");
+      const wsId = localStorage.getItem("workspace_id");
+      setWorkspaceId(wsId);
+
       if (!brandId) {
         toast({
           title: "Erreur",
@@ -132,6 +144,21 @@ export default function SettingsPage() {
         setBrand(brandRes.data);
         setBrandVoice(voiceRes.data);
         setConnectors(connectorsRes.data || []);
+
+        // Fetch workspace members to determine user's role
+        if (wsId) {
+          try {
+            const membersRes = await workspacesApi.getMembers(wsId);
+            const myMembership = membersRes.data?.find(
+              (m: WorkspaceMember) => m.user_id === userRes.data.id
+            );
+            if (myMembership) {
+              setUserRole(myMembership.role);
+            }
+          } catch (error) {
+            console.error("Error fetching workspace members:", error);
+          }
+        }
       } catch (error) {
         console.error("Error fetching settings data:", error);
         toast({
@@ -277,94 +304,87 @@ export default function SettingsPage() {
     >
       {/* Page header */}
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <SettingsIcon className="w-8 h-8" />
-          Paramètres
-        </h1>
-        <p className="text-muted-foreground">
-          Gérez votre profil, votre marque et vos connexions
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <SettingsIcon className="w-8 h-8" />
+              Réglages
+            </h1>
+            <p className="text-muted-foreground">
+              Gérez votre compte, votre espace et vos préférences
+            </p>
+          </div>
+          <div className="p-6 border rounded-xl">
+            <h3 className="font-semibold mb-2">Tour guidé</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Revoir le tutoriel de démarrage
+            </p>
+            <Button
+              onClick={() => {
+                localStorage.removeItem('tour-done');
+                localStorage.removeItem('tour-skip');
+                window.location.reload();
+              }}
+              variant="outline"
+            >
+              🎓 Relancer le tour
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="profile" className="gap-2">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 gap-1">
+          <TabsTrigger value="account" className="gap-2">
             <UserIcon className="w-4 h-4" />
-            Profil
+            <span className="hidden sm:inline">Mon Compte</span>
+            <span className="sm:hidden">Compte</span>
+          </TabsTrigger>
+          <TabsTrigger value="workspace" className="gap-2">
+            <Building2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Espace</span>
+            <span className="sm:hidden">Espace</span>
+          </TabsTrigger>
+          <TabsTrigger value="members" className="gap-2">
+            <Users className="w-4 h-4" />
+            <span className="hidden sm:inline">Membres</span>
+            <span className="sm:hidden">Membres</span>
           </TabsTrigger>
           <TabsTrigger value="brand" className="gap-2">
             <SettingsIcon className="w-4 h-4" />
-            Marque
+            <span className="hidden sm:inline">Marque</span>
+            <span className="sm:hidden">Marque</span>
           </TabsTrigger>
           <TabsTrigger value="voice" className="gap-2">
             <Palette className="w-4 h-4" />
-            Voix de marque
+            <span className="hidden sm:inline">Voix</span>
+            <span className="sm:hidden">Voix</span>
           </TabsTrigger>
           <TabsTrigger value="platforms" className="gap-2">
             <Link2 className="w-4 h-4" />
-            Plateformes
+            <span className="hidden sm:inline">Plateformes</span>
+            <span className="sm:hidden">Plateformes</span>
           </TabsTrigger>
         </TabsList>
 
-        {/* Profile Tab */}
-        <TabsContent value="profile" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informations du profil</CardTitle>
-              <CardDescription>
-                Vos informations personnelles (lecture seule)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {user && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Nom complet</Label>
-                    <Input
-                      id="fullName"
-                      value={user.full_name}
-                      disabled
-                      className="bg-muted"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={user.email}
-                      disabled
-                      className="bg-muted"
-                    />
-                  </div>
-                  {user.avatar_url && (
-                    <div className="space-y-2">
-                      <Label>Avatar</Label>
-                      <div className="flex items-center gap-4">
-                        <img
-                          src={user.avatar_url}
-                          alt={user.full_name}
-                          className="w-16 h-16 rounded-full object-cover"
-                        />
-                        <span className="text-sm text-muted-foreground">
-                          {user.full_name}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 pt-2">
-                    <Badge variant={user.is_verified ? "default" : "secondary"}>
-                      {user.is_verified ? "Vérifié" : "Non vérifié"}
-                    </Badge>
-                    <Badge variant={user.is_active ? "default" : "destructive"}>
-                      {user.is_active ? "Actif" : "Inactif"}
-                    </Badge>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+        {/* Account Tab */}
+        <TabsContent value="account" className="mt-6">
+          <AccountTab user={user} onUserUpdated={setUser} />
+        </TabsContent>
+
+        {/* Workspace Tab */}
+        <TabsContent value="workspace" className="mt-6">
+          <WorkspaceTab workspaceId={workspaceId} userRole={userRole} />
+        </TabsContent>
+
+        {/* Members Tab */}
+        <TabsContent value="members" className="mt-6">
+          <MembersTab
+            workspaceId={workspaceId}
+            userRole={userRole}
+            currentUserId={user?.id}
+          />
         </TabsContent>
 
         {/* Brand Tab */}
@@ -436,7 +456,11 @@ export default function SettingsPage() {
                   </div>
                   <Separator />
                   <div className="flex justify-end">
-                    <Button onClick={handleSaveBrand} disabled={isSaving}>
+                    <Button
+                      onClick={handleSaveBrand}
+                      disabled={isSaving}
+                      className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+                    >
                       {isSaving ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -602,7 +626,11 @@ export default function SettingsPage() {
                   <Separator />
 
                   <div className="flex justify-end">
-                    <Button onClick={handleSaveVoice} disabled={isSaving}>
+                    <Button
+                      onClick={handleSaveVoice}
+                      disabled={isSaving}
+                      className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+                    >
                       {isSaving ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />

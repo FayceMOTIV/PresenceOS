@@ -14,6 +14,7 @@ import {
   Target,
   Lightbulb,
 } from "lucide-react";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -85,7 +86,7 @@ export default function TrendsPage() {
     if (!brandId) {
       toast({
         title: "Erreur",
-        description: "Aucune marque selectionnee",
+        description: "Aucune marque sélectionnée",
         variant: "destructive",
       });
       return;
@@ -95,7 +96,7 @@ export default function TrendsPage() {
     if (validTrends.length === 0) {
       toast({
         title: "Erreur",
-        description: "Veuillez decrire au moins une tendance",
+        description: "Veuillez décrire au moins une tendance",
         variant: "destructive",
       });
       return;
@@ -116,10 +117,10 @@ export default function TrendsPage() {
       const response = await aiApi.analyzeTrends(brandId, payload);
       setAnalysisResult(response.data);
       toast({
-        title: "Analyse terminee",
+        title: "Analyse terminée",
         description: generateIdeas
-          ? `${response.data.ideas?.length || 0} idee(s) generee(s)`
-          : "Tendances analysees avec succes",
+          ? `${response.data.ideas?.length || 0} idée(s) générée(s)`
+          : "Tendances analysées avec succès",
       });
     } catch (error: any) {
       console.error("Error analyzing trends:", error);
@@ -141,14 +142,14 @@ export default function TrendsPage() {
     try {
       await aiApi.saveIdeas(brandId, analysisResult.ideas);
       toast({
-        title: "Idees sauvegardees",
-        description: `${analysisResult.ideas.length} idee(s) ajoutee(s) a votre liste`,
+        title: "Idées sauvegardées",
+        description: `${analysisResult.ideas.length} idée(s) ajoutée(s) à votre liste`,
       });
     } catch (error: any) {
       console.error("Error saving ideas:", error);
       toast({
         title: "Erreur",
-        description: error.response?.data?.detail || "Impossible de sauvegarder les idees",
+        description: error.response?.data?.detail || "Impossible de sauvegarder les idées",
         variant: "destructive",
       });
     } finally {
@@ -164,9 +165,9 @@ export default function TrendsPage() {
       className="space-y-6"
     >
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">Tendances</h1>
+        <h1 className="text-3xl font-bold">Tendances <HelpTooltip content="Découvrez les sujets populaires du moment pour créer des posts qui intéressent les gens." /></h1>
         <p className="text-muted-foreground">
-          Analysez les tendances et generez des idees de contenu
+          Analysez les tendances et générez des idées de contenu
         </p>
       </div>
 
@@ -174,7 +175,7 @@ export default function TrendsPage() {
         <CardHeader>
           <CardTitle>Ajouter des tendances</CardTitle>
           <CardDescription>
-            Decrivez les tendances que vous souhaitez analyser pour generer des idees de contenu adaptees
+            Décrivez les tendances que vous souhaitez analyser pour générer des idées de contenu adaptées
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -206,7 +207,7 @@ export default function TrendsPage() {
                   <div className="space-y-3">
                     <div>
                       <Input
-                        placeholder="Decrivez la tendance..."
+                        placeholder="Décrivez la tendance..."
                         value={trend.description}
                         onChange={(e) => updateTrend(trend.id, "description", e.target.value)}
                         className="w-full"
@@ -216,7 +217,7 @@ export default function TrendsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <Input
-                          placeholder="URL de reference (optionnel)"
+                          placeholder="URL de référence (optionnel)"
                           value={trend.url}
                           onChange={(e) => updateTrend(trend.id, "url", e.target.value)}
                           className="w-full"
@@ -266,7 +267,7 @@ export default function TrendsPage() {
                 onCheckedChange={(checked) => setGenerateIdeas(checked as boolean)}
               />
               <Label htmlFor="generate-ideas" className="text-sm font-normal cursor-pointer">
-                Generer des idees de contenu
+                Générer des idées de contenu
               </Label>
             </div>
 
@@ -278,7 +279,7 @@ export default function TrendsPage() {
                 className="space-y-2"
               >
                 <Label htmlFor="idea-count" className="text-sm">
-                  Nombre d&apos;idees a generer
+                  Nombre d&apos;idées à générer
                 </Label>
                 <Select value={ideaCount} onValueChange={setIdeaCount}>
                   <SelectTrigger id="idea-count" className="w-32">

@@ -80,12 +80,12 @@ function TrendCard({
         className="w-full text-xs h-7"
         onClick={() =>
           onCreatePost(
-            `Cree un post sur la tendance: ${trend.topic}. Angle: ${trend.suggested_angle || trend.topic}`
+            `Crée un post sur la tendance: ${trend.topic}. Angle: ${trend.suggested_angle || trend.topic}`
           )
         }
       >
         <Sparkles className="w-3 h-3 mr-1" />
-        Creer un post
+        Créer un post
       </Button>
     </motion.div>
   );
@@ -178,7 +178,7 @@ export function TrendsSidebar({ onClose, onCreatePost }: TrendsSidebarProps) {
           <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
             <TrendingUp className="w-8 h-8 text-muted-foreground/50" />
             <p className="text-xs text-muted-foreground">
-              Aucune tendance detectee. Cliquez sur rafraichir pour scanner.
+              Aucune tendance détectée. Cliquez sur rafraîchir pour scanner.
             </p>
           </div>
         ) : (

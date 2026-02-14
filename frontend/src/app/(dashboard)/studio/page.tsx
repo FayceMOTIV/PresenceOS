@@ -25,12 +25,16 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import type { GeneratedPost, StudioMessage } from "@/types/agents";
 import { TrendsSidebar } from "@/components/studio/trends-sidebar";
+import { fireSuccessConfetti } from "@/lib/confetti";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
+import { AIThinking } from '@/components/ai/ai-thinking';
+import { LoadingMessage } from '@/components/loading/loading-message';
 
 const quickSuggestions = [
-  "Genere 3 posts Instagram sur notre nouveau menu",
-  "Cree un post LinkedIn corporate",
-  "Propose des idees TikTok tendance",
-  "Redige un carrousel Instagram educatif",
+  "Génère 3 posts Instagram sur notre nouveau menu",
+  "Crée un post LinkedIn corporate",
+  "Propose des idées TikTok tendance",
+  "Rédige un carrousel Instagram educatif",
 ];
 
 const platformOptions = [
@@ -103,7 +107,7 @@ function PostPreviewCard({
 
       {post.suggested_media && (
         <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">
-          Media suggere: {post.suggested_media}
+          Média suggéré: {post.suggested_media}
         </div>
       )}
 
@@ -117,7 +121,7 @@ function PostPreviewCard({
       <div className="flex items-center gap-2 pt-1">
         <Button variant="outline" size="sm" onClick={handleCopy}>
           {copied ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
-          {copied ? "Copie" : "Copier"}
+          {copied ? "Copié" : "Copier"}
         </Button>
         <Button variant="outline" size="sm" onClick={onAccept}>
           <ThumbsUp className="w-3 h-3 mr-1" />
@@ -160,10 +164,7 @@ function MessageBubble({ message }: { message: StudioMessage }) {
 
       <div className={cn("flex-1 space-y-3", isUser ? "text-right" : "")}>
         {message.type === "loading" ? (
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-muted text-sm">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Les agents travaillent...
-          </div>
+          <AIThinking message="Je crée 3 textes différents pour votre photo... ✨" />
         ) : message.type === "posts" && message.posts ? (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">{message.content}</p>
@@ -174,13 +175,13 @@ function MessageBubble({ message }: { message: StudioMessage }) {
                 onCopy={() => {
                   const text = `${post.content}\n\n${post.hashtags?.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ") || ""}`;
                   navigator.clipboard.writeText(text);
-                  toast({ title: "Copie !", description: "Post copie dans le presse-papier" });
+                  toast({ title: "Copié !", description: "Post copié dans le presse-papier" });
                 }}
                 onAccept={() => {
-                  toast({ title: "Post accepte", description: "Le post a ete ajoute a vos brouillons" });
+                  toast({ title: "Post accepté", description: "Le post a été ajouté à vos brouillons" });
                 }}
                 onReject={() => {
-                  toast({ title: "Post rejete", description: "Le post a ete supprime" });
+                  toast({ title: "Post rejeté", description: "Le post a été supprimé" });
                 }}
               />
             ))}
@@ -256,7 +257,7 @@ function ChatInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Demandez a l'IA de generer du contenu..."
+          placeholder="Demandez à l'IA de générer du contenu..."
           className="flex-1 bg-transparent resize-none text-sm px-2 py-1.5 focus:outline-none min-h-[36px] max-h-[120px]"
           rows={1}
           disabled={disabled}
@@ -314,8 +315,8 @@ export default function StudioPage() {
             id: crypto.randomUUID(),
             role: "assistant",
             content: posts.length
-              ? `J'ai genere ${posts.length} post${posts.length > 1 ? "s" : ""} pour vous :`
-              : "Je n'ai pas pu generer de contenu. Veuillez reessayer.",
+              ? `J'ai généré ${posts.length} post${posts.length > 1 ? "s" : ""} pour vous :`
+              : "Je n'ai pas pu générer de contenu. Veuillez réessayer.",
             type: posts.length ? "posts" : "text",
             posts: posts.length ? posts : undefined,
             timestamp: new Date(),
@@ -323,6 +324,9 @@ export default function StudioPage() {
       );
       setIsProcessing(false);
       setTaskId(null);
+      if (posts.length > 0) {
+        fireSuccessConfetti();
+      }
     } else if (task.status === "failed") {
       setMessages((prev) =>
         prev
@@ -330,7 +334,7 @@ export default function StudioPage() {
           .concat({
             id: crypto.randomUUID(),
             role: "assistant",
-            content: `Erreur: ${task.error || "Une erreur est survenue"}. Veuillez reessayer.`,
+            content: `Erreur: ${task.error || "Une erreur est survenue"}. Veuillez réessayer.`,
             type: "text",
             timestamp: new Date(),
           })
@@ -348,7 +352,7 @@ export default function StudioPage() {
     if (!brandId) {
       toast({
         title: "Aucune marque",
-        description: "Selectionnez une marque d'abord",
+        description: "Sélectionnez une marque d'abord",
         variant: "destructive",
       });
       return;
@@ -396,7 +400,7 @@ export default function StudioPage() {
           .concat({
             id: crypto.randomUUID(),
             role: "assistant",
-            content: "Impossible de lancer la generation. Verifiez votre connexion.",
+            content: "Impossible de lancer la génération. Vérifiez votre connexion.",
             type: "text",
             timestamp: new Date(),
           })
@@ -420,10 +424,10 @@ export default function StudioPage() {
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Sparkles className="w-6 h-6 text-primary" />
-              AI Studio
+              Studio IA <HelpTooltip content="Cliquez et attendez 10 secondes. L'IA va écrire 3 textes différents pour votre photo" />
             </h1>
             <p className="text-sm text-muted-foreground">
-              Generez du contenu avec vos agents IA
+              Générez du contenu avec l&apos;IA
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -464,11 +468,11 @@ export default function StudioPage() {
                   <Sparkles className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg">Bienvenue dans AI Studio</h3>
+                  <h3 className="font-semibold text-lg">Bienvenue dans le Studio IA</h3>
                   <p className="text-sm text-muted-foreground max-w-md">
-                    Decrivez le contenu que vous souhaitez creer. Nos agents
-                    IA analyseront votre marque, definiront la strategie, et
-                    genereront des posts optimises.
+                    Décrivez le contenu que vous souhaitez créer. Nos agents
+                    IA analyseront votre marque, définiront la stratégie, et
+                    généreront des posts optimisés.
                   </p>
                 </div>
               </div>

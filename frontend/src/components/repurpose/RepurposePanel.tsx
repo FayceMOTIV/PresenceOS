@@ -63,13 +63,13 @@ const FORMAT_ICONS: Record<string, typeof Instagram> = {
 };
 
 const FORMAT_COLORS: Record<string, string> = {
-  instagram_post: "border-pink-500/40 bg-pink-500/10 text-pink-400",
-  instagram_reel: "border-purple-500/40 bg-purple-500/10 text-purple-400",
-  instagram_story: "border-orange-500/40 bg-orange-500/10 text-orange-400",
-  tiktok: "border-cyan-500/40 bg-cyan-500/10 text-cyan-400",
-  facebook: "border-blue-500/40 bg-blue-500/10 text-blue-400",
-  gbp: "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
-  linkedin: "border-sky-500/40 bg-sky-500/10 text-sky-400",
+  instagram_post: "border-pink-500/40 bg-pink-500/5 text-pink-400",
+  instagram_reel: "border-purple-500/40 bg-purple-500/5 text-purple-400",
+  instagram_story: "border-orange-500/40 bg-orange-500/5 text-orange-400",
+  tiktok: "border-cyan-500/40 bg-cyan-500/5 text-cyan-400",
+  facebook: "border-blue-500/40 bg-blue-500/5 text-blue-400",
+  gbp: "border-emerald-500/40 bg-emerald-500/5 text-emerald-400",
+  linkedin: "border-sky-500/40 bg-sky-500/5 text-sky-400",
 };
 
 function VariantCard({
@@ -81,7 +81,7 @@ function VariantCard({
 }) {
   const [copied, setCopied] = useState(false);
   const Icon = FORMAT_ICONS[variant.format] || Repeat2;
-  const colorClass = FORMAT_COLORS[variant.format] || "border-zinc-700 bg-zinc-800/50 text-zinc-400";
+  const colorClass = FORMAT_COLORS[variant.format] || "border-gray-200 bg-white text-gray-500";
 
   const handleCopy = async () => {
     const fullText = variant.caption +
@@ -96,38 +96,38 @@ function VariantCard({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`border rounded-xl p-4 space-y-3 ${colorClass.split(" ").slice(0, 2).join(" ")}`}
+      className={`border rounded-xl p-4 space-y-3 shadow-sm ${colorClass.split(" ").slice(0, 2).join(" ")}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon className={`w-4 h-4 ${colorClass.split(" ")[2]}`} />
-          <span className="text-sm font-semibold text-zinc-100">{variant.label}</span>
+          <span className="text-sm font-semibold text-gray-900">{variant.label}</span>
         </div>
-        <span className="text-[10px] text-zinc-500 font-mono">
+        <span className="text-[10px] text-gray-500 font-mono">
           {variant.crop_spec.aspect_ratio}
         </span>
       </div>
 
       {/* Caption preview */}
-      <div className="bg-zinc-900/60 rounded-lg p-3 space-y-2">
-        <p className="text-sm text-zinc-200 leading-relaxed">{variant.caption}</p>
+      <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+        <p className="text-sm text-gray-800 leading-relaxed">{variant.caption}</p>
         {variant.hashtag_text && (
           <p className="text-xs text-amber-400/70">{variant.hashtag_text}</p>
         )}
         {variant.suggested_cta && (
-          <p className="text-xs text-zinc-500 italic">CTA : {variant.suggested_cta}</p>
+          <p className="text-xs text-gray-500 italic">CTA : {variant.suggested_cta}</p>
         )}
       </div>
 
       {/* Tips */}
-      <p className="text-[10px] text-zinc-600">{variant.platform_tips}</p>
+      <p className="text-[10px] text-gray-400">{variant.platform_tips}</p>
 
       {/* Actions */}
       <div className="flex gap-2">
         <button
           onClick={handleCopy}
-          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-zinc-700 text-zinc-300 text-xs hover:bg-zinc-800 transition-colors"
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-gray-800 text-xs hover:bg-gray-100 transition-colors"
         >
           {copied ? (
             <>
@@ -144,7 +144,7 @@ function VariantCard({
         {onUse && (
           <button
             onClick={onUse}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-medium transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black text-xs font-medium transition-colors"
           >
             Utiliser
           </button>
@@ -188,18 +188,18 @@ export function RepurposePanel({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-5 space-y-4"
+      className="bg-white border border-gray-200/60 rounded-2xl p-5 space-y-4 shadow-sm"
     >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Repeat2 className="w-5 h-5 text-amber-400" />
-          <h3 className="text-sm font-semibold text-zinc-100">
+          <h3 className="text-sm font-semibold text-gray-900">
             Content Repurposing
           </h3>
         </div>
         {contentPackage && (
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-gray-500">
             {contentPackage.variant_count} variantes generees
           </span>
         )}
@@ -208,13 +208,13 @@ export function RepurposePanel({
       {/* Generate button */}
       {!contentPackage && (
         <>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-gray-500">
             Transformez votre contenu en 7 formats adaptes a chaque plateforme.
           </p>
           <button
             onClick={handleRepurpose}
             disabled={isLoading || !caption.trim()}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-medium text-sm transition-colors disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-medium text-sm transition-colors disabled:opacity-50"
           >
             {isLoading ? (
               <>
@@ -261,7 +261,7 @@ export function RepurposePanel({
       {contentPackage && (
         <button
           onClick={() => setContentPackage(null)}
-          className="w-full text-xs text-zinc-500 hover:text-zinc-300 py-2 transition-colors"
+          className="w-full text-xs text-gray-500 hover:text-gray-800 py-2 transition-colors"
         >
           Recommencer avec un autre contenu
         </button>

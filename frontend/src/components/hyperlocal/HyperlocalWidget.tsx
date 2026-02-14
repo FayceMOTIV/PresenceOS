@@ -68,8 +68,8 @@ const WEATHER_ICONS: Record<string, typeof Sun> = {
 
 const PRIORITY_COLORS: Record<string, string> = {
   high: "border-amber-500/40 bg-amber-500/5",
-  medium: "border-zinc-700 bg-zinc-800/30",
-  low: "border-zinc-800 bg-zinc-900/30",
+  medium: "border-gray-200 bg-gray-50/30",
+  low: "border-gray-200/60 bg-white/30",
 };
 
 const TYPE_ICONS: Record<string, typeof Sun> = {
@@ -95,8 +95,8 @@ export function HyperlocalWidget({ brandId }: HyperlocalWidgetProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-6 flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+      <div className="bg-white border border-gray-200/60 rounded-xl p-6 flex items-center justify-center py-12 shadow-sm">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
       </div>
     );
   }
@@ -109,30 +109,30 @@ export function HyperlocalWidget({ brandId }: HyperlocalWidgetProps) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-zinc-900/80 border border-zinc-800 rounded-2xl overflow-hidden"
+      className="bg-white border border-gray-200/60 rounded-2xl overflow-hidden shadow-sm"
     >
       {/* Header with weather */}
-      <div className="p-5 border-b border-zinc-800">
+      <div className="p-5 border-b border-gray-200">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <MapPin className="w-5 h-5 text-amber-400" />
-            <h3 className="text-sm font-semibold text-zinc-100">Intelligence locale</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Intelligence locale</h3>
           </div>
           <div className="flex items-center gap-2">
             <WeatherIcon className="w-5 h-5 text-amber-400" />
-            <span className="text-sm font-bold text-zinc-100">{context.weather.temp}°C</span>
-            <span className="text-xs text-zinc-500">{context.weather.condition}</span>
+            <span className="text-sm font-bold text-gray-900">{context.weather.temp}°C</span>
+            <span className="text-xs text-gray-500">{context.weather.condition}</span>
           </div>
         </div>
-        <p className="text-xs text-zinc-400">{context.weather.tip}</p>
+        <p className="text-xs text-gray-600">{context.weather.tip}</p>
       </div>
 
       <div className="p-5 space-y-4">
         {/* Seasonal context */}
-        <div className="bg-zinc-800/30 border border-zinc-800 rounded-xl p-3 space-y-2">
+        <div className="bg-gray-50 border border-gray-200/60 rounded-xl p-3 space-y-2">
           <div className="flex items-center gap-2">
             <Leaf className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs font-semibold text-zinc-200 capitalize">
+            <span className="text-xs font-semibold text-gray-800 capitalize">
               Saison : {context.seasonal.season}
             </span>
           </div>
@@ -146,28 +146,28 @@ export function HyperlocalWidget({ brandId }: HyperlocalWidgetProps) {
               </span>
             ))}
           </div>
-          <p className="text-[10px] text-zinc-500">{context.seasonal.tip}</p>
+          <p className="text-[10px] text-gray-500">{context.seasonal.tip}</p>
         </div>
 
         {/* Events */}
         {context.events.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+            <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
               Evenements proches
             </h4>
             {context.events.map((event, i) => (
               <div
                 key={i}
-                className="flex items-start gap-3 bg-zinc-800/30 border border-zinc-800 rounded-lg p-3"
+                className="flex items-start gap-3 bg-gray-50 border border-gray-200/60 rounded-lg p-3"
               >
-                <Calendar className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" />
+                <Calendar className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-zinc-200 truncate">{event.name}</span>
-                    <span className="text-[10px] text-zinc-600">{event.distance_km} km</span>
+                    <span className="text-xs font-medium text-gray-800 truncate">{event.name}</span>
+                    <span className="text-[10px] text-gray-400">{event.distance_km} km</span>
                   </div>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">{event.tip}</p>
-                  <p className="text-[10px] text-zinc-600 mt-0.5">
+                  <p className="text-[10px] text-gray-500 mt-0.5">{event.tip}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
                     {new Date(event.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
                   </p>
                 </div>
@@ -180,7 +180,7 @@ export function HyperlocalWidget({ brandId }: HyperlocalWidgetProps) {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Lightbulb className="w-4 h-4 text-amber-400" />
-            <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+            <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
               Suggestions du jour
             </h4>
           </div>
@@ -188,13 +188,13 @@ export function HyperlocalWidget({ brandId }: HyperlocalWidgetProps) {
             const SuggIcon = TYPE_ICONS[suggestion.type] || Lightbulb;
             const borderColor = PRIORITY_COLORS[suggestion.priority] || PRIORITY_COLORS.medium;
             return (
-              <div key={i} className={`border rounded-lg p-3 space-y-1 ${borderColor}`}>
+              <div key={i} className={`border rounded-lg p-3 space-y-1 shadow-sm ${borderColor}`}>
                 <div className="flex items-center gap-2">
-                  <SuggIcon className="w-3 h-3 text-zinc-500" />
-                  <span className="text-xs font-medium text-zinc-200">{suggestion.title}</span>
-                  <span className="ml-auto text-[10px] text-zinc-600">{suggestion.best_time}</span>
+                  <SuggIcon className="w-3 h-3 text-gray-500" />
+                  <span className="text-xs font-medium text-gray-800">{suggestion.title}</span>
+                  <span className="ml-auto text-[10px] text-gray-400">{suggestion.best_time}</span>
                 </div>
-                <p className="text-[10px] text-zinc-400">{suggestion.suggestion}</p>
+                <p className="text-[10px] text-gray-600">{suggestion.suggestion}</p>
               </div>
             );
           })}

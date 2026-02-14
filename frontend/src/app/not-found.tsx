@@ -1,26 +1,22 @@
-"use client";
-
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Home } from "lucide-react";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-screen flex items-center justify-center bg-mesh-gradient-strong relative overflow-hidden">
       <div className="text-center space-y-6 px-4">
-        <h1 className="text-7xl font-bold text-primary">404</h1>
-        <h2 className="text-2xl font-semibold text-foreground">
+        <h1 className="text-7xl font-bold gradient-text">404</h1>
+        <h2 className="text-2xl font-semibold text-gray-900">
           Page introuvable
         </h2>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          La page que vous cherchez n&apos;existe pas ou a été déplacée.
+        <p className="text-gray-500 max-w-md mx-auto">
+          La page que vous cherchez n&apos;existe pas ou a ete deplacee.
         </p>
-        <Button asChild>
-          <Link href="/dashboard">
-            <Home className="w-4 h-4 mr-2" />
-            Retour au dashboard
-          </Link>
-        </Button>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl gradient-bg text-white font-medium shadow-md shadow-purple-500/20 hover:opacity-90 transition-opacity"
+        >
+          Retour au dashboard
+        </Link>
       </div>
     </div>
   );

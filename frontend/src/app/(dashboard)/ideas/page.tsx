@@ -10,18 +10,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ideasApi } from "@/lib/api";
 import { ContentIdea, IdeaStatus } from "@/types";
 import { toast } from "@/hooks/use-toast";
+import { fireConfetti } from "@/lib/confetti";
 
 import { IdeasTable } from "./components/ideas-table";
 import { GenerateIdeasDialog, IdeasTableSkeleton } from "./components/generate-ideas-dialog";
 import { EditIdeaDialog } from "./components/edit-idea-dialog";
+import { SkeletonIdea } from '@/components/loading/skeleton-idea';
 
 const statusTabs: { value: IdeaStatus | "all"; label: string }[] = [
   { value: "all", label: "Toutes" },
   { value: "new", label: "Nouvelles" },
-  { value: "approved", label: "Approuvees" },
+  { value: "approved", label: "Approuvées" },
   { value: "in_progress", label: "En cours" },
-  { value: "drafted", label: "Redigees" },
-  { value: "rejected", label: "Rejetees" },
+  { value: "drafted", label: "Rédigées" },
+  { value: "rejected", label: "Rejetées" },
 ];
 
 export default function IdeasPage() {
@@ -51,7 +53,7 @@ export default function IdeasPage() {
       console.error("Error fetching ideas:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de charger les idees",
+        description: "Impossible de charger les idées",
         variant: "destructive",
       });
     } finally {
@@ -75,8 +77,8 @@ export default function IdeasPage() {
     try {
       await ideasApi.approve(idea.id);
       toast({
-        title: "Idee approuvee",
-        description: `"${idea.title}" a ete approuvee`,
+        title: "Idée approuvée !",
+        description: `« ${idea.title} » a été approuvée`,
       });
     } catch (error) {
       // Rollback
@@ -85,7 +87,7 @@ export default function IdeasPage() {
       );
       toast({
         title: "Erreur",
-        description: "Impossible d'approuver l'idee",
+        description: "Impossible d'approuver l'idée",
         variant: "destructive",
       });
     }
@@ -103,8 +105,8 @@ export default function IdeasPage() {
     try {
       await ideasApi.reject(idea.id);
       toast({
-        title: "Idee rejetee",
-        description: `"${idea.title}" a ete rejetee`,
+        title: "Idée rejetée",
+        description: `« ${idea.title} » a été rejetée`,
       });
     } catch (error) {
       // Rollback
@@ -113,7 +115,7 @@ export default function IdeasPage() {
       );
       toast({
         title: "Erreur",
-        description: "Impossible de rejeter l'idee",
+        description: "Impossible de rejeter l'idée",
         variant: "destructive",
       });
     }
@@ -152,6 +154,7 @@ export default function IdeasPage() {
   const handleIdeasGenerated = useCallback((newIdeas: ContentIdea[]) => {
     // Add new ideas at the beginning with animation
     setIdeas((prev) => [...newIdeas, ...prev]);
+    fireConfetti();
   }, []);
 
   // Handle bulk approve
@@ -168,8 +171,8 @@ export default function IdeasPage() {
       // Call API in parallel
       await Promise.all(ideasToApprove.map((idea) => ideasApi.approve(idea.id)));
       toast({
-        title: "Idees approuvees",
-        description: `${ideasToApprove.length} idee(s) approuvee(s)`,
+        title: "Idées approuvées !",
+        description: `${ideasToApprove.length} idée(s) approuvée(s)`,
       });
     } catch (error) {
       // Rollback all
@@ -181,7 +184,7 @@ export default function IdeasPage() {
       );
       toast({
         title: "Erreur",
-        description: "Impossible d'approuver certaines idees",
+        description: "Impossible d'approuver certaines idées",
         variant: "destructive",
       });
     }
@@ -201,8 +204,8 @@ export default function IdeasPage() {
       // Call API in parallel
       await Promise.all(ideasToReject.map((idea) => ideasApi.reject(idea.id)));
       toast({
-        title: "Idees rejetees",
-        description: `${ideasToReject.length} idee(s) rejetee(s)`,
+        title: "Idées rejetées",
+        description: `${ideasToReject.length} idée(s) rejetée(s)`,
       });
     } catch (error) {
       // Rollback all
@@ -214,7 +217,7 @@ export default function IdeasPage() {
       );
       toast({
         title: "Erreur",
-        description: "Impossible de rejeter certaines idees",
+        description: "Impossible de rejeter certaines idées",
         variant: "destructive",
       });
     }
@@ -245,19 +248,19 @@ export default function IdeasPage() {
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Idees</h1>
+          <h1 className="text-3xl font-bold">Idées de posts</h1>
           <p className="text-muted-foreground">
-            Gerez vos idees de contenu et transformez-les en posts
+            L&apos;IA vous propose des idées. Vous choisissez celles qui vous plaisent !
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setGenerateDialogOpen(true)}>
             <Sparkles className="w-4 h-4 mr-2" />
-            Generer avec l&apos;IA
+            Générer des idées
           </Button>
           <Button variant="gradient" onClick={() => router.push("/ideas/new")}>
             <Plus className="w-4 h-4 mr-2" />
-            Nouvelle idee
+            Nouvelle idée
           </Button>
         </div>
       </div>
@@ -282,41 +285,29 @@ export default function IdeasPage() {
 
         <TabsContent value={activeTab} className="mt-6">
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            <div className="grid gap-4">
+              {Array(5).fill(0).map((_, i) => <SkeletonIdea key={i} />)}
             </div>
           ) : filteredIdeas.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center py-12"
+              className="text-center py-20"
             >
-              <div className="w-16 h-16 rounded-2xl bg-muted mx-auto mb-4 flex items-center justify-center">
-                <Lightbulb className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <h3 className="font-semibold mb-2">Aucune idee</h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
+              <div className="text-8xl mb-6">💡</div>
+              <h3 className="text-2xl font-bold mb-3">Pas encore d&apos;idées</h3>
+              <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
                 {activeTab === "all"
-                  ? "Commencez par generer des idees avec l'IA ou creez-en une manuellement."
-                  : `Aucune idee avec le statut "${statusTabs.find((t) => t.value === activeTab)?.label}".`}
+                  ? "Cliquez sur « Générer des idées » et l&apos;intelligence artificielle va vous proposer 5 idées de posts pour aujourd&apos;hui !"
+                  : `Aucune idée avec le statut « ${statusTabs.find((t) => t.value === activeTab)?.label} ».`}
               </p>
               {activeTab === "all" && (
-                <div className="flex items-center justify-center gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setGenerateDialogOpen(true)}
-                  >
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generer avec l&apos;IA
-                  </Button>
-                  <Button
-                    variant="gradient"
-                    onClick={() => router.push("/ideas/new")}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Creer manuellement
-                  </Button>
-                </div>
+                <button
+                  onClick={() => setGenerateDialogOpen(true)}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity"
+                >
+                  ✨ Générer mes premières idées
+                </button>
               )}
             </motion.div>
           ) : (

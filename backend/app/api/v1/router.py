@@ -30,6 +30,8 @@ from app.api.v1.endpoints import (
     trends,
     competitor,
     hyperlocal,
+    interview,
+    content_analysis,
 )
 
 api_router = APIRouter()
@@ -111,3 +113,9 @@ api_router.include_router(competitor.router, prefix="/competitor", tags=["Compet
 
 # Hyperlocal Intelligence (Feature 10)
 api_router.include_router(hyperlocal.router, prefix="/hyperlocal", tags=["Hyperlocal"])
+
+# Brand Interview AI
+api_router.include_router(interview.router, prefix="/interview", tags=["Brand Interview"])
+
+# Content Analysis (Instagram tone extraction)
+api_router.include_router(content_analysis.router, prefix="/content-analysis", tags=["Content Analysis"])

@@ -18,7 +18,7 @@ const STEPS = [
   { id: 1, title: "Votre marque", description: "Informations de base" },
   { id: 2, title: "Ton & style", description: "Personnalite de marque" },
   { id: 3, title: "Audiences", description: "Vos cibles" },
-  { id: 4, title: "Plateformes", description: "Connexion reseaux" },
+  { id: 4, title: "Plateformes", description: "Connexion réseaux" },
 ];
 
 const defaultData: OnboardingData = {
@@ -117,7 +117,7 @@ export default function ManualOnboardingPage() {
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: error.response?.data?.detail || "Impossible de creer la marque",
+        description: error.response?.data?.detail || "Impossible de créer la marque",
         variant: "destructive",
       });
     } finally {
@@ -178,8 +178,8 @@ export default function ManualOnboardingPage() {
       localStorage.setItem("brand_id", brandId);
     }
     toast({
-      title: "Configuration terminee !",
-      description: "Votre marque est prete. Bienvenue sur PresenceOS !",
+      title: "Configuration terminée !",
+      description: "Votre marque est prête. Bienvenue sur PresenceOS !",
     });
     router.push("/dashboard");
   };
@@ -214,7 +214,7 @@ export default function ManualOnboardingPage() {
               href="/onboarding"
               className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
             >
-              Revenir a l&apos;interview IA
+              Revenir à l&apos;interview IA
             </Link>
             <span className="text-sm text-muted-foreground">Configuration manuelle</span>
           </div>

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
@@ -8,12 +8,26 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#7C3AED",
+};
+
 export const metadata: Metadata = {
   title: "PresenceOS - AI Marketing Agent",
   description:
     "AI-powered social media marketing agent for multi-brand businesses",
+  manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
+    apple: "/icons/icon-192x192.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "PresenceOS",
   },
 };
 

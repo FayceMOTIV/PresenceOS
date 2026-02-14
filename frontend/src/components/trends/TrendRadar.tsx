@@ -55,7 +55,7 @@ function ViralityBadge({ score }: { score: number }) {
       ? "text-emerald-400 bg-emerald-500/15 border-emerald-500/40"
       : score >= 70
         ? "text-amber-400 bg-amber-500/15 border-amber-500/40"
-        : "text-zinc-400 bg-zinc-800/50 border-zinc-700";
+        : "text-gray-500 bg-gray-100/60 border-gray-200";
 
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${color}`}>
@@ -78,14 +78,14 @@ function TrendCard({ trend }: { trend: Trend }) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3"
+      className="bg-white border border-gray-200/60 rounded-xl p-4 space-y-3 shadow-sm"
     >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-amber-400" />
-          <span className="text-sm font-semibold text-zinc-100">{trend.topic}</span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700">
+          <span className="text-sm font-semibold text-gray-900">{trend.topic}</span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100/60 text-gray-600 border border-gray-200">
             {CATEGORY_LABELS[trend.category] || trend.category}
           </span>
         </div>
@@ -93,7 +93,7 @@ function TrendCard({ trend }: { trend: Trend }) {
       </div>
 
       {/* Description */}
-      <p className="text-xs text-zinc-400 leading-relaxed">{trend.description}</p>
+      <p className="text-xs text-gray-600 leading-relaxed">{trend.description}</p>
 
       {/* Content suggestion */}
       <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
@@ -107,12 +107,12 @@ function TrendCard({ trend }: { trend: Trend }) {
         <div className="flex items-center gap-1.5">
           {trend.platforms.map((p) => {
             const Icon = PLATFORM_ICONS[p] || Smartphone;
-            return <Icon key={p} className="w-3.5 h-3.5 text-zinc-500" />;
+            return <Icon key={p} className="w-3.5 h-3.5 text-gray-500" />;
           })}
         </div>
         <button
           onClick={handleCopyHashtags}
-          className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
+          className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-800 transition-colors"
         >
           {copied ? (
             <CheckCircle2 className="w-3 h-3 text-emerald-400" />
@@ -125,7 +125,7 @@ function TrendCard({ trend }: { trend: Trend }) {
       </div>
 
       {/* Expiry */}
-      <div className="flex items-center gap-1 text-[10px] text-zinc-600">
+      <div className="flex items-center gap-1 text-[10px] text-gray-400">
         <Clock className="w-3 h-3" />
         Expire dans {trend.expires_in_hours}h
       </div>
@@ -157,7 +157,7 @@ export function TrendRadar({ brandId }: TrendRadarProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
       </div>
     );
   }
@@ -171,7 +171,7 @@ export function TrendRadar({ brandId }: TrendRadarProps) {
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
             !category
               ? "bg-amber-500/15 text-amber-400 border border-amber-500/40"
-              : "bg-zinc-800/50 text-zinc-400 border border-zinc-800 hover:border-zinc-700"
+              : "bg-gray-100/60 text-gray-600 border border-gray-200/60 hover:bg-gray-100"
           }`}
         >
           Toutes
@@ -183,7 +183,7 @@ export function TrendRadar({ brandId }: TrendRadarProps) {
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               category === cat.id
                 ? "bg-amber-500/15 text-amber-400 border border-amber-500/40"
-                : "bg-zinc-800/50 text-zinc-400 border border-zinc-800 hover:border-zinc-700"
+                : "bg-gray-100/60 text-gray-600 border border-gray-200/60 hover:bg-gray-100"
             }`}
           >
             {cat.label}
@@ -200,8 +200,8 @@ export function TrendRadar({ brandId }: TrendRadarProps) {
 
       {trends.length === 0 && (
         <div className="text-center py-8">
-          <TrendingUp className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-          <p className="text-sm text-zinc-500">Aucune tendance detectee pour ce filtre</p>
+          <TrendingUp className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+          <p className="text-sm text-gray-500">Aucune tendance detectee pour ce filtre</p>
         </div>
       )}
     </motion.div>

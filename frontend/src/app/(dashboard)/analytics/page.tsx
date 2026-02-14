@@ -18,6 +18,7 @@ import {
   ArrowUpRight,
   Target,
 } from "lucide-react";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 import { metricsApi } from "@/lib/api";
 import { DashboardMetrics, PlatformBreakdown } from "@/types";
 import { formatNumber, cn } from "@/lib/utils";
@@ -96,19 +97,19 @@ export default function AnalyticsPage() {
       color: "from-blue-500 to-cyan-500",
     },
     {
-      title: "Impressions",
+      title: "Vues",
       value: formatNumber(metrics?.total_impressions || 0),
       icon: Eye,
       color: "from-purple-500 to-pink-500",
     },
     {
-      title: "Engagement total",
+      title: "Interactions",
       value: formatNumber(metrics?.total_engagement || 0),
       icon: Heart,
       color: "from-orange-500 to-red-500",
     },
     {
-      title: "Taux d'engagement moyen",
+      title: "Taux d'interaction",
       value: `${(metrics?.average_engagement_rate || 0).toFixed(1)}%`,
       icon: TrendingUp,
       color: "from-green-500 to-emerald-500",
@@ -136,7 +137,7 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Analytics</h1>
+          <h1 className="text-3xl font-bold">Statistiques <HelpTooltip content="Vos statistiques : combien de personnes voient vos posts, combien aiment et commentent." /></h1>
           <p className="text-muted-foreground">
             Analysez vos performances et optimisez votre stratégie
           </p>
@@ -250,7 +251,7 @@ export default function AnalyticsPage() {
                             style={{ backgroundColor: PLATFORM_COLORS[index % PLATFORM_COLORS.length] }}
                           />
                           <span className="font-semibold capitalize">{platform.platform}</span>
-                          <Badge variant="secondary">{platform.posts_count} posts</Badge>
+                          <Badge variant="secondary">{platform.posts_count} publications</Badge>
                         </div>
                         <div className="flex items-center gap-1 text-green-600">
                           <ArrowUpRight className="w-4 h-4" />

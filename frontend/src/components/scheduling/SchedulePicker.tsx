@@ -51,10 +51,10 @@ const PLATFORM_OPTIONS = [
 function ScoreBadge({ score }: { score: number }) {
   const color =
     score >= 85
-      ? "text-emerald-400 bg-emerald-900/30 border-emerald-700/50"
+      ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/40"
       : score >= 70
-        ? "text-amber-400 bg-amber-900/30 border-amber-700/50"
-        : "text-zinc-400 bg-zinc-800/50 border-zinc-700/50";
+        ? "text-amber-400 bg-amber-500/10 border-amber-500/40"
+        : "text-gray-500 bg-gray-100/60 border-gray-200";
   const label = score >= 85 ? "Optimal" : score >= 70 ? "Bon" : "Moyen";
 
   return (
@@ -81,25 +81,25 @@ function SlotCard({
       onClick={onSelect}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+      className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left shadow-sm ${
         isSelected
           ? "border-amber-500/60 bg-amber-500/10 ring-1 ring-amber-500/30"
-          : "border-zinc-800 bg-zinc-800/40 hover:border-zinc-700 hover:bg-zinc-800/60"
+          : "border-gray-200/60 bg-white hover:bg-gray-50"
       }`}
     >
       {/* Time */}
       <div className="flex-shrink-0 w-14 text-center">
-        <div className={`text-lg font-bold ${isSelected ? "text-amber-400" : "text-zinc-100"}`}>
+        <div className={`text-lg font-bold ${isSelected ? "text-amber-400" : "text-gray-900"}`}>
           {slot.hour_label}
         </div>
       </div>
 
       {/* Day + Score */}
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-zinc-200 truncate">
+        <div className="text-sm font-medium text-gray-800 truncate">
           {slot.day_label}
         </div>
-        <div className="text-xs text-zinc-500">
+        <div className="text-xs text-gray-500">
           {new Date(slot.datetime).toLocaleDateString("fr-FR", {
             day: "numeric",
             month: "short",
@@ -164,23 +164,23 @@ export function SchedulePicker({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-zinc-900/80 border border-zinc-800 rounded-2xl overflow-hidden"
+      className="bg-white border border-gray-200/60 rounded-2xl overflow-hidden shadow-sm"
     >
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-zinc-800/30 transition-colors"
+        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
       >
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-left">
-            <h3 className="text-sm font-semibold text-zinc-100">
+            <h3 className="text-sm font-semibold text-gray-900">
               Smart Scheduling
             </h3>
             {nextOptimal && !isExpanded && (
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-gray-500">
                 Prochain creneau : {nextOptimal.day_label} a {nextOptimal.hour_label}{" "}
                 (score {nextOptimal.score})
               </p>
@@ -188,9 +188,9 @@ export function SchedulePicker({
           </div>
         </div>
         {isExpanded ? (
-          <ChevronUp className="w-4 h-4 text-zinc-500" />
+          <ChevronUp className="w-4 h-4 text-gray-500" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-zinc-500" />
+          <ChevronDown className="w-4 h-4 text-gray-500" />
         )}
       </button>
 
@@ -217,7 +217,7 @@ export function SchedulePicker({
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                         active
                           ? "bg-amber-500/15 text-amber-400 border border-amber-500/40"
-                          : "bg-zinc-800/50 text-zinc-400 border border-zinc-800 hover:border-zinc-700"
+                          : "bg-gray-100/60 text-gray-600 border border-gray-200/60 hover:bg-gray-100"
                       }`}
                     >
                       <Icon className="w-3 h-3" />
@@ -231,7 +231,7 @@ export function SchedulePicker({
               {isLoading && (
                 <div className="flex items-center justify-center py-6">
                   <Loader2 className="w-5 h-5 animate-spin text-amber-400" />
-                  <span className="ml-2 text-xs text-zinc-500">
+                  <span className="ml-2 text-xs text-gray-500">
                     Analyse des meilleurs creneaux...
                   </span>
                 </div>
@@ -261,8 +261,8 @@ export function SchedulePicker({
               {/* Empty state */}
               {!isLoading && !error && slots.length === 0 && (
                 <div className="text-center py-4">
-                  <Calendar className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                  <p className="text-xs text-zinc-500">
+                  <Calendar className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-xs text-gray-500">
                     Aucun creneau disponible pour cette plateforme
                   </p>
                 </div>
@@ -277,7 +277,7 @@ export function SchedulePicker({
                 >
                   <button
                     onClick={() => onManualSelect?.(selectedSlot.datetime)}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-medium text-sm transition-colors"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-medium text-sm transition-colors"
                   >
                     <Clock className="w-4 h-4" />
                     Planifier pour {selectedSlot.day_label} a {selectedSlot.hour_label}
@@ -286,7 +286,7 @@ export function SchedulePicker({
               )}
 
               {/* Methodology note */}
-              <p className="text-[10px] text-zinc-600 text-center pt-1">
+              <p className="text-[10px] text-gray-400 text-center pt-1">
                 Bases sur les benchmarks Sprout Social / Later 2025 pour la restauration
               </p>
             </div>

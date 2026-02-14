@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-4-5-20250929"
     ai_provider: Literal["openai", "anthropic"] = "openai"
+    openrouter_api_key: str = ""
 
     # OAuth - Meta
     meta_app_id: str = ""

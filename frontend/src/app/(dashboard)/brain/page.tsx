@@ -12,6 +12,7 @@ import {
   Trash2,
   Loader2,
 } from "lucide-react";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,8 @@ import { cn } from "@/lib/utils";
 
 import { knowledgeApi } from "@/lib/api";
 import { KnowledgeItem, KnowledgeType } from "@/types";
+import { BrandInterviewChat } from "@/components/brain/BrandInterviewChat";
+import { ContentAnalysisDialog } from "@/components/brain/ContentAnalysisDialog";
 
 const knowledgeTypeLabels: Record<KnowledgeType, string> = {
   menu: "Menu",
@@ -63,23 +66,23 @@ const knowledgeTypeLabels: Record<KnowledgeType, string> = {
   faq: "FAQ",
   proof: "Preuve sociale",
   script: "Script",
-  event: "Evenement",
+  event: "Événement",
   process: "Process",
   team: "Equipe",
   other: "Autre",
 };
 
 const knowledgeTypeColors: Record<KnowledgeType, string> = {
-  menu: "bg-orange-500/10 text-orange-500",
-  product: "bg-blue-500/10 text-blue-500",
-  offer: "bg-green-500/10 text-green-500",
-  faq: "bg-purple-500/10 text-purple-500",
-  proof: "bg-pink-500/10 text-pink-500",
-  script: "bg-cyan-500/10 text-cyan-500",
-  event: "bg-yellow-500/10 text-yellow-500",
-  process: "bg-indigo-500/10 text-indigo-500",
-  team: "bg-rose-500/10 text-rose-500",
-  other: "bg-gray-500/10 text-gray-500",
+  menu: "bg-orange-100/80 text-orange-700 border-orange-200/60",
+  product: "bg-blue-100/80 text-blue-700 border-blue-200/60",
+  offer: "bg-emerald-100/80 text-emerald-700 border-emerald-200/60",
+  faq: "bg-violet-100/80 text-violet-700 border-violet-200/60",
+  proof: "bg-pink-100/80 text-pink-700 border-pink-200/60",
+  script: "bg-cyan-100/80 text-cyan-700 border-cyan-200/60",
+  event: "bg-amber-100/80 text-amber-700 border-amber-200/60",
+  process: "bg-indigo-100/80 text-indigo-700 border-indigo-200/60",
+  team: "bg-rose-100/80 text-rose-700 border-rose-200/60",
+  other: "bg-gray-100/80 text-gray-700 border-gray-200/60",
 };
 
 const knowledgeTypes: KnowledgeType[] = [
@@ -111,6 +114,19 @@ const emptyFormData: KnowledgeFormData = {
   content: "",
   is_featured: false,
   is_seasonal: false,
+};
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06 }
+  }
+};
+
+const cardItem = {
+  hidden: { opacity: 0, y: 12, scale: 0.97 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: "easeOut" } }
 };
 
 export default function BrainPage() {
@@ -157,7 +173,7 @@ export default function BrainPage() {
       console.error("Error fetching knowledge items:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de charger les elements",
+        description: "Impossible de charger les éléments",
         variant: "destructive",
       });
     } finally {
@@ -250,15 +266,15 @@ export default function BrainPage() {
           prev.map((item) => (item.id === editingId ? response.data : item))
         );
         toast({
-          title: "Element modifie",
-          description: "L'element a ete modifie avec succes",
+          title: "Élément modifié",
+          description: "L'élément a été modifié avec succès",
         });
       } else {
         const response = await knowledgeApi.create(brandId, payload);
         setItems((prev) => [response.data, ...prev]);
         toast({
-          title: "Element ajoute",
-          description: "L'element a ete ajoute avec succes",
+          title: "Élément ajouté",
+          description: "L'élément a été ajouté avec succès",
         });
         // Refresh categories in case a new one was added
         fetchCategories();
@@ -270,7 +286,7 @@ export default function BrainPage() {
       console.error("Error saving knowledge item:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de sauvegarder l'element",
+        description: "Impossible de sauvegarder l'élément",
         variant: "destructive",
       });
     } finally {
@@ -292,8 +308,8 @@ export default function BrainPage() {
       await knowledgeApi.delete(deletingItem.id);
       setItems((prev) => prev.filter((item) => item.id !== deletingItem.id));
       toast({
-        title: "Element supprime",
-        description: "L'element a ete supprime avec succes",
+        title: "Élément supprimé",
+        description: "L'élément a été supprimé avec succès",
       });
       setDeleteDialogOpen(false);
       setDeletingItem(null);
@@ -301,7 +317,7 @@ export default function BrainPage() {
       console.error("Error deleting knowledge item:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de supprimer l'element",
+        description: "Impossible de supprimer l'élément",
         variant: "destructive",
       });
     } finally {
@@ -338,29 +354,35 @@ export default function BrainPage() {
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Brain</h1>
-          <p className="text-muted-foreground">
-            Base de connaissances de votre marque
+          <h1 className="text-3xl font-bold tracking-tight">Analyser Instagram <HelpTooltip content="L'ordinateur regarde vos anciens posts pour apprendre votre style d'écriture" /></h1>
+          <p className="text-muted-foreground mt-1">
+            Informations sur votre marque
           </p>
         </div>
-        <Button onClick={handleAdd}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button onClick={handleAdd} variant="gradient" className="group">
+          <Plus className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform duration-300" />
           Ajouter
         </Button>
       </div>
 
+      {/* Brand Interview AI */}
+      <BrandInterviewChat onKnowledgeUpdated={fetchItems} />
+
+      {/* Content Analysis (Instagram tone extraction) */}
+      <ContentAnalysisDialog onKnowledgeUpdated={fetchItems} />
+
       {/* Filter bar */}
-      <Card>
+      <Card className="border-gray-200/60">
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
               <Input
                 placeholder="Rechercher..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-10"
               />
             </div>
 
@@ -390,10 +412,10 @@ export default function BrainPage() {
               onValueChange={(value) => setCategoryFilter(value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Categorie" />
+                <SelectValue placeholder="Catégorie" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Toutes les categories</SelectItem>
+                <SelectItem value="all">Toutes les catégories</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category} value={category}>
                     {category}
@@ -409,15 +431,15 @@ export default function BrainPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
-            <Card key={i}>
+            <Card key={i} className="overflow-hidden">
               <CardHeader>
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-6 w-full mt-2" />
+                <Skeleton className="h-5 w-20 rounded-lg" />
+                <Skeleton className="h-6 w-full mt-2 rounded-lg" />
               </CardHeader>
               <CardContent>
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full mt-2" />
-                <Skeleton className="h-4 w-2/3 mt-2" />
+                <Skeleton className="h-4 w-full rounded-lg" />
+                <Skeleton className="h-4 w-full mt-2 rounded-lg" />
+                <Skeleton className="h-4 w-2/3 mt-2 rounded-lg" />
               </CardContent>
             </Card>
           ))}
@@ -426,54 +448,57 @@ export default function BrainPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-center py-12"
+          className="text-center py-16"
         >
-          <div className="w-16 h-16 rounded-2xl bg-muted mx-auto mb-4 flex items-center justify-center">
-            <Brain className="w-8 h-8 text-muted-foreground" />
+          <div className="w-16 h-16 rounded-2xl bg-violet-50 mx-auto mb-4 flex items-center justify-center">
+            <Brain className="w-8 h-8 text-violet-400" />
           </div>
-          <h3 className="font-semibold mb-2">Aucun element dans votre base</h3>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
+          <h3 className="font-semibold mb-2 text-lg">Aucun élément dans votre base</h3>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
             Ajoutez des informations sur vos produits, menus, offres et plus
             encore pour enrichir votre base de connaissances.
           </p>
-          <Button onClick={handleAdd}>
-            <Plus className="w-4 h-4 mr-2" />
-            Ajouter un element
+          <Button onClick={handleAdd} variant="gradient" className="group">
+            <Plus className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform duration-300" />
+            Ajouter un élément
           </Button>
         </motion.div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <motion.div
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
           <AnimatePresence mode="popLayout">
             {filteredItems.map((item) => (
               <motion.div
                 key={item.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                variants={cardItem}
                 exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
               >
-                <Card className="group hover:shadow-md transition-shadow relative">
-                  <CardHeader>
+                <Card className="group card-interactive overflow-hidden">
+                  <CardHeader className="pb-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-2.5">
                           <Badge
                             variant="secondary"
                             className={cn(
-                              "text-xs",
+                              "text-xs font-medium rounded-lg border",
                               knowledgeTypeColors[item.knowledge_type]
                             )}
                           >
                             {knowledgeTypeLabels[item.knowledge_type]}
                           </Badge>
                           {item.is_featured && (
-                            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                            <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
                           )}
                           {item.is_seasonal && (
                             <Snowflake className="w-4 h-4 text-blue-500" />
                           )}
                         </div>
-                        <CardTitle className="text-lg truncate">
+                        <CardTitle className="text-base font-semibold truncate">
                           {item.title}
                         </CardTitle>
                         {item.category && (
@@ -482,28 +507,28 @@ export default function BrainPage() {
                           </p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8"
+                          className="h-8 w-8 rounded-lg hover:bg-violet-50"
                           onClick={() => handleEdit(item)}
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          className="h-8 w-8 rounded-lg text-destructive hover:text-destructive hover:bg-red-50"
                           onClick={() => handleDeleteClick(item)}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
                       {truncateContent(item.content)}
                     </p>
                   </CardContent>
@@ -511,7 +536,7 @@ export default function BrainPage() {
               </motion.div>
             ))}
           </AnimatePresence>
-        </div>
+        </motion.div>
       )}
 
       {/* Add/Edit Dialog */}
@@ -519,7 +544,7 @@ export default function BrainPage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {isEditing ? "Modifier l'element" : "Ajouter un element"}
+              {isEditing ? "Modifier l'élément" : "Ajouter un élément"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -532,7 +557,7 @@ export default function BrainPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
                 }
-                placeholder="Ex: Menu du dejeuner"
+                placeholder="Ex: Menu du déjeuner"
               />
             </div>
 
@@ -563,7 +588,7 @@ export default function BrainPage() {
 
             {/* Category */}
             <div className="space-y-2">
-              <Label htmlFor="category">Categorie</Label>
+              <Label htmlFor="category">Catégorie</Label>
               <Input
                 id="category"
                 value={formData.category}
@@ -583,7 +608,7 @@ export default function BrainPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, content: e.target.value })
                 }
-                placeholder="Decrivez l'element en detail..."
+                placeholder="Décrivez l'élément en détail..."
                 rows={6}
                 className="resize-none"
               />
@@ -606,7 +631,7 @@ export default function BrainPage() {
                   htmlFor="featured"
                   className="text-sm font-normal cursor-pointer"
                 >
-                  Mettre en avant (element prioritaire)
+                  Mettre en avant (élément prioritaire)
                 </Label>
               </div>
 
@@ -625,7 +650,7 @@ export default function BrainPage() {
                   htmlFor="seasonal"
                   className="text-sm font-normal cursor-pointer"
                 >
-                  Element saisonnier
+                  Élément saisonnier
                 </Label>
               </div>
             </div>
@@ -639,7 +664,7 @@ export default function BrainPage() {
             >
               Annuler
             </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
+            <Button onClick={handleSave} disabled={isSaving} variant="gradient">
               {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isEditing ? "Modifier" : "Ajouter"}
             </Button>
@@ -653,8 +678,8 @@ export default function BrainPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
             <AlertDialogDescription>
-              Etes-vous sur de vouloir supprimer &quot;{deletingItem?.title}&quot; ? Cette
-              action est irreversible.
+              Êtes-vous sûr de vouloir supprimer &quot;{deletingItem?.title}&quot; ? Cette
+              action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

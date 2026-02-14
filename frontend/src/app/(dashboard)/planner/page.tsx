@@ -8,6 +8,7 @@ import { Loader2, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 import { postsApi, connectorsApi } from "@/lib/api";
 import { CalendarDay, ScheduledPost, SocialConnector, Platform, PostStatus } from "@/types";
 import { toast } from "@/hooks/use-toast";
@@ -202,8 +203,8 @@ export default function PlannerPage() {
       // Show optimistic toast
       const formattedDate = format(newDate, "d MMMM yyyy", { locale: fr });
       toast({
-        title: "Deplacement en cours...",
-        description: `Post deplace au ${formattedDate}`,
+        title: "Déplacement en cours...",
+        description: `Post déplacé au ${formattedDate}`,
       });
 
       try {
@@ -219,8 +220,8 @@ export default function PlannerPage() {
 
         // Success toast
         toast({
-          title: "Post deplace",
-          description: `Le post a ete deplace au ${formattedDate}`,
+          title: "Post déplacé",
+          description: `Le post a été déplacé au ${formattedDate}`,
         });
 
         return true;
@@ -233,7 +234,7 @@ export default function PlannerPage() {
         // Error toast
         toast({
           title: "Erreur",
-          description: "Impossible de deplacer le post. Il a ete remis a sa position d'origine.",
+          description: "Impossible de déplacer le post. Il a été remis à sa position d'origine.",
           variant: "destructive",
         });
 
@@ -250,7 +251,7 @@ export default function PlannerPage() {
       if (!brandId) {
         toast({
           title: "Erreur",
-          description: "Marque non trouvee",
+          description: "Marque non trouvée",
           variant: "destructive",
         });
         return;
@@ -312,8 +313,8 @@ export default function PlannerPage() {
 
       const formattedDate = format(data.scheduledDate, "d MMMM yyyy", { locale: fr });
       toast({
-        title: "Creation en cours...",
-        description: `Post planifie pour le ${formattedDate}`,
+        title: "Création en cours...",
+        description: `Post planifié pour le ${formattedDate}`,
       });
 
       try {
@@ -361,8 +362,8 @@ export default function PlannerPage() {
         );
 
         toast({
-          title: "Post cree",
-          description: `Votre post a ete planifie pour le ${formattedDate}`,
+          title: "Post créé",
+          description: `Votre post a été planifié pour le ${formattedDate}`,
         });
       } catch (error) {
         console.error("Error creating post:", error);
@@ -382,7 +383,7 @@ export default function PlannerPage() {
 
         toast({
           title: "Erreur",
-          description: "Impossible de creer le post. Veuillez reessayer.",
+          description: "Impossible de créer le post. Veuillez réessayer.",
           variant: "destructive",
         });
 
@@ -402,7 +403,7 @@ export default function PlannerPage() {
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Calendrier</h1>
+          <h1 className="text-3xl font-bold">Calendrier <HelpTooltip content="Choisir quand publier votre post : aujourd'hui à 18h, demain matin, etc." /></h1>
           <p className="text-muted-foreground">
             Planifiez et visualisez vos publications
           </p>
@@ -471,19 +472,19 @@ export default function PlannerPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-center py-12"
+          className="text-center py-20"
         >
-          <div className="w-16 h-16 rounded-2xl bg-muted mx-auto mb-4 flex items-center justify-center">
-            <Plus className="w-8 h-8 text-muted-foreground" />
-          </div>
-          <h3 className="font-semibold mb-2">Aucun post planifie</h3>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
-            Commencez a planifier votre contenu en creant votre premier post.
+          <div className="text-8xl mb-6">📅</div>
+          <h3 className="text-2xl font-bold mb-3">Calendrier vide</h3>
+          <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
+            Programmez vos posts à l&apos;avance et ne pensez plus à rien. L&apos;app publiera automatiquement pour vous !
           </p>
-          <Button variant="gradient" onClick={() => router.push("/studio")}>
-            <Plus className="w-4 h-4 mr-2" />
-            Creer mon premier post
-          </Button>
+          <button
+            onClick={() => router.push("/studio")}
+            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity"
+          >
+            📅 Programmer un post
+          </button>
         </motion.div>
       )}
 

@@ -138,7 +138,7 @@ export default function MediaLibraryPage() {
     },
     {
       id: "videos" as Tab,
-      label: "Videos",
+      label: "Vidéos",
       icon: Video,
       count: stats?.total_videos || 0,
     },
@@ -155,9 +155,9 @@ export default function MediaLibraryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Media Library</h1>
+          <h1 className="text-3xl font-bold">Mes photos</h1>
           <p className="text-muted-foreground">
-            Gerez vos images, videos et notes vocales
+            Gérez vos images, vidéos et notes vocales
           </p>
         </div>
         <div>
@@ -200,7 +200,7 @@ export default function MediaLibraryPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.total_videos}</p>
-                <p className="text-xs text-muted-foreground">Videos</p>
+                <p className="text-xs text-muted-foreground">Vidéos</p>
               </div>
             </CardContent>
           </Card>
@@ -294,7 +294,7 @@ export default function MediaLibraryPage() {
                               )}
                               {asset.ai_analyzed && (
                                 <span className="text-[10px] bg-blue-500/80 text-white px-1.5 py-0.5 rounded">
-                                  AI
+                                  IA
                                 </span>
                               )}
                             </div>
@@ -372,9 +372,9 @@ export default function MediaLibraryPage() {
               ) : (
                 <div className="col-span-full text-center py-12 text-muted-foreground">
                   <Video className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>Aucune video</p>
+                  <p>Aucune vidéo</p>
                   <p className="text-sm mt-1">
-                    Envoyez des videos via WhatsApp ou importez-les
+                    Envoyez des vidéos via WhatsApp ou importez-les
                   </p>
                 </div>
               )}
@@ -490,7 +490,7 @@ export default function MediaLibraryPage() {
           <Card className="glass-card shadow-xl">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm">Details</CardTitle>
+                <CardTitle className="text-sm">Détails</CardTitle>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -511,7 +511,7 @@ export default function MediaLibraryPage() {
               {selectedAsset.ai_description && (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-1">
-                    Description IA
+                    Description par l&apos;IA
                   </p>
                   <p className="text-sm">{selectedAsset.ai_description}</p>
                 </div>

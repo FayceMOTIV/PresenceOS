@@ -22,15 +22,15 @@ interface StepBrandVoiceProps {
 const TONE_SLIDERS = [
   {
     key: "tone_formal" as const,
-    label: "Formalite",
-    leftLabel: "Decontracte",
+    label: "Formalité",
+    leftLabel: "Décontracté",
     rightLabel: "Formel",
-    description: "Le niveau de formalite dans vos communications",
+    description: "Le niveau de formalité dans vos communications",
   },
   {
     key: "tone_playful" as const,
     label: "Ton",
-    leftLabel: "Serieux",
+    leftLabel: "Sérieux",
     rightLabel: "Joueur",
     description: "L'aspect ludique de votre communication",
   },
@@ -100,8 +100,8 @@ export function StepBrandVoice({
       <CardHeader>
         <CardTitle className="text-2xl">Ton & Personnalite</CardTitle>
         <CardDescription>
-          Definissez la voix de votre marque. L&apos;IA utilisera ces parametres
-          pour generer du contenu qui vous ressemble.
+          Définissez la voix de votre marque. L&apos;IA utilisera ces paramètres
+          pour générer du contenu qui vous ressemble.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -139,7 +139,7 @@ export function StepBrandVoice({
 
           {/* Words to avoid */}
           <div className="space-y-3">
-            <Label>Mots a eviter</Label>
+            <Label>Mots à éviter</Label>
             <p className="text-xs text-muted-foreground">
               Mots ou expressions que l&apos;IA ne doit jamais utiliser
             </p>
@@ -181,9 +181,9 @@ export function StepBrandVoice({
 
           {/* Words to prefer */}
           <div className="space-y-3">
-            <Label>Mots a privilegier</Label>
+            <Label>Mots à privilégier</Label>
             <p className="text-xs text-muted-foreground">
-              Termes ou expressions propres a votre marque
+              Termes ou expressions propres à votre marque
             </p>
             <div className="flex gap-2">
               <Input
@@ -223,16 +223,16 @@ export function StepBrandVoice({
 
           {/* Custom instructions */}
           <div className="space-y-2">
-            <Label htmlFor="custom_instructions">Instructions personnalisees (optionnel)</Label>
+            <Label htmlFor="custom_instructions">Instructions personnalisées (optionnel)</Label>
             <Textarea
               id="custom_instructions"
-              placeholder="Ex: Toujours tutoyer le lecteur, utiliser des references a la cuisine francaise..."
+              placeholder="Ex: Toujours tutoyer le lecteur, utiliser des références à la cuisine française..."
               value={data.custom_instructions}
               onChange={(e) => updateData({ custom_instructions: e.target.value })}
               rows={3}
             />
             <p className="text-xs text-muted-foreground">
-              Ajoutez des consignes specifiques pour l&apos;IA.
+              Ajoutez des consignes spécifiques pour l&apos;IA.
             </p>
           </div>
 

@@ -105,7 +105,7 @@ export const RealtimeMetrics: React.FC<RealtimeMetricsProps> = ({
                 : "down",
         },
         {
-          label: "Posts publies",
+          label: "Posts publiés",
           value: metrics.total_posts_published,
           icon: BarChart3,
           color: "from-purple-500 to-violet-500",

@@ -115,7 +115,7 @@ export default function CreatePage() {
   // Visual mode: save draft (placeholder)
   const handleSaveDraft = useCallback(() => {
     // TODO: integrate with content draft API
-    alert("Brouillon sauvegarde !");
+    alert("Brouillon sauvegardé !");
     visualHook.reset();
   }, [visualHook.reset]);
 
@@ -146,9 +146,9 @@ export default function CreatePage() {
     return (
       <div className="max-w-md mx-auto py-20 text-center space-y-4">
         <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto" />
-        <h2 className="text-xl font-bold text-foreground">Aucune marque configuree</h2>
+        <h2 className="text-xl font-bold text-foreground">Aucune marque configurée</h2>
         <p className="text-sm text-muted-foreground">
-          Creez un workspace et une marque pour commencer a publier.
+          Créez un espace et une marque pour commencer à publier.
         </p>
       </div>
     );
@@ -173,12 +173,12 @@ export default function CreatePage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <Sparkles className="w-6 h-6 text-primary" />
-              Creer une publication
+              Créer une publication
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               {mode === "visual"
-                ? "Depose une photo, choisis ton style, publie"
-                : "Depose une photo, l'IA fait le reste"}
+                ? "Déposez une photo, choisissez le style, publiez"
+                : "Déposez une photo, l'IA fait le reste"}
             </p>
           </div>
 
@@ -205,7 +205,7 @@ export default function CreatePage() {
                 }`}
               >
                 <MessageSquare className="w-4 h-4" />
-                Chat
+                Discussion
               </button>
             </div>
 
@@ -215,7 +215,7 @@ export default function CreatePage() {
                 onClick={() => setShowMobilePreview(!showMobilePreview)}
                 className="lg:hidden px-3 py-1.5 rounded-lg bg-secondary text-sm font-medium text-foreground"
               >
-                {showMobilePreview ? "Chat" : "Preview"}
+                {showMobilePreview ? "Discussion" : "Aperçu"}
               </button>
             )}
           </div>
@@ -430,12 +430,12 @@ export default function CreatePage() {
                 disabled={chatHook.isLoading}
                 placeholder={
                   chatHook.step === "upload"
-                    ? "Depose une photo ou decris ce que tu veux publier..."
+                    ? "Déposez une photo ou décrivez ce que vous voulez publier..."
                     : chatHook.step === "enriching"
-                    ? "Ajoute un prix, une promo, des horaires..."
+                    ? "Ajoutez un prix, une promo, des horaires..."
                     : chatHook.step === "preview"
-                    ? "Dis-moi ce que tu veux modifier..."
-                    : "Ecris un message..."
+                    ? "Que voulez-vous modifier ?"
+                    : "Écrivez un message..."
                 }
               />
             </motion.div>

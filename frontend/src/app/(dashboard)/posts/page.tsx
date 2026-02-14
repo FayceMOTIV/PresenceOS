@@ -16,37 +16,18 @@ import { PostsTable } from "./components/posts-table";
 import { PostsFilters } from "./components/posts-filters";
 import { PostPreviewDialog } from "./components/post-preview-dialog";
 import { PostsMobileList } from "./components/posts-mobile-card";
+import { SkeletonPost } from '@/components/loading/skeleton-post';
 
 type ViewMode = "list" | "grid";
 type StatusTab = "all" | PostStatus;
 
 const statusTabs: { id: StatusTab; label: string }[] = [
   { id: "all", label: "Tous" },
-  { id: "scheduled", label: "Planifies" },
-  { id: "queued", label: "En file" },
-  { id: "published", label: "Publies" },
-  { id: "failed", label: "Echecs" },
+  { id: "scheduled", label: "Programmés" },
+  { id: "queued", label: "En cours" },
+  { id: "published", label: "Publiés" },
+  { id: "failed", label: "Échoués" },
 ];
-
-function PostsPageSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-72" />
-        </div>
-        <Skeleton className="h-10 w-32" />
-      </div>
-      <Skeleton className="h-10 w-full max-w-md" />
-      <div className="space-y-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export default function PostsPage() {
   const router = useRouter();
@@ -165,8 +146,8 @@ export default function PostsPage() {
       });
 
       toast({
-        title: "Succes",
-        description: "Post duplique avec succes",
+        title: "Post dupliqué !",
+        description: "Le post a été dupliqué avec succès",
       });
       fetchPosts();
     } catch (error) {
@@ -186,8 +167,8 @@ export default function PostsPage() {
 
       await postsApi.cancel(post.id);
       toast({
-        title: "Succes",
-        description: "Post supprime",
+        title: "Post supprimé",
+        description: "Le post a été supprimé",
       });
     } catch (error) {
       console.error("Failed to delete post:", error);
@@ -215,8 +196,8 @@ export default function PostsPage() {
       });
 
       toast({
-        title: "Succes",
-        description: "Publication lancee",
+        title: "Publication lancée !",
+        description: "Votre post va être publié dans quelques instants",
       });
     } catch (error) {
       console.error("Failed to publish post:", error);
@@ -238,8 +219,8 @@ export default function PostsPage() {
 
       await Promise.all(ids.map((id) => postsApi.cancel(id)));
       toast({
-        title: "Succes",
-        description: `${ids.length} post${ids.length > 1 ? "s" : ""} supprime${ids.length > 1 ? "s" : ""}`,
+        title: "Posts supprimés",
+        description: `${ids.length} post${ids.length > 1 ? "s" : ""} supprimé${ids.length > 1 ? "s" : ""}`,
       });
     } catch (error) {
       console.error("Failed to bulk delete posts:", error);
@@ -272,8 +253,8 @@ export default function PostsPage() {
         )
       );
       toast({
-        title: "Succes",
-        description: `${ids.length} post${ids.length > 1 ? "s" : ""} lance${ids.length > 1 ? "s" : ""}`,
+        title: "Publications lancées !",
+        description: `${ids.length} post${ids.length > 1 ? "s" : ""} en cours de publication`,
       });
     } catch (error) {
       console.error("Failed to bulk publish posts:", error);
@@ -293,7 +274,19 @@ export default function PostsPage() {
   if (loading) {
     return (
       <div className="container mx-auto py-8 px-4">
-        <PostsPageSkeleton />
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-72" />
+            </div>
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <Skeleton className="h-10 w-full max-w-md" />
+          <div className="grid gap-6">
+            {Array(6).fill(0).map((_, i) => <SkeletonPost key={i} />)}
+          </div>
+        </div>
       </div>
     );
   }
@@ -308,9 +301,9 @@ export default function PostsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Posts</h1>
+            <h1 className="text-3xl font-bold">Mes posts</h1>
             <p className="text-muted-foreground mt-1">
-              Gerez vos publications programmees et publiees
+              Retrouvez tous vos posts : programmés, en cours et publiés
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -378,24 +371,23 @@ export default function PostsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="text-center py-12"
+              className="text-center py-20"
             >
-              <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
-                <Calendar className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-medium">Aucun post</h3>
-              <p className="text-muted-foreground mt-1">
+              <div className="text-8xl mb-6">📝</div>
+              <h3 className="text-2xl font-bold mb-3">Aucun post encore</h3>
+              <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
                 {activeTab === "all"
-                  ? "Commencez par creer votre premier post"
-                  : `Aucun post avec le statut "${statusTabs.find((t) => t.id === activeTab)?.label}"`}
+                  ? "Vous n&apos;avez pas encore créé de posts. Commencez par prendre une photo de votre meilleur plat !"
+                  : `Aucun post avec le statut « ${statusTabs.find((t) => t.id === activeTab)?.label} ».`}
               </p>
-              <Button
-                onClick={() => router.push("/studio")}
-                className="mt-4 gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Creer un post
-              </Button>
+              {activeTab === "all" && (
+                <button
+                  onClick={() => router.push("/studio")}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity"
+                >
+                  ✨ Créer mon premier post
+                </button>
+              )}
             </motion.div>
           ) : (
             <motion.div

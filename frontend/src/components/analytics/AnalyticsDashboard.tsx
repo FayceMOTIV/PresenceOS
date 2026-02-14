@@ -90,8 +90,8 @@ const INSIGHT_ICONS: Record<string, typeof TrendingUp> = {
 
 const INSIGHT_COLORS: Record<string, string> = {
   high: "border-amber-500/40 bg-amber-500/5",
-  medium: "border-zinc-700 bg-zinc-800/30",
-  low: "border-zinc-800 bg-zinc-900/30",
+  medium: "border-gray-200 bg-gray-50/30",
+  low: "border-gray-200/60 bg-white/30",
 };
 
 function KPICard({
@@ -112,13 +112,13 @@ function KPICard({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-2"
+      className="bg-white border border-gray-200/60 rounded-xl p-4 space-y-2 shadow-sm"
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs text-zinc-500 uppercase tracking-wider">{label}</span>
-        <Icon className="w-4 h-4 text-zinc-600" />
+        <span className="text-xs text-gray-500 uppercase tracking-wider">{label}</span>
+        <Icon className="w-4 h-4 text-gray-400" />
       </div>
-      <div className="text-2xl font-bold text-zinc-100">{fmt(metric.current)}</div>
+      <div className="text-2xl font-bold text-gray-900">{fmt(metric.current)}</div>
       <div className="flex items-center gap-1">
         {isPositive ? (
           <TrendingUp className="w-3 h-3 text-emerald-400" />
@@ -131,7 +131,7 @@ function KPICard({
           {isPositive ? "+" : ""}
           {metric.change_pct}%
         </span>
-        <span className="text-xs text-zinc-600">vs periode precedente</span>
+        <span className="text-xs text-gray-400">vs periode precedente</span>
       </div>
     </motion.div>
   );
@@ -139,20 +139,20 @@ function KPICard({
 
 function PlatformCard({ data }: { data: PlatformData }) {
   const Icon = PLATFORM_ICONS[data.platform] || BarChart3;
-  const color = PLATFORM_COLORS[data.platform] || "text-zinc-400 bg-zinc-800/50 border-zinc-700";
+  const color = PLATFORM_COLORS[data.platform] || "text-gray-500 bg-gray-100/60 border-gray-200";
 
   return (
-    <div className={`border rounded-xl p-4 space-y-3 ${color.split(" ").slice(1).join(" ")}`}>
+    <div className={`border rounded-xl p-4 space-y-3 shadow-sm ${color.split(" ").slice(1).join(" ")}`}>
       <div className="flex items-center gap-2">
         <Icon className={`w-4 h-4 ${color.split(" ")[0]}`} />
-        <span className="text-sm font-semibold text-zinc-100 capitalize">{data.platform.replace("_", " ")}</span>
+        <span className="text-sm font-semibold text-gray-900 capitalize">{data.platform.replace("_", " ")}</span>
         <span
           className={`ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full ${
             data.growth_trend === "up"
               ? "bg-emerald-500/20 text-emerald-400"
               : data.growth_trend === "down"
                 ? "bg-red-500/20 text-red-400"
-                : "bg-zinc-700/50 text-zinc-400"
+                : "bg-gray-100/80 text-gray-500"
           }`}
         >
           {data.growth_trend === "up" ? "En hausse" : data.growth_trend === "down" ? "En baisse" : "Stable"}
@@ -160,23 +160,23 @@ function PlatformCard({ data }: { data: PlatformData }) {
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
         <div>
-          <div className="text-sm font-bold text-zinc-100">
+          <div className="text-sm font-bold text-gray-900">
             {data.followers !== null ? data.followers.toLocaleString("fr-FR") : "—"}
           </div>
-          <div className="text-[10px] text-zinc-500">Abonnes</div>
+          <div className="text-[10px] text-gray-500">Abonnes</div>
         </div>
         <div>
-          <div className="text-sm font-bold text-zinc-100">
+          <div className="text-sm font-bold text-gray-900">
             {data.engagement_rate !== null ? `${data.engagement_rate}%` : "—"}
           </div>
-          <div className="text-[10px] text-zinc-500">Engagement</div>
+          <div className="text-[10px] text-gray-500">Engagement</div>
         </div>
         <div>
-          <div className="text-sm font-bold text-zinc-100">{data.posts_count}</div>
-          <div className="text-[10px] text-zinc-500">Posts</div>
+          <div className="text-sm font-bold text-gray-900">{data.posts_count}</div>
+          <div className="text-[10px] text-gray-500">Posts</div>
         </div>
       </div>
-      <div className="flex items-center justify-between text-[10px] text-zinc-600">
+      <div className="flex items-center justify-between text-[10px] text-gray-400">
         <span>Top : {data.top_content_type}</span>
         <span>Meilleure heure : {data.best_time}</span>
       </div>
@@ -189,12 +189,12 @@ function InsightCard({ insight }: { insight: Insight }) {
   const borderColor = INSIGHT_COLORS[insight.priority] || INSIGHT_COLORS.medium;
 
   return (
-    <div className={`border rounded-xl p-4 space-y-2 ${borderColor}`}>
+    <div className={`border rounded-xl p-4 space-y-2 shadow-sm ${borderColor}`}>
       <div className="flex items-center gap-2">
         <Icon className="w-4 h-4 text-amber-400" />
-        <span className="text-sm font-semibold text-zinc-100">{insight.title}</span>
+        <span className="text-sm font-semibold text-gray-900">{insight.title}</span>
       </div>
-      <p className="text-xs text-zinc-400 leading-relaxed">{insight.message}</p>
+      <p className="text-xs text-gray-600 leading-relaxed">{insight.message}</p>
     </div>
   );
 }
@@ -217,7 +217,7 @@ export function AnalyticsDashboard({ brandId }: AnalyticsDashboardProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
       </div>
     );
   }
@@ -239,7 +239,7 @@ export function AnalyticsDashboard({ brandId }: AnalyticsDashboardProps) {
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               period === d
                 ? "bg-amber-500/15 text-amber-400 border border-amber-500/40"
-                : "bg-zinc-800/50 text-zinc-400 border border-zinc-800 hover:border-zinc-700"
+                : "bg-gray-100/60 text-gray-600 border border-gray-200/60 hover:bg-gray-100"
             }`}
           >
             {d}j
@@ -262,7 +262,7 @@ export function AnalyticsDashboard({ brandId }: AnalyticsDashboardProps) {
 
       {/* Platform Breakdown */}
       <div>
-        <h3 className="text-sm font-semibold text-zinc-300 mb-3">Par plateforme</h3>
+        <h3 className="text-sm font-semibold text-gray-800 mb-3">Par plateforme</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           {data.platforms.map((p) => (
             <PlatformCard key={p.platform} data={p} />
@@ -274,7 +274,7 @@ export function AnalyticsDashboard({ brandId }: AnalyticsDashboardProps) {
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Lightbulb className="w-4 h-4 text-amber-400" />
-          <h3 className="text-sm font-semibold text-zinc-300">Insights hebdomadaires IA</h3>
+          <h3 className="text-sm font-semibold text-gray-800">Insights hebdomadaires IA</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {data.weekly_insights.map((insight, i) => (
@@ -286,21 +286,21 @@ export function AnalyticsDashboard({ brandId }: AnalyticsDashboardProps) {
       {/* Top Content */}
       {data.top_content.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-zinc-300 mb-3">Top contenu</h3>
+          <h3 className="text-sm font-semibold text-gray-800 mb-3">Top contenu</h3>
           <div className="space-y-2">
             {data.top_content.map((content, i) => {
               const Icon = PLATFORM_ICONS[content.platform] || BarChart3;
               return (
                 <div
                   key={content.id}
-                  className="flex items-center gap-3 bg-zinc-900/40 border border-zinc-800 rounded-xl p-3"
+                  className="flex items-center gap-3 bg-white border border-gray-200/60 rounded-xl p-3 shadow-sm"
                 >
-                  <span className="text-xs font-bold text-zinc-500 w-5">#{i + 1}</span>
-                  <Icon className="w-4 h-4 text-zinc-500 flex-shrink-0" />
-                  <span className="text-sm text-zinc-200 flex-1 truncate">
+                  <span className="text-xs font-bold text-gray-400 w-5">#{i + 1}</span>
+                  <Icon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <span className="text-sm text-gray-800 flex-1 truncate">
                     {content.caption}
                   </span>
-                  <div className="flex items-center gap-3 text-xs text-zinc-500">
+                  <div className="flex items-center gap-3 text-xs text-gray-500">
                     <span>{content.likes} likes</span>
                     <span>{content.comments} comm.</span>
                     <span className="font-bold text-amber-400">

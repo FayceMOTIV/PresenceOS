@@ -34,6 +34,7 @@ import {
   Settings2,
   Eye,
 } from "lucide-react";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 import { autopilotApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import type { AutopilotConfig, PendingPost as PendingPostType } from "@/types";
@@ -48,7 +49,7 @@ const PLATFORM_OPTIONS = [
 
 const FREQUENCY_OPTIONS = [
   { value: "daily", label: "Tous les jours" },
-  { value: "weekdays", label: "Jours ouvres (Lun-Ven)" },
+  { value: "weekdays", label: "Jours de semaine (lun-ven)" },
   { value: "3_per_week", label: "3x par semaine" },
   { value: "weekly", label: "1x par semaine" },
 ];
@@ -140,7 +141,7 @@ export default function AutopilotPage() {
         setConfig(res.data);
       }
 
-      toast({ title: "Configuration sauvegardee !" });
+      toast({ title: "Configuration sauvegardée !" });
       setShowSettings(false);
     } catch (error: any) {
       toast({
@@ -161,7 +162,7 @@ export default function AutopilotPage() {
       const res = await autopilotApi.toggle(brandId);
       setConfig(res.data);
       toast({
-        title: res.data.is_enabled ? "Autopilote active !" : "Autopilote desactive",
+        title: res.data.is_enabled ? "Pilote automatique activé !" : "Pilote automatique désactivé",
       });
     } catch (error: any) {
       toast({
@@ -182,13 +183,13 @@ export default function AutopilotPage() {
       const newPosts = res.data;
       setPendingPosts((prev) => [...newPosts, ...prev]);
       toast({
-        title: "Contenu genere !",
+        title: "Contenu généré !",
         description: `${newPosts.length} post(s) en attente d'approbation.`,
       });
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: error.response?.data?.detail || "Generation echouee",
+        description: error.response?.data?.detail || "Génération échouée",
         variant: "destructive",
       });
     } finally {
@@ -203,12 +204,12 @@ export default function AutopilotPage() {
         prev.map((p) => (p.id === postId ? res.data : p))
       );
       toast({
-        title: action === "approve" ? "Post approuve !" : "Post rejete",
+        title: action === "approve" ? "Post approuvé !" : "Post rejeté",
       });
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: error.response?.data?.detail || "Action echouee",
+        description: error.response?.data?.detail || "Action échouée",
         variant: "destructive",
       });
     }
@@ -234,10 +235,10 @@ export default function AutopilotPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
             <Zap className="w-8 h-8 text-green-500" />
-            Mode Autopilote
+            Pilote automatique <HelpTooltip content="Activez pour que l'app crée et publie vos posts toute seule, sans que vous fassiez rien" />
           </h1>
           <p className="text-muted-foreground mt-1">
-            Generation automatique de contenu avec approbation WhatsApp
+            Création automatique de contenu avec approbation WhatsApp
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -249,7 +250,7 @@ export default function AutopilotPage() {
                 onClick={() => setShowSettings(!showSettings)}
               >
                 <Settings2 className="w-4 h-4 mr-2" />
-                Parametres
+                Paramètres
               </Button>
               <Button
                 variant="outline"
@@ -262,7 +263,7 @@ export default function AutopilotPage() {
                 ) : (
                   <Sparkles className="w-4 h-4 mr-2" />
                 )}
-                Generer maintenant
+                Générer maintenant
               </Button>
               <div className="flex items-center gap-2 pl-3 border-l">
                 <Switch
@@ -295,13 +296,13 @@ export default function AutopilotPage() {
               icon: Clock,
             },
             {
-              label: "Generes",
+              label: "Générés",
               value: config.total_generated,
               color: "text-primary",
               icon: Sparkles,
             },
             {
-              label: "Publies",
+              label: "Publiés",
               value: config.total_published,
               color: "text-green-500",
               icon: Check,
@@ -344,9 +345,9 @@ export default function AutopilotPage() {
           >
             <Card>
               <CardHeader>
-                <CardTitle>Configuration Autopilote</CardTitle>
+                <CardTitle>Paramètres de publication automatique</CardTitle>
                 <CardDescription>
-                  Definissez comment l&apos;IA genere et publie votre contenu
+                  Définissez comment l&apos;IA génère et publie votre contenu
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -376,7 +377,7 @@ export default function AutopilotPage() {
                 {/* Frequency */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Frequence de generation</Label>
+                    <Label>Fréquence de génération</Label>
                     <Select value={frequency} onValueChange={setFrequency}>
                       <SelectTrigger>
                         <SelectValue />
@@ -392,7 +393,7 @@ export default function AutopilotPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Heure de publication preferee</Label>
+                    <Label>Heure de publication préférée</Label>
                     <Input
                       type="time"
                       value={preferredTime}
@@ -406,7 +407,7 @@ export default function AutopilotPage() {
                   <div>
                     <Label>Auto-publication</Label>
                     <p className="text-sm text-muted-foreground">
-                      Publier automatiquement si pas de reponse dans le delai
+                      Publier automatiquement si pas de réponse dans le délai
                     </p>
                   </div>
                   <Switch checked={autoPublish} onCheckedChange={setAutoPublish} />
@@ -414,7 +415,7 @@ export default function AutopilotPage() {
 
                 {autoPublish && (
                   <div className="space-y-2">
-                    <Label>Delai avant auto-publication (heures)</Label>
+                    <Label>Délai avant auto-publication (heures)</Label>
                     <Select
                       value={approvalWindow.toString()}
                       onValueChange={(v) => setApprovalWindow(parseInt(v))}
@@ -452,7 +453,7 @@ export default function AutopilotPage() {
 
                 {whatsappEnabled && (
                   <div className="space-y-2">
-                    <Label>Numero WhatsApp (format international)</Label>
+                    <Label>Numéro WhatsApp (format international)</Label>
                     <Input
                       placeholder="+33612345678"
                       value={whatsappPhone}
@@ -463,7 +464,7 @@ export default function AutopilotPage() {
 
                 {/* Topics */}
                 <div className="space-y-2">
-                  <Label>Themes/sujets (optionnel, separes par virgule)</Label>
+                  <Label>Thèmes/sujets (optionnel, séparés par virgule)</Label>
                   <Input
                     placeholder="marketing digital, growth hacking, IA"
                     value={topics}
@@ -482,7 +483,7 @@ export default function AutopilotPage() {
                   ) : (
                     <Check className="w-4 h-4 mr-2" />
                   )}
-                  {config ? "Mettre a jour" : "Activer l'autopilote"}
+                  {config ? "Mettre à jour" : "Activer le pilote automatique"}
                 </Button>
               </CardContent>
             </Card>
@@ -532,10 +533,10 @@ export default function AutopilotPage() {
                           }
                         >
                           {post.status === "pending" && "En attente"}
-                          {post.status === "approved" && "Approuve"}
-                          {post.status === "rejected" && "Rejete"}
-                          {post.status === "auto_published" && "Auto-publie"}
-                          {post.status === "expired" && "Expire"}
+                          {post.status === "approved" && "Approuvé"}
+                          {post.status === "rejected" && "Rejeté"}
+                          {post.status === "auto_published" && "Publié automatiquement"}
+                          {post.status === "expired" && "Délai dépassé"}
                         </Badge>
                         <Badge variant="secondary">{post.platform}</Badge>
                       </div>
@@ -620,8 +621,8 @@ export default function AutopilotPage() {
             </h3>
             <p className="text-muted-foreground mb-4">
               {config.is_enabled
-                ? "Les posts seront generes automatiquement selon votre planning."
-                : "Activez l'autopilote pour commencer la generation automatique."}
+                ? "Les posts seront générés automatiquement selon votre planning."
+                : "Activez le pilote automatique pour commencer la génération automatique."}
             </p>
             {config.is_enabled && (
               <Button
@@ -634,7 +635,7 @@ export default function AutopilotPage() {
                 ) : (
                   <Play className="w-4 h-4 mr-2" />
                 )}
-                Generer un post maintenant
+                Générer un post maintenant
               </Button>
             )}
           </CardContent>

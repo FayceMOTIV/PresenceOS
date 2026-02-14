@@ -72,11 +72,11 @@ function Toggle({
       onClick={onToggle}
       className="flex items-center justify-between w-full py-2"
     >
-      <span className="text-sm text-zinc-300">{label}</span>
+      <span className="text-sm text-gray-800">{label}</span>
       {enabled ? (
         <ToggleRight className="w-6 h-6 text-amber-400" />
       ) : (
-        <ToggleLeft className="w-6 h-6 text-zinc-600" />
+        <ToggleLeft className="w-6 h-6 text-gray-400" />
       )}
     </button>
   );
@@ -137,8 +137,8 @@ export function GBPSettings({ brandId }: GBPSettingsProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-6 flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+      <div className="bg-white border border-gray-200/60 rounded-2xl p-6 flex items-center justify-center py-12 shadow-sm">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
       </div>
     );
   }
@@ -149,35 +149,35 @@ export function GBPSettings({ brandId }: GBPSettingsProps) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-zinc-900/80 border border-zinc-800 rounded-2xl overflow-hidden"
+      className="bg-white border border-gray-200/60 rounded-2xl overflow-hidden shadow-sm"
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-5 border-b border-zinc-800">
+      <div className="flex items-center justify-between p-5 border-b border-gray-200">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
             <MapPin className="w-5 h-5 text-emerald-400" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-zinc-100">
+            <h3 className="text-sm font-semibold text-gray-900">
               Google Business Profile
             </h3>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-gray-500">
               Publication automatique sur votre fiche Google
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {isSaving && <Loader2 className="w-3 h-3 animate-spin text-zinc-500" />}
+          {isSaving && <Loader2 className="w-3 h-3 animate-spin text-gray-400" />}
           {saved && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
         </div>
       </div>
 
       <div className="p-5 space-y-5">
         {/* Main toggle */}
-        <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-800/50 border border-zinc-800">
+        <div className="flex items-center justify-between p-3 rounded-xl bg-gray-100/60 border border-gray-200/60">
           <div className="flex items-center gap-2">
-            <Settings className="w-4 h-4 text-zinc-400" />
-            <span className="text-sm font-medium text-zinc-200">
+            <Settings className="w-4 h-4 text-gray-600" />
+            <span className="text-sm font-medium text-gray-800">
               Autopublish active
             </span>
           </div>
@@ -185,7 +185,7 @@ export function GBPSettings({ brandId }: GBPSettingsProps) {
             {config.enabled ? (
               <ToggleRight className="w-7 h-7 text-emerald-400" />
             ) : (
-              <ToggleLeft className="w-7 h-7 text-zinc-600" />
+              <ToggleLeft className="w-7 h-7 text-gray-400" />
             )}
           </button>
         </div>
@@ -194,7 +194,7 @@ export function GBPSettings({ brandId }: GBPSettingsProps) {
         <div className="space-y-3">
           {/* Location ID */}
           <div>
-            <label className="text-xs text-zinc-500 uppercase tracking-wider mb-1 block">
+            <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">
               Location ID (Google)
             </label>
             <input
@@ -202,13 +202,13 @@ export function GBPSettings({ brandId }: GBPSettingsProps) {
               value={config.location_id || ""}
               onChange={(e) => handleUpdate("location_id", e.target.value || null)}
               placeholder="accounts/xxx/locations/yyy"
-              className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-amber-500/50 focus:outline-none"
             />
           </div>
 
           {/* Default post type */}
           <div>
-            <label className="text-xs text-zinc-500 uppercase tracking-wider mb-1 block">
+            <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">
               Type de post par defaut
             </label>
             <div className="flex gap-2">
@@ -219,7 +219,7 @@ export function GBPSettings({ brandId }: GBPSettingsProps) {
                   className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                     config.default_post_type === pt.value
                       ? "bg-amber-500/15 text-amber-400 border border-amber-500/40"
-                      : "bg-zinc-800/50 text-zinc-400 border border-zinc-800 hover:border-zinc-700"
+                      : "bg-gray-100/60 text-gray-600 border border-gray-200/60 hover:bg-gray-100"
                   }`}
                 >
                   {pt.label}
@@ -230,7 +230,7 @@ export function GBPSettings({ brandId }: GBPSettingsProps) {
 
           {/* Default CTA */}
           <div>
-            <label className="text-xs text-zinc-500 uppercase tracking-wider mb-1 block">
+            <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">
               Bouton d&apos;action
             </label>
             <div className="flex flex-wrap gap-2">
@@ -241,7 +241,7 @@ export function GBPSettings({ brandId }: GBPSettingsProps) {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     config.default_cta === cta.value
                       ? "bg-amber-500/15 text-amber-400 border border-amber-500/40"
-                      : "bg-zinc-800/50 text-zinc-400 border border-zinc-800 hover:border-zinc-700"
+                      : "bg-gray-100/60 text-gray-600 border border-gray-200/60 hover:bg-gray-100"
                   }`}
                 >
                   {cta.label}
@@ -252,7 +252,7 @@ export function GBPSettings({ brandId }: GBPSettingsProps) {
 
           {/* Frequency */}
           <div>
-            <label className="text-xs text-zinc-500 uppercase tracking-wider mb-1 block">
+            <label className="text-xs text-gray-500 uppercase tracking-wider mb-1 block">
               Frequence de publication
             </label>
             <div className="flex gap-2">
@@ -263,7 +263,7 @@ export function GBPSettings({ brandId }: GBPSettingsProps) {
                   className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                     config.publish_frequency === f.value
                       ? "bg-amber-500/15 text-amber-400 border border-amber-500/40"
-                      : "bg-zinc-800/50 text-zinc-400 border border-zinc-800 hover:border-zinc-700"
+                      : "bg-gray-100/60 text-gray-600 border border-gray-200/60 hover:bg-gray-100"
                   }`}
                 >
                   {f.label}
@@ -273,7 +273,7 @@ export function GBPSettings({ brandId }: GBPSettingsProps) {
           </div>
 
           {/* Toggles */}
-          <div className="border-t border-zinc-800 pt-3 space-y-1">
+          <div className="border-t border-gray-200 pt-3 space-y-1">
             <Toggle
               enabled={config.auto_sync}
               onToggle={() => handleUpdate("auto_sync", !config.auto_sync)}
@@ -294,29 +294,29 @@ export function GBPSettings({ brandId }: GBPSettingsProps) {
 
         {/* Stats */}
         {stats && (
-          <div className="border-t border-zinc-800 pt-4">
+          <div className="border-t border-gray-200 pt-4">
             <div className="flex items-center gap-2 mb-3">
-              <BarChart3 className="w-4 h-4 text-zinc-500" />
-              <span className="text-xs text-zinc-500 uppercase tracking-wider">
+              <BarChart3 className="w-4 h-4 text-gray-500" />
+              <span className="text-xs text-gray-500 uppercase tracking-wider">
                 Statistiques GBP
               </span>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
-                <div className="text-lg font-bold text-zinc-100">{stats.total_published}</div>
-                <div className="text-[10px] text-zinc-500 uppercase">Total</div>
+              <div className="bg-gray-100/60 rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-gray-900">{stats.total_published}</div>
+                <div className="text-[10px] text-gray-500 uppercase">Total</div>
               </div>
-              <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
-                <div className="text-lg font-bold text-zinc-100">{stats.this_month}</div>
-                <div className="text-[10px] text-zinc-500 uppercase">Ce mois</div>
+              <div className="bg-gray-100/60 rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-gray-900">{stats.this_month}</div>
+                <div className="text-[10px] text-gray-500 uppercase">Ce mois</div>
               </div>
-              <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
-                <div className="text-lg font-bold text-zinc-100">
+              <div className="bg-gray-100/60 rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-gray-900">
                   {stats.last_published
                     ? new Date(stats.last_published).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
                     : "—"}
                 </div>
-                <div className="text-[10px] text-zinc-500 uppercase">Dernier</div>
+                <div className="text-[10px] text-gray-500 uppercase">Dernier</div>
               </div>
             </div>
           </div>

@@ -89,7 +89,7 @@ export function CaptionSuggestions({
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isAnalyzing ? "animate-spin" : ""}`} />
-            Regenerer
+            Régénérer
           </button>
         </div>
 

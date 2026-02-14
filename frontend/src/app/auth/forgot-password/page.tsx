@@ -41,16 +41,16 @@ export default function ForgotPasswordPage() {
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-        <Card className="w-full max-w-md glass-card">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-4">
+        <Card className="w-full max-w-md shadow-xl shadow-purple-500/5 border-gray-200/80">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
               <CheckCircle className="w-8 h-8 text-green-500" />
             </div>
-            <CardTitle className="text-2xl">Email envoye!</CardTitle>
+            <CardTitle className="text-2xl">Email envoyé!</CardTitle>
             <CardDescription className="text-base">
               Si un compte existe avec l&apos;adresse <strong>{email}</strong>,
-              vous recevrez un lien pour reinitialiser votre mot de passe.
+              vous recevrez un lien pour réinitialiser votre mot de passe.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -59,11 +59,11 @@ export default function ForgotPasswordPage() {
                 <Mail className="w-5 h-5 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="font-medium text-foreground mb-1">
-                    Verifiez votre boite mail
+                    Vérifiez votre boîte mail
                   </p>
                   <p>
-                    Le lien de reinitialisation expire dans 1 heure.
-                    Pensez a verifier vos spams.
+                    Le lien de réinitialisation expire dans 1 heure.
+                    Pensez à vérifier vos courriers indésirables.
                   </p>
                 </div>
               </div>
@@ -82,7 +82,7 @@ export default function ForgotPasswordPage() {
               <Link href="/auth/login">
                 <Button variant="ghost" className="w-full">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Retour a la connexion
+                  Retour à la connexion
                 </Button>
               </Link>
             </div>
@@ -93,17 +93,19 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-      <Card className="w-full max-w-md glass-card">
+    <div className="min-h-screen flex items-center justify-center bg-mesh-gradient-strong p-4 relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-96 h-96 bg-violet-200/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+      <div className="absolute bottom-0 left-0 w-80 h-80 bg-fuchsia-200/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+      <Card className="w-full max-w-md shadow-2xl shadow-purple-500/[0.07] border-gray-200/60 backdrop-blur-sm relative z-10">
         <CardHeader className="text-center">
           <Link href="/" className="inline-flex items-center justify-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-white" />
+            <div className="w-14 h-14 rounded-2xl gradient-bg shadow-glow-md flex items-center justify-center">
+              <Sparkles className="w-7 h-7 text-white" />
             </div>
           </Link>
-          <CardTitle className="text-2xl">Mot de passe oublie?</CardTitle>
+          <CardTitle className="text-2xl">Mot de passe oublié?</CardTitle>
           <CardDescription>
-            Entrez votre email pour recevoir un lien de reinitialisation
+            Entrez votre email pour recevoir un lien de réinitialisation
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -144,7 +146,7 @@ export default function ForgotPasswordPage() {
               className="text-sm text-muted-foreground hover:text-primary inline-flex items-center gap-1"
             >
               <ArrowLeft className="w-4 h-4" />
-              Retour a la connexion
+              Retour à la connexion
             </Link>
           </div>
         </CardContent>

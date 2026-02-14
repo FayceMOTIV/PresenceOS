@@ -20,19 +20,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle auth errors — DISABLED FOR TESTING
-// api.interceptors.response.use(
-//   (response) => response,
-//   (error: AxiosError) => {
-//     if (error.response?.status === 401) {
-//       if (typeof window !== "undefined") {
-//         localStorage.removeItem("token");
-//         window.location.href = "/auth/login";
-//       }
-//     }
-//     return Promise.reject(error);
-//   }
-// );
+// Handle auth errors — redirect to login on 401
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (error.response?.status === 401) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("workspace_id");
+        localStorage.removeItem("brand_id");
+        window.location.href = "/auth/login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Auth
 export const authApi = {
@@ -56,16 +58,32 @@ export const authApi = {
   refresh: () => api.post("/auth/refresh"),
 };
 
+// Users
+export const usersApi = {
+  getMe: () => api.get("/users/me"),
+  updateMe: (data: { full_name?: string; avatar_url?: string }) =>
+    api.patch("/users/me", data),
+  changePassword: (data: { current_password: string; new_password: string }) =>
+    api.post("/users/me/change-password", data),
+  getMyWorkspaces: () => api.get("/users/me/workspaces"),
+};
+
 // Workspaces
 export const workspacesApi = {
   list: () => api.get("/users/me/workspaces"),
   get: (id: string) => api.get(`/workspaces/${id}`),
   create: (data: { name: string; slug: string; timezone?: string }) =>
     api.post("/workspaces", data),
-  update: (id: string, data: Partial<{ name: string; logo_url: string }>) =>
+  update: (id: string, data: Partial<{ name: string; logo_url: string; timezone: string }>) =>
     api.patch(`/workspaces/${id}`, data),
   getBrands: (id: string) => api.get(`/workspaces/${id}/brands`),
   getMembers: (id: string) => api.get(`/workspaces/${id}/members`),
+  inviteMember: (id: string, data: { email: string; role?: string }) =>
+    api.post(`/workspaces/${id}/members`, data),
+  removeMember: (id: string, userId: string) =>
+    api.delete(`/workspaces/${id}/members/${userId}`),
+  updateMemberRole: (id: string, userId: string, role: string) =>
+    api.patch(`/workspaces/${id}/members/${userId}`, { role }),
 };
 
 // Brands
@@ -545,6 +563,29 @@ export const competitorApi = {
 
   getBenchmark: (brandId: string) =>
     api.get(`/competitor/benchmark/${brandId}`),
+};
+
+// Brand Interview AI
+export const interviewApi = {
+  start: (brandId: string) =>
+    api.post(`/interview/brands/${brandId}/start`),
+
+  sendMessage: (brandId: string, message: string) =>
+    api.post(`/interview/brands/${brandId}/message`, { message }),
+
+  getStatus: (brandId: string) =>
+    api.get(`/interview/brands/${brandId}/status`),
+};
+
+// Content Analysis (Instagram tone extraction)
+export const contentAnalysisApi = {
+  analyze: (brandId: string, instagramUsername: string) =>
+    api.post(`/content-analysis/brands/${brandId}/analyze`, {
+      instagram_username: instagramUsername,
+    }),
+
+  getStatus: (brandId: string) =>
+    api.get(`/content-analysis/brands/${brandId}/status`),
 };
 
 // Hyperlocal Intelligence (Feature 10)

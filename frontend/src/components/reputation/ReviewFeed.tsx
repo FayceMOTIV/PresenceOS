@@ -62,7 +62,7 @@ function StarRating({ rating }: { rating: number }) {
       {[1, 2, 3, 4, 5].map((i) => (
         <Star
           key={i}
-          className={`w-3 h-3 ${i <= rating ? "text-amber-400 fill-amber-400" : "text-zinc-700"}`}
+          className={`w-3 h-3 ${i <= rating ? "text-amber-400 fill-amber-400" : "text-gray-200"}`}
         />
       ))}
     </div>
@@ -113,13 +113,13 @@ function ReviewCard({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3"
+      className="bg-white border border-gray-200/60 rounded-xl p-4 space-y-3 shadow-sm"
     >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <PlatformIcon className="w-4 h-4 text-zinc-500" />
-          <span className="text-sm font-semibold text-zinc-200">{review.author}</span>
+          <PlatformIcon className="w-4 h-4 text-gray-500" />
+          <span className="text-sm font-semibold text-gray-800">{review.author}</span>
           <StarRating rating={review.rating} />
         </div>
         <div className="flex items-center gap-2">
@@ -131,12 +131,12 @@ function ReviewCard({
       </div>
 
       {/* Review text */}
-      <p className="text-sm text-zinc-300 leading-relaxed">{review.text}</p>
+      <p className="text-sm text-gray-800 leading-relaxed">{review.text}</p>
 
       {/* Response */}
       {review.responded && review.response && (
-        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3">
-          <p className="text-xs text-zinc-400">
+        <div className="bg-gray-100/80 border border-gray-200 rounded-lg p-3">
+          <p className="text-xs text-gray-600">
             <span className="font-medium text-amber-400">Votre reponse :</span>{" "}
             {review.response}
           </p>
@@ -157,20 +157,20 @@ function ReviewCard({
               onChange={(e) => setResponseText(e.target.value)}
               placeholder="Votre reponse..."
               rows={3}
-              className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none resize-none"
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-amber-500/50 focus:outline-none resize-none"
             />
             <div className="flex gap-2">
               <button
                 onClick={handleSubmit}
                 disabled={!responseText.trim()}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-medium transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black text-xs font-medium transition-colors disabled:opacity-50"
               >
                 <Send className="w-3 h-3" />
                 Envoyer
               </button>
               <button
                 onClick={() => setShowInput(false)}
-                className="px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 text-xs hover:bg-zinc-800 transition-colors"
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs hover:bg-gray-100 transition-colors"
               >
                 Annuler
               </button>
@@ -196,7 +196,7 @@ function ReviewCard({
           </button>
           <button
             onClick={() => setShowInput(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 text-xs hover:bg-zinc-800 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs hover:bg-gray-100 transition-colors"
           >
             <MessageSquare className="w-3 h-3" />
             Repondre
@@ -205,7 +205,7 @@ function ReviewCard({
       )}
 
       {/* Date */}
-      <p className="text-[10px] text-zinc-600">
+      <p className="text-[10px] text-gray-400">
         {new Date(review.created_at).toLocaleDateString("fr-FR", {
           day: "numeric",
           month: "long",
@@ -258,7 +258,7 @@ export function ReviewFeed({ brandId }: ReviewFeedProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
       </div>
     );
   }
@@ -268,24 +268,24 @@ export function ReviewFeed({ brandId }: ReviewFeedProps) {
       {/* Stats bar */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 text-center">
+          <div className="bg-white border border-gray-200/60 rounded-xl p-3 text-center shadow-sm">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-              <span className="text-xl font-bold text-zinc-100">{stats.avg_rating}</span>
+              <span className="text-xl font-bold text-gray-900">{stats.avg_rating}</span>
             </div>
-            <div className="text-[10px] text-zinc-500 uppercase">Note moyenne</div>
+            <div className="text-[10px] text-gray-500 uppercase">Note moyenne</div>
           </div>
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 text-center">
-            <div className="text-xl font-bold text-zinc-100">{stats.total}</div>
-            <div className="text-[10px] text-zinc-500 uppercase">Total avis</div>
+          <div className="bg-white border border-gray-200/60 rounded-xl p-3 text-center shadow-sm">
+            <div className="text-xl font-bold text-gray-900">{stats.total}</div>
+            <div className="text-[10px] text-gray-500 uppercase">Total avis</div>
           </div>
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 text-center">
-            <div className="text-xl font-bold text-zinc-100">{stats.response_rate}%</div>
-            <div className="text-[10px] text-zinc-500 uppercase">Taux reponse</div>
+          <div className="bg-white border border-gray-200/60 rounded-xl p-3 text-center shadow-sm">
+            <div className="text-xl font-bold text-gray-900">{stats.response_rate}%</div>
+            <div className="text-[10px] text-gray-500 uppercase">Taux reponse</div>
           </div>
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 text-center">
+          <div className="bg-white border border-gray-200/60 rounded-xl p-3 text-center shadow-sm">
             <div className="text-xl font-bold text-amber-400">{stats.pending_responses}</div>
-            <div className="text-[10px] text-zinc-500 uppercase">En attente</div>
+            <div className="text-[10px] text-gray-500 uppercase">En attente</div>
           </div>
         </div>
       )}
@@ -304,7 +304,7 @@ export function ReviewFeed({ brandId }: ReviewFeedProps) {
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               filter === f.value
                 ? "bg-amber-500/15 text-amber-400 border border-amber-500/40"
-                : "bg-zinc-800/50 text-zinc-400 border border-zinc-800 hover:border-zinc-700"
+                : "bg-gray-100/60 text-gray-600 border border-gray-200/60 hover:bg-gray-100"
             }`}
           >
             {f.label}
@@ -326,8 +326,8 @@ export function ReviewFeed({ brandId }: ReviewFeedProps) {
 
       {filtered.length === 0 && (
         <div className="text-center py-8">
-          <MessageSquare className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-          <p className="text-sm text-zinc-500">Aucun avis avec ce filtre</p>
+          <MessageSquare className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+          <p className="text-sm text-gray-500">Aucun avis avec ce filtre</p>
         </div>
       )}
     </motion.div>

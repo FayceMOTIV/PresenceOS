@@ -10,6 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { ProgressIndicator } from "./components/progress-indicator";
 import { OnboardingChat } from "./components/onboarding-chat";
 import { StepPlatforms } from "./components/step-platforms";
+import { fireSuccessConfetti } from "@/lib/confetti";
 
 // Exported for backward compatibility with manual step components
 export interface OnboardingData {
@@ -44,7 +45,7 @@ export interface OnboardingData {
 
 const STEPS = [
   { id: 1, title: "Votre marque", description: "Interview IA" },
-  { id: 2, title: "Plateformes", description: "Connexion reseaux" },
+  { id: 2, title: "Plateformes", description: "Connexion réseaux" },
 ];
 
 export default function OnboardingPage() {
@@ -145,13 +146,13 @@ export default function OnboardingPage() {
       setCurrentStep(2);
 
       toast({
-        title: "Profil cree !",
-        description: "Votre profil de marque a ete cree avec succes.",
+        title: "Profil créé !",
+        description: "Votre profil de marque a été créé avec succès.",
       });
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: error.response?.data?.detail || "Impossible de creer la marque",
+        description: error.response?.data?.detail || "Impossible de créer la marque",
         variant: "destructive",
       });
     }
@@ -166,10 +167,11 @@ export default function OnboardingPage() {
     }
 
     toast({
-      title: "Configuration terminee !",
-      description: "Votre marque est prete. Bienvenue sur PresenceOS !",
+      title: "Configuration terminée !",
+      description: "Votre marque est prête. Bienvenue sur PresenceOS !",
     });
 
+    fireSuccessConfetti();
     router.push("/dashboard");
   };
 
@@ -213,7 +215,7 @@ export default function OnboardingPage() {
               ) : (
                 <span className="flex items-center gap-1">
                   <Plug2 className="w-4 h-4" />
-                  Connexion reseaux
+                  Connexion réseaux
                 </span>
               )}
             </div>
@@ -233,7 +235,7 @@ export default function OnboardingPage() {
               href="/onboarding/manual"
               className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
             >
-              Preferer remplir manuellement ?
+              Préférer remplir manuellement ?
             </Link>
           </div>
         )}

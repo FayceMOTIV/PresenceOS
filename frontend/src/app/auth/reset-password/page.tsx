@@ -26,7 +26,7 @@ function ResetPasswordForm() {
     if (!token) {
       toast({
         title: "Lien invalide",
-        description: "Le lien de reinitialisation est invalide ou a expire",
+        description: "Le lien de réinitialisation est invalide ou a expiré",
         variant: "destructive",
       });
     }
@@ -36,7 +36,7 @@ function ResetPasswordForm() {
     const newErrors: Record<string, string> = {};
 
     if (password.length < 8) {
-      newErrors.password = "Le mot de passe doit contenir au moins 8 caracteres";
+      newErrors.password = "Le mot de passe doit contenir au moins 8 caractères";
     }
 
     if (password !== confirmPassword) {
@@ -75,15 +75,17 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-        <Card className="w-full max-w-md glass-card">
+      <div className="min-h-screen flex items-center justify-center bg-mesh-gradient-strong p-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-violet-200/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-fuchsia-200/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        <Card className="w-full max-w-md shadow-2xl shadow-purple-500/[0.07] border-gray-200/60 backdrop-blur-sm relative z-10">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
               <AlertCircle className="w-8 h-8 text-red-500" />
             </div>
             <CardTitle className="text-2xl">Lien invalide</CardTitle>
             <CardDescription>
-              Le lien de reinitialisation est invalide ou a expire.
+              Le lien de réinitialisation est invalide ou a expiré.
               Veuillez demander un nouveau lien.
             </CardDescription>
           </CardHeader>
@@ -97,7 +99,7 @@ function ResetPasswordForm() {
               <Link href="/auth/login">
                 <Button variant="ghost" className="w-full">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Retour a la connexion
+                  Retour à la connexion
                 </Button>
               </Link>
             </div>
@@ -109,15 +111,17 @@ function ResetPasswordForm() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-        <Card className="w-full max-w-md glass-card">
+      <div className="min-h-screen flex items-center justify-center bg-mesh-gradient-strong p-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-violet-200/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-fuchsia-200/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        <Card className="w-full max-w-md shadow-2xl shadow-purple-500/[0.07] border-gray-200/60 backdrop-blur-sm relative z-10">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
               <CheckCircle className="w-8 h-8 text-green-500" />
             </div>
-            <CardTitle className="text-2xl">Mot de passe modifie!</CardTitle>
+            <CardTitle className="text-2xl">Mot de passe modifié!</CardTitle>
             <CardDescription>
-              Votre mot de passe a ete reinitialise avec succes.
+              Votre mot de passe a été changé avec succès.
               Vous pouvez maintenant vous connecter.
             </CardDescription>
           </CardHeader>
@@ -134,17 +138,17 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-      <Card className="w-full max-w-md glass-card">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-4">
+      <Card className="w-full max-w-md shadow-xl shadow-purple-500/5 border-gray-200/80">
         <CardHeader className="text-center">
           <Link href="/" className="inline-flex items-center justify-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-white" />
+            <div className="w-14 h-14 rounded-2xl gradient-bg shadow-glow-md flex items-center justify-center">
+              <Sparkles className="w-7 h-7 text-white" />
             </div>
           </Link>
           <CardTitle className="text-2xl">Nouveau mot de passe</CardTitle>
           <CardDescription>
-            Choisissez un nouveau mot de passe securise
+            Choisissez un nouveau mot de passe sécurisé
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -179,7 +183,7 @@ function ResetPasswordForm() {
                 <p className="text-sm text-destructive">{errors.password}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                Minimum 8 caracteres
+                Minimum 8 caractères
               </p>
             </div>
 
@@ -223,7 +227,7 @@ function ResetPasswordForm() {
               className="text-sm text-muted-foreground hover:text-primary inline-flex items-center gap-1"
             >
               <ArrowLeft className="w-4 h-4" />
-              Retour a la connexion
+              Retour à la connexion
             </Link>
           </div>
         </CardContent>
@@ -236,7 +240,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-fuchsia-50">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       }

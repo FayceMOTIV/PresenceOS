@@ -121,13 +121,13 @@ export function StepPlatforms({ brandId, onComplete, onBack }: StepPlatformsProp
               )
             );
             toast({
-              title: "Connecte!",
-              description: `Votre compte ${platformId} est connecte.`,
+              title: "Connecté!",
+              description: `Votre compte ${platformId} est connecté.`,
             });
           } else {
             toast({
               title: "Erreur de connexion",
-              description: event.data.error || "La connexion a echoue",
+              description: event.data.error || "La connexion a échoué",
               variant: "destructive",
             });
           }
@@ -145,7 +145,7 @@ export function StepPlatforms({ brandId, onComplete, onBack }: StepPlatformsProp
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: error.response?.data?.detail || "Impossible de demarrer la connexion",
+        description: error.response?.data?.detail || "Impossible de démarrer la connexion",
         variant: "destructive",
       });
     } finally {
@@ -157,7 +157,7 @@ export function StepPlatforms({ brandId, onComplete, onBack }: StepPlatformsProp
     if (!brandId || !apiKeyInput.trim()) {
       toast({
         title: "Erreur",
-        description: "Cle API requise",
+        description: "Clé API requise",
         variant: "destructive",
       });
       return;
@@ -174,15 +174,15 @@ export function StepPlatforms({ brandId, onComplete, onBack }: StepPlatformsProp
         )
       );
       toast({
-        title: "Connecte!",
-        description: `${platformId.charAt(0).toUpperCase() + platformId.slice(1)} connecte via Upload-Post.`,
+        title: "Connecté!",
+        description: `${platformId.charAt(0).toUpperCase() + platformId.slice(1)} connecté via Upload-Post.`,
       });
       setShowApiKeyFor(null);
       setApiKeyInput("");
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: error.response?.data?.detail || "Impossible de sauvegarder la cle API",
+        description: error.response?.data?.detail || "Impossible de sauvegarder la clé API",
         variant: "destructive",
       });
     } finally {
@@ -206,7 +206,7 @@ export function StepPlatforms({ brandId, onComplete, onBack }: StepPlatformsProp
   return (
     <Card className="glass-card">
       <CardHeader>
-        <CardTitle className="text-2xl">Connectez vos reseaux</CardTitle>
+        <CardTitle className="text-2xl">Connectez vos réseaux</CardTitle>
         <CardDescription>
           Liez vos comptes pour publier automatiquement. Vous pourrez ajouter
           d&apos;autres comptes plus tard.
@@ -237,7 +237,7 @@ export function StepPlatforms({ brandId, onComplete, onBack }: StepPlatformsProp
                     className="absolute -top-2 -right-2 bg-green-500/10 text-green-500 border-green-500/20"
                   >
                     <Check className="w-3 h-3 mr-1" />
-                    Connecte
+                    Connecté
                   </Badge>
                 )}
 
@@ -258,7 +258,7 @@ export function StepPlatforms({ brandId, onComplete, onBack }: StepPlatformsProp
                       {platform.connected ? (
                         <p className="text-sm text-green-500 flex items-center gap-1">
                           <Check className="w-3 h-3" />
-                          Connecte
+                          Connecté
                         </p>
                       ) : (
                         <p className="text-sm text-muted-foreground">
@@ -280,12 +280,12 @@ export function StepPlatforms({ brandId, onComplete, onBack }: StepPlatformsProp
                       ) : platform.authMode === "apikey" ? (
                         <>
                           <Key className="w-4 h-4 mr-1" />
-                          Cle API
+                          Clé API
                         </>
                       ) : (
                         <>
                           <ExternalLink className="w-4 h-4 mr-1" />
-                          Connecter
+                          Connectér
                         </>
                       )}
                     </Button>
@@ -308,7 +308,7 @@ export function StepPlatforms({ brandId, onComplete, onBack }: StepPlatformsProp
                   <div className="mt-3 space-y-2">
                     <Input
                       type="password"
-                      placeholder="Cle API Upload-Post"
+                      placeholder="Clé API Upload-Post"
                       value={apiKeyInput}
                       onChange={(e) => setApiKeyInput(e.target.value)}
                       autoFocus
@@ -344,9 +344,9 @@ export function StepPlatforms({ brandId, onComplete, onBack }: StepPlatformsProp
         {/* Info message */}
         <div className="bg-muted/50 rounded-lg p-4">
           <p className="text-sm text-muted-foreground">
-            <strong>Conseil:</strong> Vous pouvez passer cette etape et connecter
-            vos reseaux plus tard depuis les parametres. Au moins une connexion
-            est recommandee pour profiter pleinement de PresenceOS.
+            <strong>Conseil:</strong> Vous pouvez passer cette étape et connecter
+            vos réseaux plus tard depuis les paramètres. Au moins une connexion
+            est recommandée pour profiter pleinement de PresenceOS.
           </p>
         </div>
 
