@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import CookieBanner from "@/components/legal/CookieBanner";
+import CrispChat from "@/components/support/CrispChat";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -42,6 +43,7 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans`}>
         <Providers>{children}</Providers>
         <CookieBanner />
+        <CrispChat />
       </body>
     </html>
   );

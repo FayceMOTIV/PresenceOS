@@ -6,10 +6,12 @@ import { ThemeProvider } from "next-themes";
 import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { measureWebVitals } from "@/lib/performance";
+import { analytics } from '@/lib/analytics';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     measureWebVitals();
+    analytics.page(window.location.pathname);
   }, []);
 
   const [queryClient] = useState(

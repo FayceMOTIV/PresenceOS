@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { analytics, events } from '@/lib/analytics';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Instagram, Upload, Sparkles, Rocket, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -22,6 +23,10 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [completed, setCompleted] = useState(false);
 
+  useEffect(() => {
+    analytics.track(events.ONBOARDING_STARTED);
+  }, []);
+
   const nextStep = () => {
     if (currentStep < 5) {
       setCurrentStep((currentStep + 1) as Step);
@@ -29,6 +34,7 @@ export default function OnboardingPage() {
   };
 
   const handleComplete = () => {
+    analytics.track(events.ONBOARDING_COMPLETED);
     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
     setCompleted(true);
     setTimeout(() => router.push('/dashboard'), 2500);

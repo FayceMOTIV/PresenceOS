@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import HCaptcha from '@hcaptcha/react-hcaptcha';
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -17,6 +18,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -29,7 +31,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const response = await authApi.register(formData);
+      const response = await authApi.register({...formData, ...(captchaToken && { captcha_token: captchaToken })});
       const { token, workspaces } = response.data;
 
       localStorage.setItem("token", token.access_token);
@@ -159,6 +161,15 @@ export default function RegisterPage() {
               <p className="text-xs text-muted-foreground -mt-2">
                 {"Vous pourrez ajouter plusieurs marques dans votre espace de travail."}
               </p>
+              {process.env.NEXT_PUBLIC_HCAPTCHA_SITEKEY && (
+                <div className="flex justify-center">
+                  <HCaptcha
+                    sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITEKEY}
+                    onVerify={(token) => setCaptchaToken(token)}
+                    onExpire={() => setCaptchaToken(null)}
+                  />
+                </div>
+              )}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}

@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from app.api.v1.deps import CurrentUser
 from app.models.user import User
 from app.services.storage import get_storage_service, StorageService
+from app.utils.file_validation import validate_image_upload, ALLOWED_IMAGE_EXTENSIONS
 
 router = APIRouter()
 
@@ -95,8 +96,13 @@ async def upload_media(
     # Check file size (approximate, from content-length header)
     max_size = get_max_size(content_type)
 
-    # Read file content
-    content = await file.read()
+    # Read and validate file content
+    if content_type in ALLOWED_IMAGE_TYPES:
+        # validate_image_upload reads the file, checks extension, size, magic bytes, and dimensions
+        content, _file_hash = await validate_image_upload(file)
+    else:
+        content = await file.read()
+
     file_size = len(content)
 
     if file_size > max_size:

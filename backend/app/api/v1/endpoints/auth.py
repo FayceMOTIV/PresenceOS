@@ -8,13 +8,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
-from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import DBSession, CurrentUser
+from app.middleware.rate_limit import limiter
 import logging
 import secrets
 
@@ -34,9 +34,6 @@ from app.models.user import User, Workspace, WorkspaceMember, UserRole, RefreshT
 from app.schemas.user import Token, TokenRefresh, UserResponse, WorkspaceResponse
 
 router = APIRouter()
-
-# Rate limiter for auth endpoints
-limiter = Limiter(key_func=get_remote_address)
 
 
 class RegisterRequest(BaseModel):

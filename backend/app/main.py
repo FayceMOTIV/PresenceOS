@@ -12,32 +12,43 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.staticfiles import StaticFiles
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.database import engine, init_db
 from app.core.resilience import registry, ServiceStatus
+
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+
+
+def _filter_sensitive_data(event):
+    if 'request' in event and 'data' in event['request']:
+        data = event['request']['data']
+        if isinstance(data, dict):
+            for key in ['password', 'token', 'api_key', 'secret']:
+                if key in data:
+                    data[key] = '[FILTERED]'
+    return event
+
+
+# Initialize Sentry if configured
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=getattr(settings, "environment", "production"),
+        traces_sample_rate=0.1,
+        integrations=[FastApiIntegration()],
+        before_send=lambda event, hint: _filter_sensitive_data(event),
+    )
 from app.core.degraded_middleware import DegradedModeMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.middleware.rate_limit import limiter
 from app.api.v1.router import api_router
 from app.api.v1.endpoints.health import router as health_router
 from app.api.webhooks.whatsapp import router as whatsapp_webhook_router
 from app.api.webhooks.telegram import router as telegram_webhook_router
-
-# Rate limiter instance (uses Redis in production, in-memory for dev)
-try:
-    limiter = Limiter(
-        key_func=get_remote_address,
-        default_limits=["100/minute"],
-        storage_uri=settings.redis_url,
-    )
-except Exception:
-    limiter = Limiter(
-        key_func=get_remote_address,
-        default_limits=["100/minute"],
-    )
 
 # Configure structured logging
 structlog.configure(
