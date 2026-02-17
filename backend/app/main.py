@@ -20,6 +20,7 @@ from app.core.config import settings
 from app.core.database import engine, init_db
 from app.core.resilience import registry, ServiceStatus
 from app.core.degraded_middleware import DegradedModeMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.api.v1.router import api_router
 from app.api.v1.endpoints.health import router as health_router
 from app.api.webhooks.whatsapp import router as whatsapp_webhook_router
@@ -169,6 +170,9 @@ def create_application() -> FastAPI:
 
     # Degraded mode middleware (must be added BEFORE CORS so it runs after CORS)
     app.add_middleware(DegradedModeMiddleware)
+
+    # Security headers middleware (outermost layer — runs on every response)
+    app.add_middleware(SecurityHeadersMiddleware)
 
     # CORS middleware
     app.add_middleware(

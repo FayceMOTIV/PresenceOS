@@ -21,6 +21,7 @@ import {
   Lightbulb,
   Bot,
   FileText,
+  HelpCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ const navigation = [
   { name: "🤖 Mes Assistants", href: "/agents", icon: Bot },
   { name: "📅 Calendrier", href: "/planner", icon: Calendar },
   { name: "📝 Mes posts", href: "/posts", icon: FileText },
+  { name: "❓ Aide", href: "/help", icon: HelpCircle },
   { name: "⚙️ Réglages", href: "/settings", icon: Settings },
 ];
 

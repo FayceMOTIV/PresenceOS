@@ -32,6 +32,7 @@ from app.api.v1.endpoints import (
     hyperlocal,
     interview,
     content_analysis,
+    gdpr,
 )
 
 api_router = APIRouter()
@@ -119,3 +120,6 @@ api_router.include_router(interview.router, prefix="/interview", tags=["Brand In
 
 # Content Analysis (Instagram tone extraction)
 api_router.include_router(content_analysis.router, prefix="/content-analysis", tags=["Content Analysis"])
+
+# GDPR/RGPD Compliance
+api_router.include_router(gdpr.router, prefix="/gdpr", tags=["GDPR"])
