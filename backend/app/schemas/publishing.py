@@ -73,6 +73,7 @@ class ApiKeyConnectRequest(BaseModel):
     platform: SocialPlatform
     brand_id: UUID
     api_key: str
+    account_username: str | None = None
 
 
 # Scheduled Post schemas

@@ -64,7 +64,7 @@ class BaseConnector(ABC):
         pass
 
     @abstractmethod
-    async def get_account_info(self, access_token: str) -> dict[str, Any]:
+    async def get_account_info(self, access_token: str, **kwargs: Any) -> dict[str, Any]:
         """
         Get connected account information.
         Returns: {

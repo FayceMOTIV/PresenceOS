@@ -150,8 +150,8 @@ export const connectorsApi = {
   refresh: (id: string) => api.post(`/connectors/${id}/refresh`),
   disconnect: (id: string) => api.delete(`/connectors/${id}`),
   sync: (id: string) => api.post(`/connectors/${id}/sync`),
-  connectWithApiKey: (platform: string, brandId: string, apiKey: string) =>
-    api.post("/connectors/api-key", { platform, brand_id: brandId, api_key: apiKey }),
+  connectWithApiKey: (platform: string, brandId: string, apiKey: string, accountUsername?: string) =>
+    api.post("/connectors/api-key", { platform, brand_id: brandId, api_key: apiKey, account_username: accountUsername }),
 };
 
 // Posts

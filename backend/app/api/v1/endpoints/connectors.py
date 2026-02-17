@@ -144,8 +144,26 @@ async def connect_with_api_key(
 
     handler = get_connector_handler(data.platform)
 
+    # Enforce per-platform account limits
+    max_accounts = {"instagram": 3, "facebook": 2, "tiktok": 2, "linkedin": 1}
+    platform_limit = max_accounts.get(data.platform.value, 2)
+    existing_count = await db.execute(
+        select(SocialConnector).where(
+            SocialConnector.brand_id == data.brand_id,
+            SocialConnector.platform == data.platform,
+            SocialConnector.is_active == True,
+        )
+    )
+    if len(existing_count.scalars().all()) >= platform_limit:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Limite atteinte : maximum {platform_limit} compte(s) {data.platform.value}.",
+        )
+
     # Get account info
-    account_info = await handler.get_account_info(data.api_key)
+    account_info = await handler.get_account_info(
+        data.api_key, account_username=data.account_username
+    )
 
     # Check if connector already exists
     existing = await db.execute(

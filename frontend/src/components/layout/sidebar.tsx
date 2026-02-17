@@ -49,6 +49,7 @@ const navigation = [
   { name: "🤖 Mes Assistants", href: "/agents", icon: Bot },
   { name: "📅 Calendrier", href: "/planner", icon: Calendar },
   { name: "📝 Mes posts", href: "/posts", icon: FileText },
+  { name: "🔗 Mes comptes", href: "/accounts", icon: UserIcon },
   { name: "❓ Aide", href: "/help", icon: HelpCircle },
   { name: "⚙️ Réglages", href: "/settings", icon: Settings },
 ];

@@ -775,10 +775,10 @@ export default function SettingsPage() {
               <Separator />
 
               <div className="flex justify-center">
-                <Link href="/onboarding">
+                <Link href="/accounts">
                   <Button variant="outline" className="gap-2">
                     <Link2 className="w-4 h-4" />
-                    Connecter une plateforme
+                    Gérer mes comptes
                     <ExternalLink className="w-4 h-4" />
                   </Button>
                 </Link>

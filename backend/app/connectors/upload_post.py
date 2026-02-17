@@ -69,12 +69,19 @@ class UploadPostConnector(BaseConnector):
         """Not applicable for Upload-Post."""
         return True
 
-    async def get_account_info(self, access_token: str) -> dict[str, Any]:
-        """Return basic info for Upload-Post connection."""
+    async def get_account_info(self, access_token: str, **kwargs: Any) -> dict[str, Any]:
+        """Return basic info for Upload-Post connection.
+
+        Args:
+            access_token: The API key (unused, server-side key is used).
+            account_username: Optional social account username to distinguish
+                multiple accounts on the same platform.
+        """
+        username = kwargs.get("account_username") or f"upload-post-{self.platform}"
         return {
-            "account_id": f"upload-post-{self.platform}",
-            "account_name": f"Upload-Post ({self.platform.capitalize()})",
-            "account_username": None,
+            "account_id": f"{self.platform}-{username}",
+            "account_name": f"{username} ({self.platform.capitalize()})",
+            "account_username": username,
             "account_avatar_url": None,
             "platform_data": {
                 "provider": "upload-post",
