@@ -33,6 +33,8 @@ from app.api.v1.endpoints import (
     interview,
     content_analysis,
     gdpr,
+    studio_ai,
+    strategy,
 )
 
 api_router = APIRouter()
@@ -123,3 +125,9 @@ api_router.include_router(content_analysis.router, prefix="/content-analysis", t
 
 # GDPR/RGPD Compliance
 api_router.include_router(gdpr.router, prefix="/gdpr", tags=["GDPR"])
+
+# AI Studio (Photo Generation)
+api_router.include_router(studio_ai.router, prefix="/studio", tags=["AI Studio"])
+
+# AI Strategy (Market Analysis)
+api_router.include_router(strategy.router, prefix="/strategy", tags=["Strategy"])
