@@ -22,6 +22,7 @@ import {
   Bot,
   FileText,
   HelpCircle,
+  Camera,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ import { workspacesApi } from "@/lib/api";
 const navigation = [
   { name: "🏠 Accueil", href: "/dashboard", icon: LayoutDashboard },
   { name: "✨ Créer un post", href: "/studio", icon: Sparkles },
+  { name: "📸 Photo Studio", href: "/photo-studio", icon: Camera },
   { name: "💡 Idées de posts", href: "/ideas", icon: Lightbulb },
   { name: "📊 Analyser Instagram", href: "/brain", icon: Brain },
   { name: "🤖 Mes Assistants", href: "/agents", icon: Bot },

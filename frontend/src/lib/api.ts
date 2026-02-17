@@ -602,3 +602,26 @@ export const hyperlocalApi = {
   getSuggestions: (brandId: string) =>
     api.get(`/hyperlocal/suggestions/${brandId}`),
 };
+
+// AI Studio (Photo Generation)
+export const studioAiApi = {
+  generatePhoto: (data: {
+    prompt: string;
+    style?: string;
+    size?: string;
+    niche?: string;
+  }) => api.post("/studio/generate", data),
+
+  generateVariations: (data: {
+    prompt: string;
+    style?: string;
+    size?: string;
+    niche?: string;
+  }) => api.post("/studio/generate-variations", data),
+};
+
+// AI Strategy (Market Analysis)
+export const strategyApi = {
+  analyzeNiche: (data: { niche: string; location?: string }) =>
+    api.post("/strategy/analyze-niche", data),
+};
