@@ -605,11 +605,15 @@ export const hyperlocalApi = {
 
 // AI Studio (Photo Generation)
 export const studioAiApi = {
+  getNiches: () =>
+    api.get("/studio/niches"),
+
   generatePhoto: (data: {
     prompt: string;
     style?: string;
     size?: string;
     niche?: string;
+    brand_id?: string;
   }) => api.post("/studio/generate", data),
 
   generateVariations: (data: {
@@ -617,11 +621,15 @@ export const studioAiApi = {
     style?: string;
     size?: string;
     niche?: string;
+    brand_id?: string;
   }) => api.post("/studio/generate-variations", data),
 };
 
 // AI Strategy (Market Analysis)
 export const strategyApi = {
-  analyzeNiche: (data: { niche: string; location?: string }) =>
-    api.post("/strategy/analyze-niche", data),
+  analyzeNiche: (data: {
+    niche: string;
+    location?: string;
+    brand_id?: string;
+  }) => api.post("/strategy/analyze-niche", data),
 };
