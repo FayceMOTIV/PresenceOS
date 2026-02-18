@@ -16,7 +16,8 @@ from app.connectors.upload_post import (
     AuthenticationError,
     ContentRejectedError,
     PublishError,
-    UPLOAD_POST_API_URL,
+    UPLOAD_POST_VIDEO_URL,
+    UPLOAD_POST_PHOTO_URL,
 )
 from app.connectors.factory import get_connector_handler
 from app.connectors.linkedin import LinkedInConnector
@@ -99,10 +100,18 @@ class TestUploadPostConnector:
     async def test_get_account_info(self):
         connector = UploadPostConnector(platform="facebook")
         result = await connector.get_account_info("key")
-        assert result["account_id"] == "upload-post-facebook"
+        assert result["account_id"] == "facebook-upload-post-facebook"
         assert "Facebook" in result["account_name"]
         assert result["platform_data"]["provider"] == "upload-post"
         assert result["platform_data"]["platform"] == "facebook"
+
+    @pytest.mark.asyncio
+    async def test_get_account_info_with_username(self):
+        connector = UploadPostConnector(platform="instagram")
+        result = await connector.get_account_info("key", account_username="monrestaurant")
+        assert result["account_id"] == "instagram-monrestaurant"
+        assert result["account_username"] == "monrestaurant"
+        assert "Instagram" in result["account_name"]
 
 
 # =============================================================================
@@ -151,7 +160,7 @@ class TestUploadPostPublish:
             # Verify the API was called correctly
             mock_client.post.assert_called_once()
             call_kwargs = mock_client.post.call_args
-            assert call_kwargs.args[0] == UPLOAD_POST_API_URL
+            assert call_kwargs.args[0] in (UPLOAD_POST_VIDEO_URL, UPLOAD_POST_PHOTO_URL)
             assert call_kwargs.kwargs["headers"]["Authorization"] == "Apikey test-api-key"
 
     @pytest.mark.asyncio
