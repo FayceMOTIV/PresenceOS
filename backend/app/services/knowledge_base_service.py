@@ -57,13 +57,39 @@ class KnowledgeBaseService:
         if not brand:
             raise ValueError(f"Brand {brand_id} not found")
 
-        # Compile each section
+        # Compile each section (resilient — log errors, use defaults)
         identity = self._compile_identity(brand)
-        menu = await self._compile_menu(brand_id)
-        media = await self._compile_media(brand_id)
-        today = await self._compile_today(brand_id)
-        posting_history = await self._compile_posting_history(brand_id)
-        performance = await self._compile_performance(brand_id)
+
+        try:
+            menu = await self._compile_menu(brand_id)
+        except Exception as exc:
+            logger.error("KB: _compile_menu failed", brand_id=brand_id, error=str(exc))
+            menu = {"total_dishes": 0, "categories": {}}
+
+        try:
+            media = await self._compile_media(brand_id)
+        except Exception as exc:
+            logger.error("KB: _compile_media failed", brand_id=brand_id, error=str(exc))
+            media = {"total_assets": 0, "assets": []}
+
+        try:
+            today = await self._compile_today(brand_id)
+        except Exception as exc:
+            logger.error("KB: _compile_today failed", brand_id=brand_id, error=str(exc))
+            today = {"has_brief": False, "date": datetime.now(timezone.utc).date().isoformat()}
+
+        try:
+            posting_history = await self._compile_posting_history(brand_id)
+        except Exception as exc:
+            logger.error("KB: _compile_posting_history failed", brand_id=brand_id, error=str(exc))
+            posting_history = {"last_7_days_count": 0, "posts": []}
+
+        try:
+            performance = await self._compile_performance(brand_id)
+        except Exception as exc:
+            logger.error("KB: _compile_performance failed", brand_id=brand_id, error=str(exc))
+            performance = {"avg_engagement_rate": None, "top_content_types": [], "best_posting_times": []}
+
         completeness = self._calculate_completeness_from_sections(
             brand, identity, menu, media
         )
@@ -144,21 +170,25 @@ class KnowledgeBaseService:
 
     async def calculate_completeness(self, brand_id: str) -> int:
         """Calculate completeness score (0-100) for a brand."""
-        stmt = (
-            select(Brand)
-            .options(selectinload(Brand.voice))
-            .where(Brand.id == brand_id)
-        )
-        result = await self.db.execute(stmt)
-        brand = result.scalar_one_or_none()
-        if not brand:
+        try:
+            stmt = (
+                select(Brand)
+                .options(selectinload(Brand.voice))
+                .where(Brand.id == brand_id)
+            )
+            result = await self.db.execute(stmt)
+            brand = result.scalar_one_or_none()
+            if not brand:
+                return 0
+
+            identity = self._compile_identity(brand)
+            menu = await self._compile_menu(brand_id)
+            media = await self._compile_media(brand_id)
+
+            return self._calculate_completeness_from_sections(brand, identity, menu, media)
+        except Exception as exc:
+            logger.error("calculate_completeness failed", brand_id=brand_id, error=str(exc))
             return 0
-
-        identity = self._compile_identity(brand)
-        menu = await self._compile_menu(brand_id)
-        media = await self._compile_media(brand_id)
-
-        return self._calculate_completeness_from_sections(brand, identity, menu, media)
 
     # ── Section Compilers ─────────────────────────────────────────────────
 
@@ -226,7 +256,7 @@ class KnowledgeBaseService:
                 MediaAsset.is_archived == False,
                 MediaAsset.processing_status == "ready",
             )
-            .order_by(desc(MediaAsset.quality_score.nulls_last()))
+            .order_by(MediaAsset.quality_score.desc().nulls_last())
             .limit(20)
         )
         result = await self.db.execute(stmt)
