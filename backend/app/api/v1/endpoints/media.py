@@ -4,13 +4,17 @@ PresenceOS - Media Upload Endpoints
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query
+import structlog
+from fastapi import APIRouter, Depends, File, Form, UploadFile, HTTPException, Query
 from pydantic import BaseModel
 
-from app.api.v1.deps import CurrentUser
+from app.api.v1.deps import CurrentUser, DBSession
+from app.models.media import MediaAsset, MediaType, MediaSource
 from app.models.user import User
 from app.services.storage import get_storage_service, StorageService, LocalStorageService
 from app.utils.file_validation import validate_image_upload, ALLOWED_IMAGE_EXTENSIONS
+
+logger = structlog.get_logger()
 
 router = APIRouter()
 
@@ -73,7 +77,10 @@ def get_max_size(content_type: str) -> int:
 async def upload_media(
     brand_id: UUID,
     current_user: CurrentUser,
+    db: DBSession,
     file: UploadFile = File(...),
+    label: str | None = Form(None),
+    linked_dish_id: str | None = Form(None),
     storage: StorageService | LocalStorageService = Depends(get_storage_service),
 ):
     """
@@ -138,6 +145,39 @@ async def upload_media(
             status_code=503,
             detail="Service de stockage indisponible",
         )
+
+    # Create MediaAsset record in database
+    media_type = MediaType.IMAGE if content_type in ALLOWED_IMAGE_TYPES else MediaType.VIDEO
+    dish_uuid = None
+    if linked_dish_id:
+        try:
+            dish_uuid = UUID(linked_dish_id)
+        except ValueError:
+            pass
+
+    asset = MediaAsset(
+        brand_id=brand_id,
+        storage_key=result["key"],
+        public_url=result["url"],
+        media_type=media_type,
+        mime_type=content_type or "application/octet-stream",
+        file_size=result["size"],
+        original_filename=file.filename,
+        source=MediaSource.UPLOAD,
+        asset_label=label or None,
+        linked_dish_id=dish_uuid,
+        processing_status="ready",
+    )
+    db.add(asset)
+    await db.commit()
+
+    logger.info(
+        "Media uploaded and saved",
+        brand_id=str(brand_id),
+        asset_id=str(asset.id),
+        media_type=media_type.value,
+        file_size=file_size,
+    )
 
     return UploadResponse(
         key=result["key"],
