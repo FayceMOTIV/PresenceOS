@@ -26,6 +26,14 @@ class MediaType(str, enum.Enum):
     VIDEO = "video"
 
 
+class ProcessingStatus(str, enum.Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    IMPROVING = "improving"
+    READY = "ready"
+    FAILED = "failed"
+
+
 class MediaAsset(BaseModel):
     """An image or video received via WhatsApp or uploaded."""
 
@@ -66,12 +74,29 @@ class MediaAsset(BaseModel):
     ai_tags: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
     ai_analyzed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    # Content Library — AI enhancement
+    improved_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    quality_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    processing_status: Mapped[str] = mapped_column(
+        String(20), default=ProcessingStatus.READY.value, nullable=False
+    )
+    linked_dish_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("dishes.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    asset_label: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Usage tracking
     used_in_posts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Relationships
     brand: Mapped["Brand"] = relationship("Brand", backref="media_assets")
+    linked_dish: Mapped["Dish | None"] = relationship(
+        "Dish", foreign_keys=[linked_dish_id]
+    )
 
     def __repr__(self) -> str:
         return f"<MediaAsset {self.media_type.value} source={self.source.value}>"
@@ -127,3 +152,4 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.models.brand import Brand
+    from app.models.dish import Dish

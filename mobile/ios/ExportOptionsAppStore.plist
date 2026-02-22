@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>teamID</key>
+	<string>5ZR87TPM89</string>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>signingCertificate</key>
+	<string>Apple Distribution: 2k (ARA) (5ZR87TPM89)</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>fr.appysolution.rs3</key>
+		<string>iOS Team Provisioning Profile: fr.appysolution.rs3</string>
+	</dict>
+	<key>destination</key>
+	<string>export</string>
+</dict>
+</plist>

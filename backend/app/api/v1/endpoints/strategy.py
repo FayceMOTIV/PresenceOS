@@ -13,14 +13,16 @@ from typing import Any
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.middleware.rate_limit import limiter
+
 from app.ai.market_analyzer import MarketAnalyzer
-from app.api.v1.deps import CurrentUser, DBSession
+from app.api.v1.deps import CurrentUser, DBSession, get_brand
 from app.models.brand import Brand
 
 logger = structlog.get_logger()
@@ -40,17 +42,15 @@ def _get_analyzer() -> MarketAnalyzer:
 
 
 async def _load_brand_context(
-    db: AsyncSession, brand_id: UUID
+    db: AsyncSession, brand_id: UUID, current_user,
 ) -> dict[str, Any]:
-    """Load Brand + BrandVoice from DB and build a context dict for the AI."""
-    result = await db.execute(
-        select(Brand)
-        .options(selectinload(Brand.voice))
-        .where(Brand.id == brand_id)
-    )
-    brand = result.scalar_one_or_none()
-    if not brand:
-        raise HTTPException(status_code=404, detail="Brand not found")
+    """Load Brand + BrandVoice from DB and build a context dict for the AI.
+
+    Verifies the current user has access to the brand's workspace before
+    loading any data (prevents IDOR).
+    """
+    # Ownership check via deps.get_brand (raises 403/404)
+    brand = await get_brand(brand_id, current_user, db)
 
     ctx: dict[str, Any] = {
         "name": brand.name,
@@ -88,8 +88,8 @@ async def _load_brand_context(
 
 
 class AnalyzeNicheRequest(BaseModel):
-    niche: str
-    location: str = "France"
+    niche: str = Field(..., min_length=2, max_length=200)
+    location: str = Field(default="France", max_length=200)
     brand_id: UUID | None = Field(
         default=None,
         description="Optional brand ID for hyper-personalized analysis",
@@ -100,10 +100,12 @@ class AnalyzeNicheRequest(BaseModel):
 
 
 @router.post("/analyze-niche")
+@limiter.limit("5/minute")
 async def analyze_niche(
     request: AnalyzeNicheRequest,
     current_user: CurrentUser,
     db: DBSession,
+    http_request: Request = None,
 ) -> dict:
     """Run a full AI-powered market analysis for the given niche.
 
@@ -121,10 +123,10 @@ async def analyze_niche(
     """
     analyzer = _get_analyzer()
 
-    # Load brand context if a brand_id was provided
+    # Load brand context if a brand_id was provided (with ownership check)
     brand_context: dict[str, Any] | None = None
     if request.brand_id:
-        brand_context = await _load_brand_context(db, request.brand_id)
+        brand_context = await _load_brand_context(db, request.brand_id, current_user)
 
     try:
         analysis = await analyzer.analyze_niche(
@@ -150,7 +152,7 @@ async def analyze_niche(
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Market analysis failed: {str(exc)}",
+            detail="Market analysis failed. Please try again.",
         )
 
     return {"success": True, "analysis": analysis}

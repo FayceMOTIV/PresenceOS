@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "RS3",
+    "slug": "rs3",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A1A2E"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "fr.appysolution.rs3",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "RS3 a besoin d'accéder à vos photos pour uploader du contenu visuel.",
+        "NSCameraUsageDescription": "RS3 a besoin d'accéder à votre caméra pour prendre des photos de vos plats.",
+        "NSMicrophoneUsageDescription": "RS3 a besoin d'accéder au micro pour enregistrer des vidéos."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1A1A2E"
+      },
+      "package": "fr.appysolution.rs3",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      "expo-camera",
+      "expo-image-picker",
+      "expo-notifications",
+      "expo-secure-store",
+      "expo-asset",
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "986daedd-7a05-4d22-82bd-ab76a2a8234c"
+      }
+    },
+    "owner": "fayce"
+  }
+}

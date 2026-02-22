@@ -11,6 +11,7 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any
 
+import httpx
 import openai
 import structlog
 
@@ -198,6 +199,49 @@ class PhotoStudio:
 
     def __init__(self) -> None:
         self._client: openai.AsyncOpenAI | None = None
+        self._storage = None
+
+    def _get_storage(self):
+        """Lazy initialization of the storage service."""
+        if self._storage is None:
+            try:
+                from app.services.storage import get_storage_service
+                self._storage = get_storage_service()
+            except Exception:
+                logger.warning("Storage service not available, DALL-E URLs will be ephemeral")
+        return self._storage
+
+    async def _persist_image(self, dalle_url: str, niche: str, style: str) -> str:
+        """Download a DALL-E image and persist it to S3/MinIO.
+
+        Returns the permanent S3 URL, or the original DALL-E URL as fallback
+        if storage is unavailable.
+        """
+        storage = self._get_storage()
+        if not storage:
+            return dalle_url
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.get(dalle_url)
+                resp.raise_for_status()
+                image_bytes = resp.content
+
+            key = storage.generate_key(
+                brand_id="ai-studio",
+                media_type="image",
+                original_filename=f"dalle_{niche}_{style}.png",
+            )
+            result = await storage.upload_bytes(
+                data=image_bytes,
+                key=key,
+                content_type="image/png",
+            )
+            logger.info("DALL-E image persisted", key=key, size=len(image_bytes))
+            return result["url"]
+        except Exception as exc:
+            logger.warning("Failed to persist DALL-E image, using ephemeral URL", error=str(exc))
+            return dalle_url
 
     def _get_client(self) -> openai.AsyncOpenAI:
         """Lazy initialization of the OpenAI client."""
@@ -254,12 +298,14 @@ class PhotoStudio:
             logger.error("Photo generation failed", niche=niche, style=style, error=str(exc))
             raise
 
-        url = response.data[0].url
+        dalle_url = response.data[0].url
         revised = response.data[0].revised_prompt
 
+        # Persist to S3 so the URL doesn't expire after 1 hour
+        permanent_url = await self._persist_image(dalle_url, niche, style)
+
         result: dict[str, Any] = {
-            "image_url": url,
-            "revised_prompt": revised,
+            "image_url": permanent_url,
             "original_prompt": prompt,
             "enhanced_prompt": enhanced_prompt,
             "style": style,

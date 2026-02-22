@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from app.api.v1.deps import CurrentUser
 from app.models.user import User
-from app.services.storage import get_storage_service, StorageService
+from app.services.storage import get_storage_service, StorageService, LocalStorageService
 from app.utils.file_validation import validate_image_upload, ALLOWED_IMAGE_EXTENSIONS
 
 router = APIRouter()
@@ -40,6 +40,7 @@ class PresignedUrlResponse(BaseModel):
 # Allowed content types for media uploads
 ALLOWED_IMAGE_TYPES = {
     "image/jpeg",
+    "image/jpg",
     "image/png",
     "image/gif",
     "image/webp",
@@ -73,7 +74,7 @@ async def upload_media(
     brand_id: UUID,
     current_user: CurrentUser,
     file: UploadFile = File(...),
-    storage: StorageService = Depends(get_storage_service),
+    storage: StorageService | LocalStorageService = Depends(get_storage_service),
 ):
     """
     Upload a media file (image or video) for a brand.
@@ -151,7 +152,7 @@ async def get_presigned_upload_url(
     brand_id: UUID,
     request: PresignedUrlRequest,
     current_user: CurrentUser,
-    storage: StorageService = Depends(get_storage_service),
+    storage: StorageService | LocalStorageService = Depends(get_storage_service),
 ):
     """
     Get a presigned URL for direct upload to S3/MinIO.
@@ -195,7 +196,7 @@ async def delete_media(
     brand_id: UUID,
     key: str,
     current_user: CurrentUser,
-    storage: StorageService = Depends(get_storage_service),
+    storage: StorageService | LocalStorageService = Depends(get_storage_service),
 ):
     """Delete a media file."""
     # Verify the key belongs to this brand
@@ -220,7 +221,7 @@ async def get_media_info(
     brand_id: UUID,
     key: str,
     current_user: CurrentUser,
-    storage: StorageService = Depends(get_storage_service),
+    storage: StorageService | LocalStorageService = Depends(get_storage_service),
 ):
     """Get information about a media file."""
     # Verify the key belongs to this brand

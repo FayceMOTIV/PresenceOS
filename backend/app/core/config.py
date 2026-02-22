@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     database_url: str
     database_url_sync: str | None = None
 
+    @field_validator("database_url", mode="after")
+    @classmethod
+    def fix_async_db_url(cls, v: str) -> str:
+        """Railway provides postgresql:// but asyncpg needs postgresql+asyncpg://"""
+        if v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
+
     # Redis
     redis_url: str = "redis://localhost:6379/0"
     celery_broker_url: str = "redis://localhost:6379/1"
@@ -103,6 +111,20 @@ class Settings(BaseSettings):
 
     # Conversation Engine (Sprint 9C)
     conversation_ttl_seconds: int = 1800  # 30 min conversation timeout
+
+    # Google Business Profile (Community Manager)
+    google_client_id: str = ""
+    google_client_secret: str = ""
+
+    # Community Manager AI
+    cm_auto_publish_threshold: float = 0.85
+
+    # fal.ai (FLUX Kontext image enhancement)
+    fal_key: str = ""
+    fal_webhook_url: str = ""
+
+    # Public API URL (for generating file URLs)
+    api_base_url: str = "http://localhost:8000"
 
     # Observability
     sentry_dsn: str | None = None

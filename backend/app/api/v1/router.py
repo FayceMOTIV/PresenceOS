@@ -35,6 +35,14 @@ from app.api.v1.endpoints import (
     gdpr,
     studio_ai,
     strategy,
+    cm,
+    content_library,
+    menu_scan,
+    proposals,
+    brief,
+    kb,
+    social_accounts,
+    video_generation,
 )
 
 api_router = APIRouter()
@@ -131,3 +139,27 @@ api_router.include_router(studio_ai.router, prefix="/studio", tags=["AI Studio"]
 
 # AI Strategy (Market Analysis)
 api_router.include_router(strategy.router, prefix="/strategy", tags=["Strategy"])
+
+# Community Manager AI
+api_router.include_router(cm.router, prefix="/cm", tags=["Community Manager"])
+
+# Content Library (PresenceOS 2.0)
+api_router.include_router(content_library.router, prefix="/content", tags=["Content Library"])
+
+# Menu Scan OCR (PresenceOS 2.0)
+api_router.include_router(menu_scan.router, prefix="/menu", tags=["Menu Scan"])
+
+# AI Proposals (PresenceOS 2.0)
+api_router.include_router(proposals.router, prefix="/proposals", tags=["Proposals"])
+
+# Daily Brief (PresenceOS 2.0)
+api_router.include_router(brief.router, prefix="/brief", tags=["Daily Brief"])
+
+# Knowledge Base (PresenceOS 2.0)
+api_router.include_router(kb.router, prefix="/kb", tags=["Knowledge Base"])
+
+# Social Accounts (Upload-Post integration)
+api_router.include_router(social_accounts.router, prefix="/social", tags=["Social Accounts"])
+
+# Video Generation (fal.ai Kling 3.0)
+api_router.include_router(video_generation.router, prefix="/video", tags=["Video Generation"])

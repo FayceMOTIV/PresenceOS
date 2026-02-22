@@ -44,10 +44,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     """Initialize database tables."""
-    async with engine.begin() as conn:
-        # Enable pgvector extension (may not be available in all environments)
-        try:
+    # Try pgvector extension in a separate connection (won't break table creation if unavailable)
+    try:
+        async with engine.begin() as conn:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        except Exception:
-            pass
+    except Exception:
+        pass
+
+    # Create tables in a clean connection
+    async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

@@ -10,13 +10,15 @@ prompts so the visual aesthetic matches the brand identity.
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.middleware.rate_limit import limiter
+
 from app.ai.photo_studio import PhotoStudio
-from app.api.v1.deps import CurrentUser, DBSession
+from app.api.v1.deps import CurrentUser, DBSession, get_brand
 from app.models.brand import Brand
 
 logger = structlog.get_logger()
@@ -35,29 +37,37 @@ def _get_photo_service() -> PhotoStudio:
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 
-async def _get_brand_name(db: AsyncSession, brand_id: UUID) -> str | None:
-    """Load just the brand name for DALL-E prompt context."""
-    result = await db.execute(
-        select(Brand.name).where(Brand.id == brand_id)
-    )
-    return result.scalar_one_or_none()
+async def _get_verified_brand_name(
+    db: AsyncSession, brand_id: UUID, current_user,
+) -> str | None:
+    """Load brand name after verifying the user has access to this brand."""
+    brand = await get_brand(brand_id, current_user, db)
+    return brand.name
 
 
 # ── Request / Response Models ───────────────────────────────────────────────
 
 
 class GeneratePhotoRequest(BaseModel):
-    prompt: str = Field(..., description="Description of the desired image")
+    prompt: str = Field(
+        ...,
+        min_length=3,
+        max_length=2000,
+        description="Description of the desired image",
+    )
     style: str = Field(
         default="natural",
+        pattern=r"^(natural|cinematic|vibrant|minimalist)$",
         description="Visual style: natural, cinematic, vibrant, minimalist",
     )
     size: str = Field(
         default="1024x1024",
+        pattern=r"^(1024x1024|1792x1024|1024x1792)$",
         description="Image dimensions: 1024x1024, 1792x1024, 1024x1792",
     )
     niche: str = Field(
         default="restaurant",
+        max_length=100,
         description="Business niche (see GET /niches for full list)",
     )
     brand_id: UUID | None = Field(
@@ -79,10 +89,12 @@ async def list_niches() -> dict:
 
 
 @router.post("/generate")
+@limiter.limit("10/minute")
 async def generate_photo(
     request: GeneratePhotoRequest,
     current_user: CurrentUser,
     db: DBSession,
+    http_request: Request = None,
 ) -> dict:
     """Generate a single marketing photo using DALL-E 3.
 
@@ -96,10 +108,10 @@ async def generate_photo(
     """
     service = _get_photo_service()
 
-    # Resolve brand name if brand_id provided
+    # Resolve brand name if brand_id provided (with ownership check)
     brand_name: str | None = None
     if request.brand_id:
-        brand_name = await _get_brand_name(db, request.brand_id)
+        brand_name = await _get_verified_brand_name(db, request.brand_id, current_user)
 
     try:
         result = await service.generate_photo(
@@ -126,17 +138,19 @@ async def generate_photo(
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Photo generation failed: {str(exc)}",
+            detail="Photo generation failed. Please try again.",
         )
 
     return result
 
 
 @router.post("/generate-variations")
+@limiter.limit("5/minute")
 async def generate_variations(
     request: GeneratePhotoRequest,
     current_user: CurrentUser,
     db: DBSession,
+    http_request: Request = None,
 ) -> dict:
     """Generate 4 photo variations across all available visual styles.
 
@@ -150,10 +164,10 @@ async def generate_variations(
     """
     service = _get_photo_service()
 
-    # Resolve brand name if brand_id provided
+    # Resolve brand name if brand_id provided (with ownership check)
     brand_name: str | None = None
     if request.brand_id:
-        brand_name = await _get_brand_name(db, request.brand_id)
+        brand_name = await _get_verified_brand_name(db, request.brand_id, current_user)
 
     try:
         variations = await service.generate_variations(
@@ -178,7 +192,7 @@ async def generate_variations(
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Photo variations generation failed: {str(exc)}",
+            detail="Photo variations generation failed. Please try again.",
         )
 
     return {"variations": variations}

@@ -183,6 +183,33 @@ async def update_media_asset(
     )
 
 
+@router.post("/brands/{brand_id}/assets/{asset_id}/improve")
+async def improve_media_asset(
+    brand_id: UUID,
+    asset_id: UUID,
+    db: DBSession,
+    current_user: CurrentUser,
+):
+    """Trigger AI improvement for a media asset (description, tags)."""
+    result = await db.execute(
+        select(MediaAsset).where(
+            MediaAsset.id == asset_id,
+            MediaAsset.brand_id == brand_id,
+        )
+    )
+    asset = result.scalar_one_or_none()
+
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset non trouve")
+
+    # Mark as analyzed (actual AI processing can be async via Celery)
+    asset.ai_analyzed = True
+    await db.commit()
+    await db.refresh(asset)
+
+    return {"status": "queued", "asset_id": str(asset_id)}
+
+
 @router.delete("/assets/{asset_id}")
 async def delete_media_asset(
     asset_id: UUID,

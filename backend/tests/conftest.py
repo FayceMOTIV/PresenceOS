@@ -23,15 +23,33 @@ TEST_DATABASE_URL = os.getenv(
 )
 
 
+async def _check_db_connection(engine) -> bool:
+    """Try to connect to the database. Returns True if successful."""
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(
+                __import__("sqlalchemy").text("SELECT 1")
+            )
+        return True
+    except Exception:
+        return False
+
+
 @pytest.fixture(scope="function")
 async def db() -> AsyncGenerator[AsyncSession, None]:
-    """Create a fresh database session for each test."""
-    # Create engine with NullPool to avoid connection issues
+    """Create a fresh database session for each test.
+
+    Skips the test if PostgreSQL is not reachable.
+    """
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
         poolclass=NullPool,
     )
+
+    if not await _check_db_connection(engine):
+        await engine.dispose()
+        pytest.skip("PostgreSQL is not available — start Docker services to run integration tests")
 
     async_session = async_sessionmaker(
         engine,

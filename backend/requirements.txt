@@ -61,6 +61,9 @@ pytest-asyncio>=0.24.0
 pytest-cov>=6.0.0
 factory-boy>=3.3.0
 
+# fal.ai (FLUX Kontext image enhancement)
+fal-client>=0.5.0
+
 # AI Agents
 crewai>=0.102.0
 crewai[tools]>=0.102.0

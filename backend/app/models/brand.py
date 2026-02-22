@@ -5,7 +5,6 @@ import enum
 import uuid
 from typing import TYPE_CHECKING
 
-from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -218,9 +217,9 @@ class KnowledgeItem(BaseModel):
         ARRAY(Integer), nullable=True
     )  # [1,2,3] for Jan-Mar
 
-    # Vector embedding for RAG
+    # Vector embedding for RAG (stored as JSONB when pgvector is unavailable)
     embedding: Mapped[list[float] | None] = mapped_column(
-        Vector(1536), nullable=True
+        JSONB, nullable=True
     )  # OpenAI text-embedding-3-small dimension
 
     # Relationship

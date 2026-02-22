@@ -10,7 +10,7 @@ celery_app = Celery(
     "presenceos",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["app.workers.tasks"],
+    include=["app.workers.tasks", "app.workers.cm_tasks", "app.workers.content_tasks"],
 )
 
 # Celery configuration
@@ -59,5 +59,15 @@ celery_app.conf.beat_schedule = {
     "autopilot-check-auto-publish": {
         "task": "app.workers.tasks.autopilot_check_auto_publish",
         "schedule": 900.0,  # Every 15 minutes
+    },
+    # Community Manager: poll Google reviews every 15 minutes
+    "poll-google-reviews": {
+        "task": "app.workers.cm_tasks.poll_google_reviews_all",
+        "schedule": 900.0,  # Every 15 minutes
+    },
+    # Content Library: send daily brief notifications at 8 AM Europe/Paris
+    "send-daily-brief-notif": {
+        "task": "app.workers.content_tasks.send_daily_brief_notifications",
+        "schedule": crontab(hour=7, minute=0),  # 7 UTC = 8 AM Paris (CET)
     },
 }

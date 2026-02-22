@@ -1,24 +1,102 @@
 """
-PresenceOS - Storage Service (S3/MinIO)
+PresenceOS - Storage Service (S3/MinIO with local fallback)
 """
+import os
 import uuid
+import shutil
 import structlog
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import BinaryIO
-
-import boto3
-from botocore.config import Config
-from botocore.exceptions import ClientError
 
 from app.core.config import settings
 
 logger = structlog.get_logger()
 
 
+class LocalStorageService:
+    """Fallback storage using local filesystem when S3/MinIO is not configured."""
+
+    def __init__(self):
+        self.base_dir = Path(settings.local_upload_dir if hasattr(settings, "local_upload_dir") else "/tmp/presenceos/uploads")
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        # Use RAILWAY_PUBLIC_DOMAIN if available, otherwise api_base_url setting
+        railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+        if railway_domain:
+            self.base_url = f"https://{railway_domain}"
+        else:
+            self.base_url = settings.api_base_url
+        logger.info("Using local filesystem storage", path=str(self.base_dir), base_url=self.base_url)
+
+    async def ensure_bucket_exists(self) -> bool:
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        return True
+
+    def generate_key(self, brand_id: str, media_type: str, original_filename: str) -> str:
+        now = datetime.utcnow()
+        file_uuid = uuid.uuid4().hex[:12]
+        safe_filename = original_filename.replace(" ", "_")
+        return f"brands/{brand_id}/media/{now.year}/{now.month:02d}/{file_uuid}_{safe_filename}"
+
+    async def upload_file(self, file: BinaryIO, key: str, content_type: str | None = None, metadata: dict | None = None) -> dict:
+        file_path = self.base_dir / key
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        file.seek(0, 2)
+        size = file.tell()
+        file.seek(0)
+
+        with open(file_path, "wb") as f:
+            shutil.copyfileobj(file, f)
+
+        url = self.get_public_url(key)
+        logger.info("File uploaded (local)", key=key, size=size)
+        return {"key": key, "url": url, "size": size}
+
+    async def upload_bytes(self, data: bytes, key: str, content_type: str | None = None, metadata: dict | None = None) -> dict:
+        from io import BytesIO
+        return await self.upload_file(BytesIO(data), key, content_type, metadata)
+
+    def get_public_url(self, key: str) -> str:
+        return f"{self.base_url.rstrip('/')}/uploads/{key}"
+
+    def generate_presigned_url(self, key: str, expires_in: int = 3600, for_upload: bool = False, content_type: str | None = None) -> str:
+        return self.get_public_url(key)
+
+    async def delete_file(self, key: str) -> bool:
+        file_path = self.base_dir / key
+        try:
+            file_path.unlink(missing_ok=True)
+            logger.info("File deleted (local)", key=key)
+            return True
+        except Exception as e:
+            logger.error("Delete failed (local)", key=key, error=str(e))
+            return False
+
+    async def file_exists(self, key: str) -> bool:
+        return (self.base_dir / key).exists()
+
+    async def get_file_info(self, key: str) -> dict | None:
+        file_path = self.base_dir / key
+        if not file_path.exists():
+            return None
+        stat = file_path.stat()
+        return {
+            "key": key,
+            "size": stat.st_size,
+            "content_type": None,
+            "last_modified": datetime.fromtimestamp(stat.st_mtime),
+            "metadata": {},
+        }
+
+
 class StorageService:
     """Service for managing file storage on S3/MinIO."""
 
     def __init__(self):
+        import boto3
+        from botocore.config import Config
+
         self.client = boto3.client(
             "s3",
             endpoint_url=settings.s3_endpoint_url,
@@ -32,6 +110,8 @@ class StorageService:
 
     async def ensure_bucket_exists(self) -> bool:
         """Ensure the storage bucket exists."""
+        from botocore.exceptions import ClientError
+
         try:
             self.client.head_bucket(Bucket=self.bucket_name)
             return True
@@ -195,6 +275,8 @@ class StorageService:
 
     async def file_exists(self, key: str) -> bool:
         """Check if a file exists in storage."""
+        from botocore.exceptions import ClientError
+
         try:
             self.client.head_object(Bucket=self.bucket_name, Key=key)
             return True
@@ -203,6 +285,8 @@ class StorageService:
 
     async def get_file_info(self, key: str) -> dict | None:
         """Get metadata about a stored file."""
+        from botocore.exceptions import ClientError
+
         try:
             response = self.client.head_object(Bucket=self.bucket_name, Key=key)
             return {
@@ -217,12 +301,24 @@ class StorageService:
 
 
 # Singleton instance
-_storage_service: StorageService | None = None
+_storage_service: StorageService | LocalStorageService | None = None
 
 
-def get_storage_service() -> StorageService:
-    """Get or create the storage service instance."""
+def get_storage_service() -> StorageService | LocalStorageService:
+    """Get or create the storage service instance. Falls back to local storage if S3 is not configured or unreachable."""
     global _storage_service
     if _storage_service is None:
-        _storage_service = StorageService()
+        if settings.s3_endpoint_url and settings.s3_access_key:
+            try:
+                svc = StorageService()
+                # Verify S3/MinIO is actually reachable (fast HEAD request with short timeout)
+                svc.client.head_bucket(Bucket=svc.bucket_name)
+                _storage_service = svc
+                logger.info("Using S3/MinIO storage", endpoint=settings.s3_endpoint_url)
+            except Exception as e:
+                logger.warning("S3 unreachable, falling back to local storage", error=str(e))
+                _storage_service = LocalStorageService()
+        else:
+            logger.info("S3 not configured, using local storage fallback")
+            _storage_service = LocalStorageService()
     return _storage_service

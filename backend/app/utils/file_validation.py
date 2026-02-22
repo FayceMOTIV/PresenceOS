@@ -3,18 +3,22 @@ from fastapi import UploadFile, HTTPException
 import hashlib
 import io
 
-ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
+ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif", "heic", "heif"}
 ALLOWED_VIDEO_EXTENSIONS = {"mp4", "mov"}
 ALLOWED_MIME_TYPES = {
     "image/jpeg",
+    "image/jpg",
     "image/png",
     "image/webp",
+    "image/gif",
+    "image/heic",
+    "image/heif",
     "video/mp4",
     "video/quicktime",
 }
-MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_IMAGE_SIZE = 20 * 1024 * 1024  # 20 MB
 MAX_VIDEO_SIZE = 100 * 1024 * 1024  # 100 MB
-MIN_IMAGE_DIMENSION = 400  # px
+MIN_IMAGE_DIMENSION = 100  # px
 MAX_IMAGE_DIMENSION = 8000  # px
 
 
@@ -53,6 +57,10 @@ async def validate_image_upload(file: UploadFile) -> tuple[bytes, str]:
         detected = "png"
     elif contents[:4] == b"RIFF" and contents[8:12] == b"WEBP":
         detected = "webp"
+    elif contents[:6] == b"GIF87a" or contents[:6] == b"GIF89a":
+        detected = "gif"
+    elif contents[4:12] == b"ftypheic" or contents[4:12] == b"ftypmif1" or contents[4:12] == b"ftyphevc":
+        detected = "heic"
     else:
         raise HTTPException(status_code=400, detail="Format d'image non reconnu")
 

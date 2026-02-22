@@ -19,29 +19,30 @@ from app.core.config import settings
 from app.core.database import engine, init_db
 from app.core.resilience import registry, ServiceStatus
 
-import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
 
+    def _filter_sensitive_data(event):
+        if 'request' in event and 'data' in event['request']:
+            data = event['request']['data']
+            if isinstance(data, dict):
+                for key in ['password', 'token', 'api_key', 'secret']:
+                    if key in data:
+                        data[key] = '[FILTERED]'
+        return event
 
-def _filter_sensitive_data(event):
-    if 'request' in event and 'data' in event['request']:
-        data = event['request']['data']
-        if isinstance(data, dict):
-            for key in ['password', 'token', 'api_key', 'secret']:
-                if key in data:
-                    data[key] = '[FILTERED]'
-    return event
-
-
-# Initialize Sentry if configured
-if settings.sentry_dsn:
-    sentry_sdk.init(
-        dsn=settings.sentry_dsn,
-        environment=getattr(settings, "environment", "production"),
-        traces_sample_rate=0.1,
-        integrations=[FastApiIntegration()],
-        before_send=lambda event, hint: _filter_sensitive_data(event),
-    )
+    # Initialize Sentry if configured
+    if settings.sentry_dsn:
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=getattr(settings, "environment", "production"),
+            traces_sample_rate=0.1,
+            integrations=[FastApiIntegration()],
+            before_send=lambda event, hint: _filter_sensitive_data(event),
+        )
+except ImportError:
+    pass  # sentry_sdk not installed — skip Sentry integration
 from app.core.degraded_middleware import DegradedModeMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.rate_limit import limiter
@@ -80,7 +81,8 @@ async def _probe_postgresql():
             await conn.execute(sa_text("SELECT 1"))
         registry.update("postgresql", ServiceStatus.HEALTHY)
         return True
-    except Exception:
+    except Exception as e:
+        logger.warning("PostgreSQL probe failed", error=str(e), error_type=type(e).__name__)
         registry.update("postgresql", ServiceStatus.UNAVAILABLE)
         return False
 
@@ -188,13 +190,7 @@ def create_application() -> FastAPI:
     # CORS middleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:3001",
-            # Add production URLs here
-        ],
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
