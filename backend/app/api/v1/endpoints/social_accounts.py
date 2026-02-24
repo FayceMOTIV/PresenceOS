@@ -3,13 +3,16 @@ PresenceOS - Social Accounts API (Upload-Post integration)
 
 Single-call endpoints — auto-creates profile if needed.
 """
+from typing import Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.api.v1.deps import CurrentUser, DBSession, get_brand
 from app.core.config import settings
+
+VALID_PLATFORMS = {"instagram", "facebook", "tiktok"}
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -25,10 +28,14 @@ async def get_social_link_url(
     brand_id: UUID,
     current_user: CurrentUser,
     db: DBSession,
+    platform: Optional[str] = Query(None, description="Single platform: instagram, facebook, or tiktok"),
+    redirect_url: Optional[str] = Query(None, description="Deep link redirect URL for mobile"),
 ) -> dict:
     """
     Generate Upload-Post OAuth URL in a single call.
     Auto-creates profile if it doesn't exist yet.
+    Accepts optional `platform` to scope to a single network,
+    and optional `redirect_url` for mobile deep link callback.
     """
     brand = await get_brand(brand_id, current_user, db)
 
@@ -37,6 +44,15 @@ async def get_social_link_url(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Upload-Post API non configuree (UPLOAD_POST_API_KEY manquante).",
         )
+
+    # Validate platform if provided
+    if platform and platform.lower() not in VALID_PLATFORMS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Plateforme invalide: {platform}. Valides: {', '.join(VALID_PLATFORMS)}",
+        )
+
+    platforms = [platform.lower()] if platform else list(VALID_PLATFORMS)
 
     from app.services.social_publisher import SocialPublisher
 
@@ -52,10 +68,11 @@ async def get_social_link_url(
             brand.upload_post_username = upload_username  # type: ignore[attr-defined]
             await db.commit()
 
-        # Generate JWT link
+        # Generate JWT link — pass platform list and optional redirect URL
         access_url = await publisher.get_social_link_url(
             brand_id=upload_username,
-            platforms=["instagram", "facebook", "tiktok"],
+            platforms=platforms,
+            redirect_url=redirect_url,
         )
     except Exception as exc:
         logger.error("Upload-Post link-url failed", error=str(exc))

@@ -122,20 +122,25 @@ class SocialPublisher:
         platforms: list[str] | None = None,
         logo_image: str = "https://presenceos.app/logo.png",
         connect_title: str = "Connecter mes reseaux",
+        redirect_url: str | None = None,
     ) -> str:
         """
         Generate a branded JWT URL for connecting social accounts.
         Includes redirect_url so Upload-Post redirects after connection.
+        Accepts optional redirect_url for mobile deep link callbacks.
         """
         if platforms is None:
             platforms = ["instagram", "facebook", "tiktok"]
+
+        # Default to web URL, but allow mobile deep link override
+        final_redirect = redirect_url or "https://presenceos.app/connected"
 
         payload = {
             "username": brand_id,
             "logo_image": logo_image,
             "platforms": platforms,
             "connect_title": connect_title,
-            "redirect_url": "https://presenceos.app/connected",
+            "redirect_url": final_redirect,
         }
 
         async with httpx.AsyncClient(timeout=30.0) as client:

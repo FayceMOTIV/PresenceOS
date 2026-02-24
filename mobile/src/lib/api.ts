@@ -225,7 +225,13 @@ export const assetsApi = {
 
 // ── Social Accounts (Upload-Post) ──
 export const socialApi = {
-  linkUrl: (brandId: string) => api.get(`/social/link-url/${brandId}`),
+  linkUrl: (brandId: string, platform?: string, redirectUrl?: string) => {
+    const params = new URLSearchParams();
+    if (platform) params.append("platform", platform);
+    if (redirectUrl) params.append("redirect_url", redirectUrl);
+    const qs = params.toString();
+    return api.get(`/social/link-url/${brandId}${qs ? `?${qs}` : ""}`);
+  },
   accounts: (brandId: string) => api.get(`/social/accounts/${brandId}`),
 };
 

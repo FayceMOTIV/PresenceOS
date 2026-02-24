@@ -13,6 +13,7 @@ import {
   Alert,
 } from "react-native";
 import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -54,6 +55,9 @@ const PLATFORMS = [
   },
 ];
 
+// Deep link callback URL for OAuth redirect
+const REDIRECT_URL = Linking.createURL("social-callback");
+
 export default function SocialAccountsScreen() {
   const nav = useNavigation();
   const brand = useContext(BrandContext);
@@ -62,7 +66,7 @@ export default function SocialAccountsScreen() {
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [connecting, setConnecting] = useState(false);
+  const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
   const appState = useRef(AppState.currentState);
 
   const fetchAccounts = useCallback(async () => {
@@ -72,7 +76,6 @@ export default function SocialAccountsScreen() {
       const raw: SocialAccount[] = res.data?.accounts || [];
 
       // Merge API response with our platform list
-      // Backend returns: { platform, connected, username?, display_name?, avatar_url? }
       const merged = PLATFORMS.map((p) => {
         const match = raw.find(
           (a) => a.platform?.toLowerCase() === p.key
@@ -89,7 +92,6 @@ export default function SocialAccountsScreen() {
       });
       setAccounts(merged);
     } catch {
-      // If API fails, show all as disconnected
       setAccounts(
         PLATFORMS.map((p) => ({ platform: p.key, connected: false }))
       );
@@ -122,18 +124,32 @@ export default function SocialAccountsScreen() {
     setRefreshing(false);
   }, [fetchAccounts]);
 
-  const handleConnect = async () => {
+  /**
+   * Connect a specific platform via OAuth.
+   * Uses openAuthSessionAsync so the browser dismisses automatically on redirect.
+   * Retries fetchAccounts with a delay to allow Upload-Post sync.
+   */
+  const handleConnect = async (platform: string) => {
     if (!brandId) return;
-    setConnecting(true);
+    setConnectingPlatform(platform);
     try {
-      const res = await socialApi.linkUrl(brandId);
+      const res = await socialApi.linkUrl(brandId, platform, REDIRECT_URL);
       const url = res.data?.url;
-      if (url) {
-        await WebBrowser.openBrowserAsync(url);
-        // Refresh accounts after browser closes
-        await fetchAccounts();
-      } else {
+      if (!url) {
         Alert.alert("Erreur", "Impossible de generer le lien de connexion.");
+        return;
+      }
+
+      // openAuthSessionAsync auto-dismisses when redirect matches our scheme
+      const result = await WebBrowser.openAuthSessionAsync(url, REDIRECT_URL);
+
+      if (result.type === "success" || result.type === "dismiss") {
+        // Give Upload-Post a moment to sync the connection
+        await new Promise((r) => setTimeout(r, 1500));
+        await fetchAccounts();
+        // Retry once more after another delay in case sync is slow
+        await new Promise((r) => setTimeout(r, 3000));
+        await fetchAccounts();
       }
     } catch (err: any) {
       Alert.alert(
@@ -141,7 +157,38 @@ export default function SocialAccountsScreen() {
         err?.response?.data?.detail || "Connexion impossible."
       );
     } finally {
-      setConnecting(false);
+      setConnectingPlatform(null);
+    }
+  };
+
+  /** Connect all platforms at once (global CTA button) */
+  const handleConnectAll = async () => {
+    if (!brandId) return;
+    setConnectingPlatform("all");
+    try {
+      // No platform param = all platforms
+      const res = await socialApi.linkUrl(brandId, undefined, REDIRECT_URL);
+      const url = res.data?.url;
+      if (!url) {
+        Alert.alert("Erreur", "Impossible de generer le lien de connexion.");
+        return;
+      }
+
+      const result = await WebBrowser.openAuthSessionAsync(url, REDIRECT_URL);
+
+      if (result.type === "success" || result.type === "dismiss") {
+        await new Promise((r) => setTimeout(r, 1500));
+        await fetchAccounts();
+        await new Promise((r) => setTimeout(r, 3000));
+        await fetchAccounts();
+      }
+    } catch (err: any) {
+      Alert.alert(
+        "Erreur",
+        err?.response?.data?.detail || "Connexion impossible."
+      );
+    } finally {
+      setConnectingPlatform(null);
     }
   };
 
@@ -149,6 +196,7 @@ export default function SocialAccountsScreen() {
     const account = accounts.find((a) => a.platform === item.key);
     const connected = account?.connected || false;
     const isTikTok = item.key === "tiktok";
+    const isConnecting = connectingPlatform === item.key;
 
     return (
       <View style={styles.platformCard}>
@@ -188,16 +236,23 @@ export default function SocialAccountsScreen() {
                 borderColor: item.color + "50"
               }
             ]}
-            onPress={handleConnect}
+            onPress={() => handleConnect(item.key)}
+            disabled={connectingPlatform !== null}
           >
-            <Text style={[styles.connectBtnText, { color: item.color }]}>
-              Connecter
-            </Text>
+            {isConnecting ? (
+              <ActivityIndicator size="small" color={item.color} />
+            ) : (
+              <Text style={[styles.connectBtnText, { color: item.color }]}>
+                Connecter
+              </Text>
+            )}
           </TouchableOpacity>
         )}
       </View>
     );
   };
+
+  const isConnectingAny = connectingPlatform !== null;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -230,8 +285,8 @@ export default function SocialAccountsScreen() {
           ListHeaderComponent={
             <View style={styles.ctaSection}>
               <TouchableOpacity
-                onPress={handleConnect}
-                disabled={connecting}
+                onPress={handleConnectAll}
+                disabled={isConnectingAny}
                 activeOpacity={0.8}
               >
                 <LinearGradient
@@ -240,7 +295,7 @@ export default function SocialAccountsScreen() {
                   end={{ x: 1, y: 0 }}
                   style={styles.mainConnectBtn}
                 >
-                  {connecting ? (
+                  {connectingPlatform === "all" ? (
                     <ActivityIndicator size="small" color="#FFF" />
                   ) : (
                     <>
@@ -263,7 +318,7 @@ export default function SocialAccountsScreen() {
               <View style={styles.emptyFooter}>
                 <Ionicons name="information-circle-outline" size={20} color={Colors.text.secondary} />
                 <Text style={styles.emptyFooterText}>
-                  Aucun reseau connecte. Appuyez sur le bouton ci-dessus pour commencer.
+                  Aucun reseau connecte. Appuyez sur "Connecter" pour lier chaque compte individuellement.
                 </Text>
               </View>
             ) : null
@@ -368,6 +423,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 10,
     borderWidth: 1,
+    minWidth: 90,
+    alignItems: "center",
   },
   connectBtnText: {
     fontSize: 13,
