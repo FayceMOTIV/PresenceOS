@@ -158,11 +158,13 @@ async def generate_video(
     style_mod = STYLE_MODIFIERS[body.style]
     enhanced_prompt = f"{body.prompt}. {style_mod}"
 
-    # Call fal.ai
+    # Call fal.ai (async to avoid blocking the event loop)
     try:
+        import os
+        os.environ["FAL_KEY"] = fal_key
         import fal_client
 
-        result = fal_client.subscribe(
+        result = await fal_client.subscribe_async(
             "fal-ai/kling-video/v2.1/standard/text-to-video",
             arguments={
                 "prompt": enhanced_prompt,
