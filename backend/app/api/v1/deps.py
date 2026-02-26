@@ -43,6 +43,8 @@ async def get_optional_db(request: Request):
         async for session in get_db():
             yield session
             return
+    except HTTPException:
+        raise  # let HTTP errors propagate untouched
     except Exception as e:
         logger.warning(f"DB unavailable during request: {e}")
         yield None
