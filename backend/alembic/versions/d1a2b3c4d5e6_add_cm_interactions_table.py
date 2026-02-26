@@ -19,6 +19,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Idempotent: skip if table already exists (created by init_db)
+    conn = op.get_bind()
+    result = conn.execute(sa.text(
+        "SELECT 1 FROM information_schema.tables WHERE table_name = 'cm_interactions'"
+    ))
+    if result.fetchone():
+        return
+
     op.create_table(
         "cm_interactions",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),

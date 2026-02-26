@@ -17,6 +17,13 @@ depends_on = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    result = conn.execute(sa.text(
+        "SELECT 1 FROM information_schema.tables WHERE table_name = 'video_credits'"
+    ))
+    if result.fetchone():
+        return
+
     op.create_table(
         "video_credits",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),

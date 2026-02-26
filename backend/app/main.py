@@ -130,13 +130,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Probe PostgreSQL
     pg_ok = await _probe_postgresql()
     if pg_ok:
-        try:
-            await init_db()
-            logger.info("Database initialized")
-        except Exception as e:
-            logger.warning("Database init failed", error=str(e))
-            pg_ok = False
-            registry.update("postgresql", ServiceStatus.UNAVAILABLE)
+        # In production, Alembic manages the schema (railway.toml runs
+        # "alembic upgrade head" before starting uvicorn).  Calling
+        # Base.metadata.create_all() here would create tables without
+        # recording them in alembic_version, preventing later migrations
+        # from adding new columns.  Only use create_all for local dev.
+        if not settings.is_production:
+            try:
+                await init_db()
+                logger.info("Database initialized (dev mode — create_all)")
+            except Exception as e:
+                logger.warning("Database init failed", error=str(e))
+                pg_ok = False
+                registry.update("postgresql", ServiceStatus.UNAVAILABLE)
+        else:
+            logger.info("Production mode — schema managed by Alembic")
     else:
         logger.warning("PostgreSQL not available — running in DEGRADED mode")
 
