@@ -1,6 +1,6 @@
 // PresenceOS Mobile — HomeScreen (dark theme, French)
 
-import React, { useContext, useState, useEffect, useCallback } from "react";
+import React, { useContext, useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -10,8 +10,10 @@ import {
   RefreshControl,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BrandContext } from "@/contexts/BrandContext";
 import { HomeStackParams } from "@/navigation/TabNavigator";
 import { Colors } from "@/constants/colors";
@@ -19,6 +21,7 @@ import { FR } from "@/constants/i18n";
 import KBCompletenessBar from "@/components/KBCompletenessBar";
 import ProposalCard from "@/components/ProposalCard";
 import EmptyStateCard from "@/components/EmptyStateCard";
+import BrandSwitcher from "@/components/BrandSwitcher";
 import { kbApi, proposalsApi, briefApi, socialApi, videoApi } from "@/lib/api";
 import { AIProposal } from "@/types";
 
@@ -67,6 +70,8 @@ export default function HomeScreen() {
   const brandId = brand?.activeBrand?.id;
   const brandName = brand?.activeBrand?.name || "Mon Restaurant";
   const initial = brandName.charAt(0).toUpperCase();
+  const hasMultipleBrands = (brand?.brands?.length ?? 0) > 1;
+  const brandSwitcherRef = useRef<BottomSheetModal>(null);
 
   const [kbScore, setKbScore] = useState(0);
   const [proposals, setProposals] = useState<AIProposal[]>([]);
@@ -141,6 +146,13 @@ export default function HomeScreen() {
             </View>
             <View style={styles.headerActions}>
               <TouchableOpacity
+                onPress={() => nav.navigate("Settings")}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="settings-outline" size={22} color={Colors.text.secondary} />
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={styles.socialBtn}
                 onPress={() => nav.navigate("SocialAccounts")}
                 activeOpacity={0.7}
@@ -151,9 +163,14 @@ export default function HomeScreen() {
                   <View pointerEvents="none" style={styles.socialBadge} />
                 )}
               </TouchableOpacity>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarInitial}>{initial}</Text>
-              </View>
+              <TouchableOpacity
+                onPress={hasMultipleBrands ? () => brandSwitcherRef.current?.present() : undefined}
+                activeOpacity={hasMultipleBrands ? 0.7 : 1}
+              >
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarInitial}>{initial}</Text>
+                </View>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -267,6 +284,8 @@ export default function HomeScreen() {
           <Text style={styles.fabIcon}>+</Text>
         </LinearGradient>
       </TouchableOpacity>
+
+      {hasMultipleBrands && <BrandSwitcher bottomSheetRef={brandSwitcherRef} />}
     </View>
   );
 }

@@ -11,6 +11,7 @@ import {
   AppState,
   ActivityIndicator,
   Alert,
+  Modal,
 } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
@@ -68,6 +69,13 @@ export default function SocialAccountsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
   const appState = useRef(AppState.currentState);
+  const [pagePickerVisible, setPagePickerVisible] = useState(false);
+  const [facebookPages, setFacebookPages] = useState<Array<{
+    id: string;
+    name: string;
+    instagram_business_id?: string;
+    category?: string;
+  }>>([]);
 
   const fetchAccounts = useCallback(async () => {
     if (!brandId) return;
@@ -136,7 +144,7 @@ export default function SocialAccountsScreen() {
       const res = await socialApi.linkUrl(brandId, platform, REDIRECT_URL);
       const url = res.data?.url;
       if (!url) {
-        Alert.alert("Erreur", "Impossible de generer le lien de connexion.");
+        Alert.alert("Erreur", "Impossible de générer le lien de connexion.");
         return;
       }
 
@@ -147,6 +155,25 @@ export default function SocialAccountsScreen() {
         // Give Upload-Post a moment to sync the connection
         await new Promise((r) => setTimeout(r, 1500));
         await fetchAccounts();
+
+        // If Facebook/Instagram, show page picker
+        if (platform === "facebook" || platform === "instagram") {
+          try {
+            const pagesRes = await socialApi.facebookPages(brandId);
+            const pages = pagesRes.data?.pages || pagesRes.data || [];
+            if (pages.length > 1) {
+              setFacebookPages(pages);
+              setPagePickerVisible(true);
+            } else if (pages.length === 1) {
+              // Auto-select the only page
+              await socialApi.selectPage(brandId, pages[0].id);
+              await fetchAccounts();
+            }
+          } catch {
+            // Pages endpoint not available yet — skip
+          }
+        }
+
         // Retry once more after another delay in case sync is slow
         await new Promise((r) => setTimeout(r, 3000));
         await fetchAccounts();
@@ -170,7 +197,7 @@ export default function SocialAccountsScreen() {
       const res = await socialApi.linkUrl(brandId, undefined, REDIRECT_URL);
       const url = res.data?.url;
       if (!url) {
-        Alert.alert("Erreur", "Impossible de generer le lien de connexion.");
+        Alert.alert("Erreur", "Impossible de générer le lien de connexion.");
         return;
       }
 
@@ -219,13 +246,13 @@ export default function SocialAccountsScreen() {
               @{account.username}
             </Text>
           ) : (
-            <Text style={styles.disconnected}>Non connecte</Text>
+            <Text style={styles.disconnected}>Non connecté</Text>
           )}
         </View>
         {connected ? (
           <View style={styles.connectedBadge}>
             <Ionicons name="checkmark-circle" size={22} color={Colors.status.success} />
-            <Text style={styles.connectedText}>Connecte</Text>
+            <Text style={styles.connectedText}>Connecté</Text>
           </View>
         ) : (
           <TouchableOpacity
@@ -261,7 +288,7 @@ export default function SocialAccountsScreen() {
         <TouchableOpacity onPress={() => nav.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mes reseaux sociaux</Text>
+        <Text style={styles.headerTitle}>Mes réseaux sociaux</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -301,14 +328,14 @@ export default function SocialAccountsScreen() {
                     <>
                       <Ionicons name="link" size={20} color="#FFF" />
                       <Text style={styles.mainConnectText}>
-                        Connecter mes reseaux
+                        Connecter mes réseaux
                       </Text>
                     </>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
               <Text style={styles.ctaHint}>
-                Ouvre une page securisee pour lier vos comptes Instagram,
+                Ouvre une page sécurisée pour lier vos comptes Instagram,
                 Facebook et TikTok.
               </Text>
             </View>
@@ -318,13 +345,68 @@ export default function SocialAccountsScreen() {
               <View style={styles.emptyFooter}>
                 <Ionicons name="information-circle-outline" size={20} color={Colors.text.secondary} />
                 <Text style={styles.emptyFooterText}>
-                  Aucun reseau connecte. Appuyez sur "Connecter" pour lier chaque compte individuellement.
+                  Aucun réseau connecté. Appuyez sur "Connecter" pour lier chaque compte individuellement.
                 </Text>
               </View>
             ) : null
           }
         />
       )}
+      {/* Facebook Page Picker Modal */}
+      <Modal
+        visible={pagePickerVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPagePickerVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Choisir une page</Text>
+            <Text style={styles.modalSubtitle}>
+              Sélectionnez la page Facebook à lier
+            </Text>
+            {facebookPages.map((page) => (
+              <TouchableOpacity
+                key={page.id}
+                style={styles.pageRow}
+                onPress={async () => {
+                  if (!brandId) return;
+                  try {
+                    await socialApi.selectPage(brandId, page.id);
+                    await fetchAccounts();
+                  } catch {}
+                  setPagePickerVisible(false);
+                }}
+              >
+                <Ionicons
+                  name="business"
+                  size={20}
+                  color={Colors.brand.primary}
+                />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.pageName}>{page.name}</Text>
+                  {page.category && (
+                    <Text style={styles.pageCategory}>{page.category}</Text>
+                  )}
+                </View>
+                {page.instagram_business_id && (
+                  <Ionicons
+                    name="logo-instagram"
+                    size={16}
+                    color="#E1306C"
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.modalCloseBtn}
+              onPress={() => setPagePickerVisible(false)}
+            >
+              <Text style={styles.modalCloseBtnText}>Annuler</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -448,5 +530,59 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.text.secondary,
     lineHeight: 18,
+  },
+
+  // Page Picker Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: Colors.bg.secondary,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: Colors.text.primary,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: Colors.text.secondary,
+    marginBottom: 20,
+  },
+  pageRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.bg.elevated,
+    marginBottom: 8,
+  },
+  pageName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: Colors.text.primary,
+  },
+  pageCategory: {
+    fontSize: 12,
+    color: Colors.text.muted,
+    marginTop: 1,
+  },
+  modalCloseBtn: {
+    alignItems: "center",
+    paddingVertical: 14,
+    marginTop: 8,
+  },
+  modalCloseBtnText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: Colors.text.secondary,
   },
 });

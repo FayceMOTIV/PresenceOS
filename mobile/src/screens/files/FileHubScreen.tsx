@@ -59,11 +59,15 @@ export default function FileHubScreen() {
         ))}
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
-        {activeTab === "media" && <MediaLibraryTab />}
-        {activeTab === "menu" && <MenuTab />}
-        {activeTab === "requests" && <RequestsTab />}
+      {/* Content — keep tabs mounted to preserve state */}
+      <View style={[styles.content, activeTab !== "media" && styles.hidden]}>
+        <MediaLibraryTab />
+      </View>
+      <View style={[styles.content, activeTab !== "menu" && styles.hidden]}>
+        <MenuTab />
+      </View>
+      <View style={[styles.content, activeTab !== "requests" && styles.hidden]}>
+        <RequestsTab />
       </View>
     </SafeAreaView>
   );
@@ -79,4 +83,5 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 13, fontWeight: "600", color: Colors.text.secondary },
   tabTextActive: { color: "#FFF" },
   content: { flex: 1 },
+  hidden: { display: "none" },
 });

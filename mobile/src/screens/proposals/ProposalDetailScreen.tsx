@@ -71,10 +71,10 @@ export default function ProposalDetailScreen() {
       setProposal({ ...proposal, status: "published" });
       const postUrl = res.data?.post_url;
       Alert.alert(
-        "Publie sur Instagram !",
+        "Publié sur Instagram !",
         postUrl
           ? `Votre post est en ligne.\n\n${postUrl}`
-          : "Votre post a ete envoye avec succes.",
+          : "Votre post a été envoyé avec succès.",
         [{ text: "OK", onPress: () => nav.goBack() }]
       );
     } catch (err: any) {
@@ -243,7 +243,7 @@ export default function ProposalDetailScreen() {
         <View style={styles.actions}>
           <View style={styles.publishedBanner}>
             <Ionicons name="checkmark-circle" size={22} color={Colors.status.success} />
-            <Text style={styles.publishedText}>Publie sur Instagram</Text>
+            <Text style={styles.publishedText}>Publié sur Instagram</Text>
           </View>
         </View>
       )}

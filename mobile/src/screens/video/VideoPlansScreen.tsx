@@ -85,7 +85,9 @@ export default function VideoPlansScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Current status */}
         <LinearGradient
-          colors={["#1A2A4A", "#0F1923"]}
+          colors={[Colors.brand.primary, Colors.brand.amber]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={styles.statusCard}
         >
           <Text style={styles.statusEmoji}>🎬</Text>
@@ -195,11 +197,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   statusEmoji: { fontSize: 36, marginBottom: 8 },
-  statusCredits: { fontSize: 48, fontWeight: "800", color: Colors.text.primary },
-  statusLabel: { fontSize: 14, color: Colors.text.secondary, fontWeight: "500" },
+  statusCredits: { fontSize: 48, fontWeight: "800", color: "#FFF" },
+  statusLabel: { fontSize: 14, color: "rgba(255,255,255,0.8)", fontWeight: "500" },
   statusPlan: {
     fontSize: 12,
-    color: Colors.brand.primary,
+    color: "rgba(255,255,255,0.9)",
     fontWeight: "700",
     marginTop: 8,
     textTransform: "uppercase",

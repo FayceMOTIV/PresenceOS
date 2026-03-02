@@ -1,204 +1,211 @@
-// PresenceOS Mobile — Root Entry Point
+// PresenceOS Mobile — Root Entry Point (Sprint 2: Firebase Auth)
 
 // Polyfill URL before anything else (fixes Hermes URL.protocol read-only issue)
 import "react-native-url-polyfill/auto";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { ActivityIndicator, View, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { NavigationContainer } from "@react-navigation/native";
-import * as SecureStore from "expo-secure-store";
+import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import TabNavigator from "@/navigation/TabNavigator";
-import { Brand } from "@/types";
-import { AuthContext, BrandContext } from "@/contexts/BrandContext";
+import LoginScreen from "@/screens/auth/LoginScreen";
+import RegisterScreen from "@/screens/auth/RegisterScreen";
+import ForgotPasswordScreen from "@/screens/auth/ForgotPasswordScreen";
+import WelcomeScreen from "@/screens/onboarding/WelcomeScreen";
+import OnboardingChatScreen from "@/screens/onboarding/OnboardingChatScreen";
+import ConnectAccountScreen from "@/screens/onboarding/ConnectAccountScreen";
+import CompleteScreen from "@/screens/onboarding/CompleteScreen";
+import { AuthContext, BrandContext, AuthContextType } from "@/contexts/BrandContext";
+import { Colors } from "@/constants/colors";
+import { deepLinkingConfig } from "@/lib/deepLinking";
+import { useAuthStore } from "@/stores/authStore";
+import { useBusinessStore } from "@/stores/businessStore";
+import { useOnboardingStore } from "@/stores/onboardingStore";
+import { setOnUnauthorized } from "@/lib/api";
+import { addNotificationResponseListener, removeNotificationSubscriptions } from "@/lib/pushNotifications";
+
+// Navigation ref for programmatic navigation (e.g. from push notification taps)
+export const navigationRef = createNavigationContainerRef<any>();
+
+// Auth stack navigator (Login / Register / ForgotPassword)
+const AuthStack = createNativeStackNavigator();
 
 // Re-export so any remaining imports from App still work
 export { AuthContext, BrandContext };
 
-const API_BASE = __DEV__
-  ? "http://192.168.10.114:8000/api/v1"
-  : "https://rs3-api-production.up.railway.app/api/v1";
-
-// ── Mock brand for local dev (auth disabled) ──
-const MOCK_BRAND: Brand = {
-  id: "00000000-0000-0000-0000-000000000001",
-  name: "Mon Restaurant",
-  slug: "mon-restaurant",
-  brand_type: "restaurant",
-  description: "Restaurant de test",
-  logo_url: undefined,
-};
-
-// ── Auto-login: get JWT + real brands from production API ──
-async function ensureAuth(): Promise<{ token: string; brands: Brand[] }> {
-  // 1. Check for existing token
-  let token: string | null = null;
-  try {
-    token = await SecureStore.getItemAsync("auth_token");
-  } catch {}
-
-  let workspaceId: string | null = null;
-  try {
-    workspaceId = await SecureStore.getItemAsync("workspace_id");
-  } catch {}
-
-  // 2. If no token, login with test credentials
-  if (!token) {
-    const loginBody = `username=${encodeURIComponent("test@presenceos.dev")}&password=${encodeURIComponent("Test123pass")}`;
-    const loginRes = await fetch(`${API_BASE}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: loginBody,
-    });
-
-    if (!loginRes.ok) {
-      const err = await loginRes.text();
-      throw new Error(`Login failed (${loginRes.status}): ${err}`);
-    }
-
-    const loginData = await loginRes.json();
-    token = loginData.token.access_token;
-    await SecureStore.setItemAsync("auth_token", token!);
-
-    // Store refresh token for later
-    if (loginData.token.refresh_token) {
-      await SecureStore.setItemAsync("refresh_token", loginData.token.refresh_token);
-    }
-
-    // Extract workspace ID from login response
-    if (loginData.workspaces && loginData.workspaces.length > 0) {
-      workspaceId = loginData.workspaces[0].id;
-      await SecureStore.setItemAsync("workspace_id", workspaceId!);
-    }
-  }
-
-  // 3. Fetch brands from API
-  if (!workspaceId) {
-    throw new Error("No workspace available");
-  }
-
-  const brandsRes = await fetch(`${API_BASE}/workspaces/${workspaceId}/brands`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!brandsRes.ok) {
-    // Token might be expired — clear and retry once
-    await SecureStore.deleteItemAsync("auth_token");
-    await SecureStore.deleteItemAsync("workspace_id");
-    throw new Error("RETRY");
-  }
-
-  const brandsData: any[] = await brandsRes.json();
-  const brands: Brand[] = brandsData.map((b: any) => ({
-    id: b.id,
-    name: b.name,
-    slug: b.slug,
-    brand_type: b.brand_type,
-    description: b.description ?? undefined,
-    logo_url: b.logo_url ?? undefined,
-  }));
-
-  return { token: token!, brands };
-}
-
 export default function App() {
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [activeBrand, setActiveBrand] = useState<Brand | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Firebase auth store
+  const authStore = useAuthStore();
+  const { isAuthenticated, isLoading: authLoading, user } = authStore;
 
+  // Business store (Firestore)
+  const businessStore = useBusinessStore();
+  const { brands, activeBrand, isLoading: bizLoading } = businessStore;
+
+  // Onboarding
+  const onboardingStore = useOnboardingStore();
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+
+  // ── Initialize Firebase Auth listener ──
   useEffect(() => {
-    let cancelled = false;
-
-    async function init() {
-      // In dev mode, skip auto-login (use mock brand + dev-token)
-      if (__DEV__) {
-        setBrands([MOCK_BRAND]);
-        setActiveBrand(MOCK_BRAND);
-        setIsLoading(false);
-        return;
-      }
-
-      // Production (TestFlight): auto-login + fetch real brands
-      let retries = 0;
-      while (retries < 2) {
-        try {
-          const result = await ensureAuth();
-          if (cancelled) return;
-
-          if (result.brands.length === 0) {
-            setError("Aucune marque trouvee");
-            setIsLoading(false);
-            return;
-          }
-
-          setBrands(result.brands);
-          setActiveBrand(result.brands[0]);
-          setIsLoading(false);
-          return;
-        } catch (err: any) {
-          if (err.message === "RETRY" && retries === 0) {
-            retries++;
-            continue;
-          }
-          if (cancelled) return;
-          console.error("Auth init failed:", err);
-          setError(err.message || "Erreur d'authentification");
-          setIsLoading(false);
-          return;
-        }
-      }
-    }
-
-    init();
-    return () => { cancelled = true; };
+    const unsubscribe = authStore._initListener();
+    return unsubscribe;
   }, []);
+
+  // ── Start Firestore business listener when authenticated ──
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      businessStore.startListening(user.uid);
+      onboardingStore.checkCompleted().then(() => setOnboardingChecked(true));
+    } else {
+      businessStore.stopListening();
+      setOnboardingChecked(false);
+      setOnboardingStep(0);
+    }
+  }, [isAuthenticated, user?.uid]);
+
+  // ── Push notification tap → navigate to CMChat ──
+  useEffect(() => {
+    const sub = addNotificationResponseListener((response) => {
+      const data = response.notification.request.content.data as Record<string, string> | undefined;
+      if (data?.screen === "CMChat" && navigationRef.isReady()) {
+        (navigationRef as any).navigate("Inbox", {
+          screen: "CMChat",
+          params: { sessionId: data.sessionId },
+        });
+      }
+    });
+    return () => removeNotificationSubscriptions(sub);
+  }, []);
+
+  // ── 401 interceptor: auto-logout on expired token ──
+  useEffect(() => {
+    setOnUnauthorized(() => {
+      authStore.logout();
+    });
+  }, []);
+
+  // ── Auth context bridging (Firebase → legacy AuthContextType) ──
+  const handleLogin = useCallback(async (email: string, password: string) => {
+    await authStore.login(email, password);
+  }, []);
+
+  const handleRegister = useCallback(async (email: string, password: string, fullName: string) => {
+    await authStore.register(email, password, fullName);
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    businessStore.reset();
+    await authStore.logout();
+  }, []);
+
+  const handleResetPassword = useCallback(async (email: string) => {
+    await authStore.resetPassword(email);
+  }, []);
+
+  const authCtx: AuthContextType = {
+    login: handleLogin,
+    register: handleRegister,
+    logout: handleLogout,
+    resetPassword: handleResetPassword,
+  };
 
   const brandCtx = {
     activeBrand,
     brands,
-    switchBrand: (id: string) => {
-      const found = brands.find((b) => b.id === id);
-      if (found) setActiveBrand(found);
-    },
-    isLoading,
+    switchBrand: (id: string) => businessStore.switchBusiness(id),
+    isLoading: bizLoading,
   };
 
-  // Loading screen
-  if (isLoading) {
+  // ── Loading screen (auth initializing) ──
+  if (authLoading) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0A0A0F" }}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
-          <Text style={{ color: "#fff", marginTop: 16, fontSize: 16 }}>Chargement...</Text>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.bg.primary }}>
+          <ActivityIndicator size="large" color={Colors.brand.primary} />
+          <Text style={{ color: Colors.text.secondary, marginTop: 16, fontSize: 16 }}>Chargement...</Text>
         </View>
       </GestureHandlerRootView>
     );
   }
 
-  // Error screen
-  if (error) {
+  // ── Auth screen (not authenticated) ──
+  if (!isAuthenticated) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0A0A0F", padding: 24 }}>
-          <Text style={{ color: "#EF4444", fontSize: 18, fontWeight: "600", marginBottom: 8 }}>Erreur</Text>
-          <Text style={{ color: "#9CA3AF", fontSize: 14, textAlign: "center" }}>{error}</Text>
+        <SafeAreaProvider>
+          <NavigationContainer>
+            <StatusBar style="dark" />
+            <AuthContext.Provider value={authCtx}>
+              <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+                <AuthStack.Screen name="Login" component={LoginScreen} />
+                <AuthStack.Screen name="Register" component={RegisterScreen} />
+                <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+              </AuthStack.Navigator>
+            </AuthContext.Provider>
+          </NavigationContainer>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    );
+  }
+
+  // ── Loading businesses from Firestore ──
+  if (bizLoading) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.bg.primary }}>
+          <ActivityIndicator size="large" color={Colors.brand.primary} />
+          <Text style={{ color: Colors.text.secondary, marginTop: 16, fontSize: 16 }}>Chargement des marques...</Text>
         </View>
       </GestureHandlerRootView>
     );
   }
 
+  // ── Onboarding flow (no businesses yet or onboarding not completed) ──
+  if (onboardingChecked && !onboardingStore.completed) {
+    const currentBrandId = activeBrand?.id ?? "";
+    const screens = [
+      <WelcomeScreen key="welcome" onNext={() => setOnboardingStep(1)} />,
+      <OnboardingChatScreen
+        key="dna-chat"
+        brandId={currentBrandId}
+        onComplete={() => setOnboardingStep(2)}
+      />,
+      <ConnectAccountScreen key="connect" onNext={() => setOnboardingStep(3)} />,
+      <CompleteScreen key="complete" onFinish={async () => {
+        await onboardingStore.markCompleted();
+      }} />,
+    ];
+
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <StatusBar style="dark" />
+          {screens[onboardingStep] || screens[0]}
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    );
+  }
+
+  // ── Main app ──
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <NavigationContainer>
-          <StatusBar style="light" />
-          <BrandContext.Provider value={brandCtx}>
-            <TabNavigator />
-          </BrandContext.Provider>
-        </NavigationContainer>
+        <BottomSheetModalProvider>
+          <NavigationContainer ref={navigationRef} linking={deepLinkingConfig}>
+            <StatusBar style="dark" />
+            <AuthContext.Provider value={authCtx}>
+              <BrandContext.Provider value={brandCtx}>
+                <TabNavigator />
+              </BrandContext.Provider>
+            </AuthContext.Provider>
+          </NavigationContainer>
+        </BottomSheetModalProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

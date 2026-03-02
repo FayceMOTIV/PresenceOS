@@ -17,15 +17,25 @@ import ProposalsListScreen from "@/screens/proposals/ProposalsListScreen";
 import ProposalDetailScreen from "@/screens/proposals/ProposalDetailScreen";
 import BriefDuJourScreen from "@/screens/brief/BriefDuJourScreen";
 import InboxScreen from "@/screens/inbox/InboxScreen";
+import CMChatScreen from "@/screens/cm/CMChatScreen";
+import IlyasChatScreen from "@/screens/chat/IlyasChatScreen";
 import SocialAccountsScreen from "@/screens/social/SocialAccountsScreen";
 import VideoStudioScreen from "@/screens/video/VideoStudioScreen";
 import VideoPlansScreen from "@/screens/video/VideoPlansScreen";
+import ValidationInboxScreen from "@/screens/validation/ValidationInboxScreen";
+import BrainDashboardScreen from "@/screens/brain/BrainDashboardScreen";
+import AnalyticsScreen from "@/screens/analytics/AnalyticsScreen";
+import SettingsScreen from "@/screens/settings/SettingsScreen";
 
 // ── Types ──
 export type HomeStackParams = {
   HomeMain: undefined;
   Brief: undefined;
   SocialAccounts: undefined;
+  BrainDashboard: undefined;
+  Analytics: undefined;
+  ValidationInbox: undefined;
+  Settings: undefined;
 };
 
 export type FilesStackParams = {
@@ -40,8 +50,14 @@ export type ProposalsStackParams = {
   ProposalDetail: { proposalId: string };
 };
 
+export type IlyasStackParams = {
+  IlyasChat: undefined;
+  ProposalDetail: { proposalId: string };
+};
+
 export type InboxStackParams = {
   InboxMain: undefined;
+  CMChat: undefined;
 };
 
 export type VideoStackParams = {
@@ -65,6 +81,26 @@ function HomeStackScreen() {
       <HomeStackNav.Screen
         name="SocialAccounts"
         component={SocialAccountsScreen}
+        options={{ presentation: "modal" }}
+      />
+      <HomeStackNav.Screen
+        name="BrainDashboard"
+        component={BrainDashboardScreen}
+        options={{ presentation: "modal" }}
+      />
+      <HomeStackNav.Screen
+        name="Analytics"
+        component={AnalyticsScreen}
+        options={{ presentation: "modal" }}
+      />
+      <HomeStackNav.Screen
+        name="ValidationInbox"
+        component={ValidationInboxScreen}
+        options={{ presentation: "modal" }}
+      />
+      <HomeStackNav.Screen
+        name="Settings"
+        component={SettingsScreen}
         options={{ presentation: "modal" }}
       />
     </HomeStackNav.Navigator>
@@ -107,12 +143,24 @@ function ProposalsStackScreen() {
   );
 }
 
+// ── Ilyas Stack ──
+const IlyasStackNav = createNativeStackNavigator<IlyasStackParams>();
+function IlyasStackScreen() {
+  return (
+    <IlyasStackNav.Navigator screenOptions={{ headerShown: false, headerBackVisible: false }}>
+      <IlyasStackNav.Screen name="IlyasChat" component={IlyasChatScreen} />
+      <IlyasStackNav.Screen name="ProposalDetail" component={ProposalDetailScreen} />
+    </IlyasStackNav.Navigator>
+  );
+}
+
 // ── Inbox Stack ──
 const InboxStackNav = createNativeStackNavigator<InboxStackParams>();
 function InboxStackScreen() {
   return (
     <InboxStackNav.Navigator screenOptions={{ headerShown: false, headerBackVisible: false }}>
       <InboxStackNav.Screen name="InboxMain" component={InboxScreen} />
+      <InboxStackNav.Screen name="CMChat" component={CMChatScreen} />
     </InboxStackNav.Navigator>
   );
 }
@@ -161,7 +209,7 @@ export default function TabNavigator() {
           const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
             Home: "home",
             Files: "folder",
-            Proposals: "sparkles",
+            Ilyas: "chatbubble-ellipses",
             Video: "videocam",
             Inbox: "chatbubbles",
           };
@@ -186,9 +234,9 @@ export default function TabNavigator() {
         options={{ tabBarLabel: FR.tab_files }}
       />
       <Tab.Screen
-        name="Proposals"
-        component={ProposalsStackScreen}
-        options={{ tabBarLabel: FR.tab_proposals }}
+        name="Ilyas"
+        component={IlyasStackScreen}
+        options={{ tabBarLabel: FR.tab_ilyas }}
       />
       <Tab.Screen
         name="Video"

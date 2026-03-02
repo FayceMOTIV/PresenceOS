@@ -109,6 +109,31 @@ export interface VideoGenerationResult {
   status: "completed" | "failed" | "no_api_key";
 }
 
+export interface CMChatSession {
+  id: string;
+  brand_id: string;
+  title: string;
+  status: string;
+  message_count: number;
+  summary?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CMChatMessage {
+  id: string;
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+  proposals?: Record<string, any>[];
+  tokens_used: number;
+  created_at: string;
+}
+
+export interface IlyasChatResponse extends CMChatMessage {
+  vision_analysis?: string;
+}
+
 export interface CMStats {
   total_interactions: number;
   pending_count: number;

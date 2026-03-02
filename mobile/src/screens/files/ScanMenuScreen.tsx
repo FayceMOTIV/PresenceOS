@@ -38,6 +38,27 @@ export default function ScanMenuScreen() {
 
   const handlePick = useCallback(
     async (fromCamera: boolean) => {
+      // Request permissions before launching camera/gallery
+      if (fromCamera) {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert(
+            "Permission requise",
+            "L'accès à la caméra est nécessaire pour scanner votre menu."
+          );
+          return;
+        }
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert(
+            "Permission requise",
+            "L'accès à la galerie est nécessaire pour importer une photo de menu."
+          );
+          return;
+        }
+      }
+
       const method = fromCamera
         ? ImagePicker.launchCameraAsync
         : ImagePicker.launchImageLibraryAsync;

@@ -14,14 +14,20 @@ import {
 } from "react-native";
 import { AuthContext } from "@/contexts/BrandContext";
 import { Colors } from "@/constants/colors";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-export default function LoginScreen() {
-  const auth = useContext(AuthContext)!;
+type Props = {
+  navigation?: NativeStackNavigationProp<any>;
+};
+
+export default function LoginScreen({ navigation }: Props) {
+  const auth = useContext(AuthContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    if (!auth) return;
     if (!email.trim() || !password.trim()) {
       Alert.alert("Erreur", "Veuillez entrer votre email et mot de passe");
       return;
@@ -30,14 +36,34 @@ export default function LoginScreen() {
     try {
       await auth.login(email.trim(), password);
     } catch (err: any) {
-      Alert.alert(
-        "Connexion échouée",
-        err?.response?.data?.detail || "Identifiants invalides"
-      );
+      const code = err?.code as string | undefined;
+      let msg = "Identifiants invalides";
+      if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
+        msg = "Email ou mot de passe incorrect";
+      } else if (code === "auth/user-disabled") {
+        msg = "Ce compte a été désactivé";
+      } else if (code === "auth/too-many-requests") {
+        msg = "Trop de tentatives, réessayez plus tard";
+      } else if (code === "auth/invalid-email") {
+        msg = "Adresse email invalide";
+      } else if (err?.response?.data?.detail) {
+        msg = err.response.data.detail;
+      }
+      Alert.alert("Connexion échouée", msg);
     } finally {
       setLoading(false);
     }
   };
+
+  if (!auth) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.inner}>
+          <Text style={styles.subtitle}>Chargement...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -79,6 +105,27 @@ export default function LoginScreen() {
             <Text style={styles.buttonText}>Se connecter</Text>
           )}
         </TouchableOpacity>
+
+        {navigation && (
+          <>
+            <TouchableOpacity
+              style={styles.forgotContainer}
+              onPress={() => navigation.navigate("ForgotPassword")}
+            >
+              <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.linkContainer}
+              onPress={() => navigation.navigate("Register")}
+            >
+              <Text style={styles.linkText}>
+                Pas de compte ?{" "}
+                <Text style={styles.linkBold}>Créer un compte</Text>
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -131,6 +178,27 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#FFF",
     fontSize: 16,
+    fontWeight: "600",
+  },
+  forgotContainer: {
+    marginTop: 16,
+    alignItems: "center",
+  },
+  forgotText: {
+    color: Colors.brand.primary,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  linkContainer: {
+    marginTop: 16,
+    alignItems: "center",
+  },
+  linkText: {
+    color: Colors.text.secondary,
+    fontSize: 14,
+  },
+  linkBold: {
+    color: Colors.brand.primary,
     fontWeight: "600",
   },
 });

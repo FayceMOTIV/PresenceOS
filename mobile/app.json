@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1A1A2E"
+      "backgroundColor": "#F8F7FF"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -18,23 +18,31 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "fr.appysolution.rs3",
-      "buildNumber": "1",
+      "buildNumber": "7",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "RS3 a besoin d'accéder à vos photos pour uploader du contenu visuel.",
         "NSCameraUsageDescription": "RS3 a besoin d'accéder à votre caméra pour prendre des photos de vos plats.",
-        "NSMicrophoneUsageDescription": "RS3 a besoin d'accéder au micro pour enregistrer des vidéos."
+        "NSMicrophoneUsageDescription": "RS3 a besoin d'accéder au micro pour enregistrer des vidéos.",
+        "NSPhotoLibraryAddUsageDescription": "RS3 a besoin d'enregistrer des vidéos générées dans votre galerie."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1A1A2E"
+        "backgroundColor": "#F8F7FF"
       },
       "package": "fr.appysolution.rs3",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [{ "scheme": "rs3" }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "plugins": [

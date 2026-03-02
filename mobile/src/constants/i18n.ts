@@ -204,6 +204,80 @@ export const FR = {
   home_video_title: "Créer une vidéo IA",
   home_video_body: "Générez des Reels en 45s",
 
+  // ── Validation Inbox ──
+  validation_title: "Validation",
+  validation_subtitle: "Contenus IA en attente de validation",
+  validation_empty: "Tout est validé !",
+  validation_empty_body: "L'AutoPilot vous notifiera quand de nouveaux posts seront prêts.",
+  validation_approve: "Publier",
+  validation_schedule: "Planifier",
+  validation_reject: "Rejeter",
+  validation_score: "Score IA",
+
+  // ── Brain Dashboard ──
+  brain_title: "Cerveau IA",
+  brain_subtitle: "Mémoire et apprentissage de votre marque",
+  brain_text_title: "BrandBrain — Texte",
+  brain_visual_title: "VisualBrain — Images",
+  brain_recent: "Souvenirs récents",
+  brain_maturity: "Maturité",
+  brain_memories: "souvenirs",
+
+  // ── Analytics ──
+  analytics_title: "Analytics",
+  analytics_subtitle: "Performance de votre contenu",
+  analytics_posts: "Posts",
+  analytics_engagement: "Engagements",
+  analytics_rate: "Taux moy.",
+  analytics_best: "Meilleure performance",
+  analytics_insights: "Insights IA",
+  analytics_recommendations: "Recommandations",
+  analytics_events: "Événements à venir",
+
+  // ── AutoPilot ──
+  autopilot_title: "AutoPilot",
+  autopilot_enabled: "AutoPilot activé",
+  autopilot_disabled: "AutoPilot désactivé",
+  autopilot_brain: "Cerveau IA",
+  autopilot_validation: "File de validation",
+  autopilot_analytics: "Analytics",
+
+  // ── CM Chat ──
+  cm_chat_title: "CM Chat IA",
+  cm_chat_subtitle: "Votre Community Manager IA",
+  cm_chat_empty_title: "Votre Community Manager IA",
+  cm_chat_empty_body: "Demandez-moi de créer des posts, des Reels, des Stories... Je connais votre marque et votre style.",
+  cm_chat_placeholder: "Écrivez votre message...",
+  cm_chat_thinking: "L'IA réfléchit...",
+  cm_chat_sessions: "Conversations",
+  cm_chat_new: "Nouvelle conversation",
+  cm_chat_no_sessions: "Aucune conversation",
+  cm_chat_untitled: "Sans titre",
+  cm_chat_proposal_badge: "Proposition IA",
+  cm_chat_msg_count: "messages",
+  cm_chat_open: "Ouvrir le chat IA →",
+
+  // ── Tab ──
+  tab_ilyas: "Ilyas",
+
+  // ── Ilyas Chat ──
+  ilyas_title: "Ilyas, votre CM IA",
+  ilyas_subtitle: "Demandez-moi de creer des posts, Reels, Stories... Je connais votre restaurant.",
+  ilyas_placeholder: "Ecrivez a Ilyas...",
+  ilyas_thinking: "Ilyas reflechit...",
+  ilyas_sessions: "Conversations",
+  ilyas_new_session: "Nouvelle conversation",
+
+  // ── Onboarding ──
+  onboarding_welcome: "Bienvenue sur PresenceOS",
+  onboarding_connect: "Connectez vos reseaux",
+  onboarding_info: "Parlez-moi de votre restaurant",
+  onboarding_first_message: "Dites bonjour a Ilyas",
+  onboarding_complete: "C'est parti !",
+  onboarding_skip: "Passer cette etape",
+  onboarding_continue: "Continuer",
+  onboarding_finish: "Commencer",
+
   // ── Generic ──
   loading: "Chargement...",
   error_generic: "Une erreur est survenue — réessayez",
