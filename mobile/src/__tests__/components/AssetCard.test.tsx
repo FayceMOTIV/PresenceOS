@@ -13,12 +13,9 @@ const baseAsset: MediaAsset = {
   media_type: "image",
   public_url: "https://cdn.example.com/photo.jpg",
   thumbnail_url: "https://cdn.example.com/thumb.jpg",
-  improved_url: null,
+  processing_status: "ready",
   asset_label: "Test",
-  ai_description: null,
-  quality_score: null,
   used_in_posts: 0,
-  created_at: "2026-01-01",
 };
 
 describe("AssetCard — Rendu", () => {

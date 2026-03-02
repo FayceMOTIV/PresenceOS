@@ -23,13 +23,11 @@ const baseAsset: MediaAsset = {
   brand_id: "b1",
   media_type: "image",
   public_url: "https://cdn.example.com/photo.jpg",
-  thumbnail_url: null,
-  improved_url: null,
+  processing_status: "ready",
   asset_label: "Mon plat",
   ai_description: "Description IA du plat",
   quality_score: 0.85,
   used_in_posts: 3,
-  created_at: "2026-01-01",
 };
 
 function renderSheet(asset: MediaAsset | null = baseAsset, visible = true) {

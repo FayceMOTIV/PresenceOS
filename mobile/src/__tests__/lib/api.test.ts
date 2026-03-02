@@ -526,7 +526,7 @@ describe("API Client — Brain Module (complet)", () => {
 describe("API Client — Auth token refresh", () => {
   test("refresh token quand user sans token", async () => {
     const mockRefresh = jest.fn().mockResolvedValue("refreshed-jwt");
-    mockGetState.mockReturnValue({ token: null, user: { id: "u1" }, refreshToken: mockRefresh });
+    mockGetState.mockReturnValue({ token: null, user: { id: "u1" }, refreshToken: mockRefresh } as any);
     mockFetch.mockReturnValue(mockJsonResponse({ ok: true }));
     await contentApi.listDishes("b1");
     expect(mockRefresh).toHaveBeenCalled();

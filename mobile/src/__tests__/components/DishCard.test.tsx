@@ -14,9 +14,10 @@ const baseDish: Dish = {
   description: "Semoule, merguez, poulet",
   price: 14.5,
   category: "plats",
+  is_available: true,
   is_featured: false,
-  cover_asset_id: null,
-  created_at: "2026-01-01",
+  ai_post_count: 0,
+  display_order: 0,
 };
 
 describe("DishCard — Rendu", () => {
