@@ -84,8 +84,13 @@ async def get_current_user(
     """Get the current authenticated user from JWT token."""
     token = credentials.credentials
 
-    # ── Dev bypass: skip JWT validation in development ──
-    if token == "dev-token-presenceos" and settings.app_env == "development":
+    # ── Dev bypass: skip JWT validation in development ONLY ──
+    if (
+        token == "dev-token-presenceos"
+        and settings.app_env == "development"
+        and not settings.is_production
+    ):
+        logger.debug("Dev token bypass — development mode only")
         # If DB is unavailable (degraded mode), return a mock user
         if db is None:
             logger.info("Dev bypass in degraded mode — returning mock user")

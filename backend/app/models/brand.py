@@ -88,6 +88,22 @@ class Brand(BaseModel):
     # Active status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    # AutoPilot RS3 fields
+    autopilot_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    autopilot_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    brand_dna: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    niche: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    expo_push_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Auto-approve for AutoPilot
+    auto_approve_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Social / Upload-Post
+    upload_post_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    facebook_page_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    instagram_business_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    facebook_access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Relationships
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="brands")
     voice: Mapped["BrandVoice | None"] = relationship(

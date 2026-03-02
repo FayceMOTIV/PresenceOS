@@ -10,7 +10,7 @@ celery_app = Celery(
     "presenceos",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["app.workers.tasks", "app.workers.cm_tasks", "app.workers.content_tasks"],
+    include=["app.workers.tasks", "app.workers.cm_tasks", "app.workers.content_tasks", "app.workers.brain_tasks", "app.workers.orchestrator_tasks", "app.workers.proactive_cm_tasks"],
 )
 
 # Celery configuration
@@ -69,5 +69,50 @@ celery_app.conf.beat_schedule = {
     "send-daily-brief-notif": {
         "task": "app.workers.content_tasks.send_daily_brief_notifications",
         "schedule": crontab(hour=7, minute=0),  # 7 UTC = 8 AM Paris (CET)
+    },
+    # Brain: weekly text reflection (Sunday 6 AM UTC)
+    "brain-weekly-reflection": {
+        "task": "app.workers.brain_tasks.weekly_reflection_all_brands",
+        "schedule": crontab(hour=6, minute=0, day_of_week=0),
+    },
+    # Brain: weekly visual reflection (Sunday 7 AM UTC)
+    "brain-weekly-visual-reflection": {
+        "task": "app.workers.brain_tasks.weekly_visual_reflection_all",
+        "schedule": crontab(hour=7, minute=0, day_of_week=0),
+    },
+    # Orchestrator: daily content generation at 8 AM UTC
+    "orchestrator-daily-generate": {
+        "task": "app.workers.orchestrator_tasks.autopilot_daily_orchestrate",
+        "schedule": crontab(hour=8, minute=0),
+    },
+    # Orchestrator: check auto-publish every 10 minutes
+    "orchestrator-check-publish": {
+        "task": "app.workers.orchestrator_tasks.autopilot_check_publish",
+        "schedule": 600.0,  # Every 10 minutes
+    },
+    # Trend detection: daily at 6:30 AM UTC
+    "detect-trends-daily": {
+        "task": "app.workers.orchestrator_tasks.detect_trends_daily",
+        "schedule": crontab(hour=6, minute=30),
+    },
+    # Orchestrator: weekly planning (Sunday 20h UTC)
+    "orchestrator-weekly-planning": {
+        "task": "app.workers.orchestrator_tasks.run_weekly_planning_all_brands",
+        "schedule": crontab(hour=20, minute=0, day_of_week=0),
+    },
+    # Orchestrator: gap check (daily 8h UTC)
+    "orchestrator-gap-check": {
+        "task": "app.workers.orchestrator_tasks.check_calendar_gaps",
+        "schedule": crontab(hour=8, minute=30),
+    },
+    # GMB: weekly post (Monday 9h UTC)
+    "gmb-weekly-post": {
+        "task": "app.workers.tasks.gmb_weekly_post",
+        "schedule": crontab(hour=9, minute=0, day_of_week=1),
+    },
+    # Proactive CM: weekly content generation (Monday 7 UTC = 8 AM Paris)
+    "proactive-weekly-cm": {
+        "task": "app.workers.proactive_cm_tasks.proactive_weekly_all",
+        "schedule": crontab(hour=7, minute=0, day_of_week=1),
     },
 }

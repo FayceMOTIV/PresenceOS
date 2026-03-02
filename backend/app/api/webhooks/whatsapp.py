@@ -61,6 +61,10 @@ async def verify_webhook(
     hub_verify_token: str = Query(None, alias="hub.verify_token"),
 ):
     """Meta webhook verification (subscribe handshake)."""
+    if not settings.whatsapp_verify_token:
+        logger.error("WHATSAPP_VERIFY_TOKEN not configured — rejecting verification")
+        raise HTTPException(status_code=503, detail="Webhook not configured")
+
     if hub_mode == "subscribe" and hub_verify_token == settings.whatsapp_verify_token:
         logger.info("WhatsApp webhook verified")
         return int(hub_challenge)
@@ -73,7 +77,7 @@ async def handle_webhook(request: Request):
     """Process incoming WhatsApp webhook events via ConversationEngine."""
     body = await request.body()
 
-    # Optionally verify signature
+    # Verify HMAC signature (required in production)
     if settings.whatsapp_webhook_secret:
         signature = request.headers.get("X-Hub-Signature-256", "")
         expected = "sha256=" + hmac.new(
@@ -84,6 +88,9 @@ async def handle_webhook(request: Request):
         if not hmac.compare_digest(signature, expected):
             logger.warning("WhatsApp webhook signature mismatch")
             raise HTTPException(status_code=403, detail="Invalid signature")
+    elif settings.app_env == "production":
+        logger.error("WHATSAPP_WEBHOOK_SECRET not set in production — rejecting webhook")
+        raise HTTPException(status_code=503, detail="Webhook secret not configured")
 
     data = await request.json()
 

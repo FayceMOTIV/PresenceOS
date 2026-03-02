@@ -12,12 +12,14 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, and_
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import CurrentUser, DBSession, get_brand
 from app.core.config import settings
+from app.core.database import get_db
 from app.models.ai_proposal import AIProposal, ProposalStatus
 
 logger = structlog.get_logger()
@@ -122,17 +124,14 @@ async def _get_proposal(
 @router.get("/{brand_id}")
 async def list_proposals(
     brand_id: UUID,
-    current_user: CurrentUser,
-    db: DBSession,
     proposal_status: str | None = None,
     platform: str | None = None,
     proposal_type: str | None = None,
     limit: int = 20,
     offset: int = 0,
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """List AI proposals for a brand with optional filters."""
-    await get_brand(brand_id, current_user, db)
-
     conditions = [AIProposal.brand_id == brand_id]
     if proposal_status:
         conditions.append(AIProposal.status == proposal_status)

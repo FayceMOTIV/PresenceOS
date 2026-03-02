@@ -23,11 +23,15 @@ router = APIRouter()
 
 # ── Request / Response Models ────────────────────────────────────────
 
+VALID_RATIOS = {"9:16", "1:1", "16:9"}
+
+
 class GenerateVideoRequest(BaseModel):
     brand_id: str
     prompt: str = Field(..., min_length=5, max_length=1000)
     duration: int = Field(default=5, description="Duration in seconds: 5, 10, or 15")
-    style: str = Field(default="cinematic", description="cinematic | natural | vibrant")
+    style: str = Field(default="cinematic", description="cinematic | natural | vibrant | minimal")
+    aspect_ratio: str = Field(default="9:16", description="9:16 | 1:1 | 16:9")
 
 
 class VideoCreditsResponse(BaseModel):
@@ -51,6 +55,7 @@ STYLE_MODIFIERS = {
     "cinematic": "cinematic lighting, shallow depth of field, film grain, warm tones, professional food photography style",
     "natural": "natural daylight, authentic, candid restaurant atmosphere, soft shadows, realistic",
     "vibrant": "vibrant saturated colors, high contrast, energetic, social media optimized, eye-catching",
+    "minimal": "clean minimalist aesthetic, muted palette, simple composition, elegant, modern",
 }
 
 
@@ -132,6 +137,13 @@ async def generate_video(
             detail=f"Style must be one of: {', '.join(STYLE_MODIFIERS.keys())}",
         )
 
+    # Validate aspect ratio
+    if body.aspect_ratio not in VALID_RATIOS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Aspect ratio must be one of: {', '.join(VALID_RATIOS)}",
+        )
+
     # Check credits
     credits = await _ensure_credits(brand_id, db)
     needed = _credits_for_duration(body.duration)
@@ -164,12 +176,18 @@ async def generate_video(
         os.environ["FAL_KEY"] = fal_key
         import fal_client
 
+        # Model mapping: pro for 5s/10s, master for 15s
+        if body.duration >= 15:
+            model_id = "fal-ai/kling-video/v2.1/master/text-to-video"
+        else:
+            model_id = "fal-ai/kling-video/v2.1/pro/text-to-video"
+
         result = await fal_client.subscribe_async(
-            "fal-ai/kling-video/v2.1/standard/text-to-video",
+            model_id,
             arguments={
                 "prompt": enhanced_prompt,
                 "duration": str(body.duration),
-                "aspect_ratio": "9:16",  # Mobile-first vertical
+                "aspect_ratio": body.aspect_ratio,
             },
         )
 

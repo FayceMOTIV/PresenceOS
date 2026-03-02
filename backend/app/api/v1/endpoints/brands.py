@@ -22,6 +22,25 @@ from app.schemas.brand import (
 router = APIRouter()
 
 
+@router.get("/mine")
+async def get_my_brands(
+    current_user: CurrentUser,
+    db: DBSession,
+):
+    """Return all brands accessible to the current user across all workspaces."""
+    result = await db.execute(
+        select(Brand)
+        .join(WorkspaceMember, WorkspaceMember.workspace_id == Brand.workspace_id)
+        .where(
+            WorkspaceMember.user_id == current_user.id,
+            Brand.is_active.is_(True),
+        )
+        .options(selectinload(Brand.voice))
+    )
+    brands = result.scalars().all()
+    return [BrandResponse.model_validate(b) for b in brands]
+
+
 @router.post("", response_model=BrandResponse)
 async def create_brand(
     workspace_id: UUID,

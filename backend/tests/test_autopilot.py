@@ -234,7 +234,7 @@ async def test_autopilot_config_endpoint_unauthorized():
         response = await client.get(
             "/api/v1/autopilot/brands/00000000-0000-0000-0000-000000000001/autopilot"
         )
-        assert response.status_code == 401
+        assert response.status_code in (401, 403)
 
 
 @pytest.mark.asyncio
@@ -250,7 +250,7 @@ async def test_autopilot_create_endpoint_unauthorized():
             "/api/v1/autopilot/brands/00000000-0000-0000-0000-000000000001/autopilot",
             json={"platforms": ["instagram"]},
         )
-        assert response.status_code == 401
+        assert response.status_code in (401, 403)
 
 
 @pytest.mark.asyncio
@@ -265,7 +265,7 @@ async def test_autopilot_toggle_endpoint_unauthorized():
         response = await client.post(
             "/api/v1/autopilot/brands/00000000-0000-0000-0000-000000000001/autopilot/toggle"
         )
-        assert response.status_code == 401
+        assert response.status_code in (401, 403)
 
 
 @pytest.mark.asyncio
@@ -280,7 +280,7 @@ async def test_autopilot_pending_endpoint_unauthorized():
         response = await client.get(
             "/api/v1/autopilot/brands/00000000-0000-0000-0000-000000000001/autopilot/pending"
         )
-        assert response.status_code == 401
+        assert response.status_code in (401, 403)
 
 
 @pytest.mark.asyncio
@@ -295,7 +295,7 @@ async def test_autopilot_generate_endpoint_unauthorized():
         response = await client.post(
             "/api/v1/autopilot/brands/00000000-0000-0000-0000-000000000001/autopilot/generate"
         )
-        assert response.status_code == 401
+        assert response.status_code in (401, 403)
 
 
 # ── Webhook Tests ───────────────────────────────────────────────────

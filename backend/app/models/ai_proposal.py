@@ -16,7 +16,7 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
@@ -93,6 +93,15 @@ class AIProposal(BaseModel):
     # KB context
     kb_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     confidence_score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+
+    # Orchestrator fields (RS3 AutoPilot)
+    content_type: Mapped[str | None] = mapped_column(String(30), nullable=True)  # post, story, reel
+    orchestrator_job_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("orchestrator_jobs.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    brain_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Relationships
     brand: Mapped["Brand"] = relationship("Brand", backref="ai_proposals")

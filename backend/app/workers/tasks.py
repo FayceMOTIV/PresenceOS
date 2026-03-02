@@ -654,6 +654,68 @@ Reponds en JSON:
 """
 
 
+@celery_app.task
+def gmb_weekly_post():
+    """Generate and publish a weekly Google Business Profile post for all brands."""
+    return run_async(_gmb_weekly_post())
+
+
+async def _gmb_weekly_post():
+    """Async implementation of weekly GMB post generation."""
+    session_maker, engine = _make_session_maker()
+    try:
+        async with session_maker() as db:
+            result = await db.execute(
+                select(Brand)
+                .options(selectinload(Brand.voice))
+                .where(Brand.is_active == True, Brand.autopilot_enabled == True)
+            )
+            brands = result.scalars().all()
+
+            published_count = 0
+            for brand in brands:
+                try:
+                    ai_service = AIService()
+                    prompt = f"""Genere un post Google Business Profile pour "{brand.name}".
+Type: {brand.brand_type.value if hasattr(brand.brand_type, 'value') else brand.brand_type}
+Description: {brand.description or 'Non specifie'}
+Localisations: {', '.join(brand.locations or []) or 'Non specifie'}
+
+Le post doit etre court (150 mots max), professionnel, et inciter a la visite.
+Reponds en JSON: {{"text": "le texte du post", "cta": "LEARN_MORE"}}"""
+
+                    raw = await ai_service._complete(
+                        prompt=prompt,
+                        system="Tu es un expert Google Business Profile.",
+                        max_tokens=500,
+                        temperature=0.7,
+                    )
+                    parsed = ai_service._parse_json_response(raw)
+
+                    if parsed.get("text"):
+                        # Publish via GBP endpoint
+                        try:
+                            from app.services.gbp_service import GBPService
+                            gbp = GBPService()
+                            await gbp.create_post(
+                                brand_id=str(brand.id),
+                                text=parsed["text"],
+                                cta=parsed.get("cta", "LEARN_MORE"),
+                            )
+                            published_count += 1
+                        except Exception as pub_err:
+                            logger.warning("GMB publish failed", brand_id=str(brand.id), error=str(pub_err))
+
+                except Exception as e:
+                    logger.error("GMB weekly post failed", brand_id=str(brand.id), error=str(e))
+
+            await db.commit()
+            logger.info("GMB weekly posts", published=published_count)
+            return {"published": published_count}
+    finally:
+        await engine.dispose()
+
+
 def _str_to_platform_enum(platform_str: str) -> SocialPlatform:
     """Convert platform string to SocialPlatform enum."""
     mapping = {

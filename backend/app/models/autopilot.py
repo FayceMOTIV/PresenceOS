@@ -80,7 +80,7 @@ class AutopilotConfig(BaseModel):
     total_published: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     # Relationships
-    brand: Mapped["Brand"] = relationship("Brand", backref="autopilot_config")
+    brand: Mapped["Brand"] = relationship("Brand", backref="autopilot_config_rel")
     pending_posts: Mapped[list["PendingPost"]] = relationship(
         "PendingPost", back_populates="config", cascade="all, delete-orphan"
     )

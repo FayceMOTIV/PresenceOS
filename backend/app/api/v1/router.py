@@ -43,6 +43,9 @@ from app.api.v1.endpoints import (
     kb,
     social_accounts,
     video_generation,
+    brain_api,
+    social_auth,
+    cm_chat_api,
 )
 
 api_router = APIRouter()
@@ -163,3 +166,12 @@ api_router.include_router(social_accounts.router, prefix="/social", tags=["Socia
 
 # Video Generation (fal.ai Kling 3.0)
 api_router.include_router(video_generation.router, prefix="/video", tags=["Video Generation"])
+
+# Brain (AutoPilot RS3)
+api_router.include_router(brain_api.router, prefix="/brain", tags=["Brain"])
+
+# Social Auth OAuth (RS3 UX Overhaul)
+api_router.include_router(social_auth.router, prefix="/social-auth", tags=["Social Auth"])
+
+# CM Chat — Conversational Community Manager AI
+api_router.include_router(cm_chat_api.router, prefix="/cm-chat", tags=["CM Chat"])

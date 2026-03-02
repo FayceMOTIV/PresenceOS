@@ -30,7 +30,10 @@ def test_get_crew_llm_returns_openai():
 
 def test_get_crew_llm_returns_anthropic():
     """get_crew_llm retourne un LLM Anthropic quand le modele commence par 'claude'."""
-    with patch("app.agents.config.get_settings") as mock_settings:
+    import os
+
+    with patch("app.agents.config.get_settings") as mock_settings, \
+         patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-test"}):
         mock_settings.return_value = MagicMock(
             crew_default_llm="claude-sonnet-4-5-20250929",
             openai_api_key="",

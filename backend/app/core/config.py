@@ -92,9 +92,9 @@ class Settings(BaseSettings):
     whatsapp_token: str = ""
     whatsapp_phone_number_id: str = ""
     whatsapp_business_account_id: str = ""
-    whatsapp_verify_token: str = "presenceos-webhook-verify"
+    whatsapp_verify_token: str = ""  # REQUIRED — set via WHATSAPP_VERIFY_TOKEN env var
     whatsapp_api_version: str = "v21.0"
-    whatsapp_webhook_secret: str = ""
+    whatsapp_webhook_secret: str = ""  # REQUIRED in production — set via WHATSAPP_WEBHOOK_SECRET
 
     # Telegram Bot API
     telegram_bot_token: str = ""
@@ -118,6 +118,30 @@ class Settings(BaseSettings):
 
     # Community Manager AI
     cm_auto_publish_threshold: float = 0.85
+
+    # Blotato Social Publishing API
+    blotato_api_key: str = ""
+
+    # Mem0 Conversational Memory
+    mem0_api_key: str = ""
+
+    # Ilyas CM AI
+    ilyas_model: str = "claude-sonnet-4-20250514"
+
+    # Ilyas Intelligence (Sprint 3)
+    youtube_api_key: str = ""
+    reddit_client_id: str = ""
+    reddit_client_secret: str = ""
+    reddit_user_agent: str = "PresenceOS/1.0"
+    instagram_username: str = ""
+    instagram_password: str = ""
+
+    # API v2
+    api_v2_prefix: str = "/api/v2"
+
+    # Firebase (Sprint 2)
+    firebase_project_id: str = ""
+    firebase_service_account_json: str = ""
 
     # fal.ai (FLUX Kontext image enhancement)
     fal_key: str = ""

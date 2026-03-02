@@ -7,11 +7,13 @@ from datetime import date, datetime, timezone
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import CurrentUser, DBSession, get_brand
+from app.core.database import get_db
 from app.models.daily_brief import DailyBrief, BriefStatus
 
 logger = structlog.get_logger()
@@ -57,11 +59,9 @@ class BriefRespondRequest(BaseModel):
 @router.get("/{brand_id}/today")
 async def get_today_brief(
     brand_id: UUID,
-    current_user: CurrentUser,
-    db: DBSession,
+    db: AsyncSession = Depends(get_db),
 ) -> BriefResponse | dict:
     """Get today's brief status for a brand."""
-    await get_brand(brand_id, current_user, db)
 
     today = date.today()
     stmt = select(DailyBrief).where(

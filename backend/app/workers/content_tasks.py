@@ -31,8 +31,8 @@ def _get_sync_session():
 def _get_async_session():
     """Get an async database session for Celery tasks."""
     import asyncio
-    from app.core.database import async_session_factory
-    return async_session_factory()
+    from app.core.database import async_session_maker
+    return async_session_maker()
 
 
 def _run_async(coro):

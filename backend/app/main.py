@@ -47,6 +47,7 @@ from app.core.degraded_middleware import DegradedModeMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.rate_limit import limiter
 from app.api.v1.router import api_router
+from app.api.v2.router import api_v2_router
 from app.api.v1.endpoints.health import router as health_router
 from app.api.webhooks.whatsapp import router as whatsapp_webhook_router
 from app.api.webhooks.telegram import router as telegram_webhook_router
@@ -153,6 +154,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if not redis_ok:
         logger.warning("Redis not available — using in-memory fallback")
 
+    # Initialize Firebase Admin SDK (graceful — no crash if not configured)
+    from app.core.firebase_auth import init_firebase
+    init_firebase()
+
     # Set app-level degraded flag
     app.state.degraded = not pg_ok
 
@@ -195,10 +200,21 @@ def create_application() -> FastAPI:
     # Security headers middleware (outermost layer — runs on every response)
     app.add_middleware(SecurityHeadersMiddleware)
 
-    # CORS middleware
+    # CORS middleware — explicit origins (no wildcard with credentials)
+    cors_origins = [
+        settings.frontend_url,  # e.g. http://localhost:3001 or production URL
+    ]
+    if settings.api_base_url:
+        cors_origins.append(settings.api_base_url)
+    # Allow mobile dev server in dev mode
+    if not settings.is_production:
+        cors_origins.extend([
+            "http://localhost:8081",
+            "http://localhost:19006",
+        ])
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -206,6 +222,9 @@ def create_application() -> FastAPI:
 
     # Include API router
     app.include_router(api_router, prefix=settings.api_v1_prefix)
+
+    # API v2 (RS3 v2 — Ilyas + Blotato)
+    app.include_router(api_v2_router, prefix=settings.api_v2_prefix)
 
     # Health check probes (outside /api/v1 for Kubernetes compatibility)
     app.include_router(health_router)

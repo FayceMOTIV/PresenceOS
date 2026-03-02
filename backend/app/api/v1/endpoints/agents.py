@@ -170,6 +170,8 @@ async def analyze_brand(
 async def extract_brand_from_website(
     request: OnboardingExtractionRequest,
     background_tasks: BackgroundTasks,
+    current_user: CurrentUser,
+    db: DBSession,
 ):
     """Extrait les infos de marque d'un site web via l'agent d'onboarding."""
     task_id = str(uuid4())
@@ -194,7 +196,7 @@ async def extract_brand_from_website(
 
 
 @router.get("/status/{task_id}")
-async def get_agent_task_status(task_id: str):
+async def get_agent_task_status(task_id: str, current_user: CurrentUser):
     """Recupere le statut et le resultat d'une tache agent."""
     task = _agent_tasks.get(task_id)
     if not task:
@@ -203,7 +205,7 @@ async def get_agent_task_status(task_id: str):
 
 
 @router.get("/tasks/{task_id}")
-async def get_task_status(task_id: str):
+async def get_task_status(task_id: str, current_user: CurrentUser):
     """Recupere le statut et le resultat d'une tache agent (alias)."""
     task = _agent_tasks.get(task_id)
     if not task:
@@ -212,7 +214,7 @@ async def get_task_status(task_id: str):
 
 
 @router.post("/onboarding/start", response_model=OnboardingStartResponse)
-async def start_onboarding(request: OnboardingStartRequest):
+async def start_onboarding(request: OnboardingStartRequest, current_user: CurrentUser):
     """
     Demarre une session d'onboarding intelligent.
     Determine le mode (full_auto, semi_auto, interview) et retourne les questions.
@@ -267,7 +269,7 @@ async def start_onboarding(request: OnboardingStartRequest):
 
 
 @router.post("/onboarding/answer")
-async def submit_onboarding_answer(request: OnboardingAnswerRequest):
+async def submit_onboarding_answer(request: OnboardingAnswerRequest, current_user: CurrentUser):
     """
     Soumet une reponse a une question d'onboarding.
     Retourne l'insight contextuel, l'upsell eventuel, et la question suivante.
@@ -299,7 +301,7 @@ async def submit_onboarding_answer(request: OnboardingAnswerRequest):
 
 
 @router.post("/onboarding/complete")
-async def complete_onboarding(session_id: str):
+async def complete_onboarding(session_id: str, current_user: CurrentUser):
     """
     Finalise l'onboarding : convertit les donnees collectees en Brand + BrandVoice + KnowledgeItems.
     """

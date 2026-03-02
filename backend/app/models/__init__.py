@@ -19,6 +19,15 @@ from app.models.ai_proposal import AIProposal
 from app.models.daily_brief import DailyBrief
 from app.models.compiled_kb import CompiledKB
 from app.models.video_credits import VideoCredits
+from app.models.cm_session import CmSession, CmMessage
+from app.models.brain import (
+    BrainMemory,
+    VisualMemory,
+    VisualPromptTemplate,
+    OrchestratorJob,
+    InstagramStory,
+    UGCPost,
+)
 
 __all__ = [
     "User",
@@ -46,4 +55,12 @@ __all__ = [
     "DailyBrief",
     "CompiledKB",
     "VideoCredits",
+    "CmSession",
+    "CmMessage",
+    "BrainMemory",
+    "VisualMemory",
+    "VisualPromptTemplate",
+    "OrchestratorJob",
+    "InstagramStory",
+    "UGCPost",
 ]

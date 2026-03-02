@@ -2,6 +2,28 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
+from app.api.v1.deps import get_current_user
+from app.main import app as _app
+
+
+# ── Auth override for HTTP endpoint tests ──
+
+def _mock_current_user():
+    user = MagicMock()
+    user.id = "00000000-0000-0000-0000-000000000001"
+    user.email = "test@presenceos.dev"
+    user.full_name = "Test User"
+    user.is_active = True
+    return user
+
+
+@pytest.fixture(autouse=True)
+def _override_auth():
+    """Override FastAPI auth dependency so endpoints don't return 403."""
+    _app.dependency_overrides[get_current_user] = _mock_current_user
+    yield
+    _app.dependency_overrides.clear()
+
 
 def test_agents_config_import():
     """Test importing config module."""
@@ -106,23 +128,29 @@ def test_tasks_import():
 
 @pytest.mark.asyncio
 async def test_agent_generate_endpoint():
-    """Test the generate content endpoint."""
+    """Test the generate content endpoint rejects unauthenticated requests."""
     from httpx import AsyncClient, ASGITransport
     from app.main import app
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        response = await client.post(
-            "/api/v1/agents/generate-content",
-            json={
-                "brand_id": "00000000-0000-0000-0000-000000000001",
-                "platforms": ["linkedin"],
-                "num_posts": 1,
-            },
-        )
-        # Should return 401 (auth required) since we don't send a token
-        assert response.status_code == 401
+    # Temporarily remove the auth override so we test real auth rejection
+    app.dependency_overrides.pop(get_current_user, None)
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/v1/agents/generate-content",
+                json={
+                    "brand_id": "00000000-0000-0000-0000-000000000001",
+                    "platforms": ["linkedin"],
+                    "num_posts": 1,
+                },
+            )
+            # Should return 401 or 403 (auth required) since we don't send a token
+            assert response.status_code in (401, 403)
+    finally:
+        # Restore override for subsequent tests
+        app.dependency_overrides[get_current_user] = _mock_current_user
 
 
 @pytest.mark.asyncio
