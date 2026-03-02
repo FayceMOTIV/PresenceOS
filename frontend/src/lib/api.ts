@@ -633,3 +633,41 @@ export const strategyApi = {
     brand_id?: string;
   }) => api.post("/strategy/analyze-niche", data),
 };
+
+// Community Manager AI
+export const cmApi = {
+  listInteractions: (
+    brandId: string,
+    params?: {
+      platform?: string;
+      response_status?: string;
+      classification?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ) => api.get("/cm/interactions", { params: { brand_id: brandId, ...params } }),
+
+  getInteraction: (interactionId: string) =>
+    api.get(`/cm/interactions/${interactionId}`),
+
+  approveInteraction: (interactionId: string, finalResponse?: string) =>
+    api.post(`/cm/interactions/${interactionId}/approve`, {
+      final_response: finalResponse || null,
+    }),
+
+  rejectInteraction: (interactionId: string) =>
+    api.post(`/cm/interactions/${interactionId}/reject`),
+
+  rateInteraction: (interactionId: string, rating: 1 | -1) =>
+    api.post(`/cm/interactions/${interactionId}/rate`, { rating }),
+
+  connectGoogle: (data: {
+    brand_id: string;
+    access_token: string;
+    account_id: string;
+    location_id: string;
+  }) => api.post("/cm/google/connect", data),
+
+  getStats: (brandId: string, days?: number) =>
+    api.get("/cm/stats", { params: { brand_id: brandId, days: days || 7 } }),
+};

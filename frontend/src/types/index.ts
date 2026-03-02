@@ -468,3 +468,50 @@ export const PLATFORM_CHAR_LIMITS: Record<string, number> = {
   linkedin: 3000,
   tiktok: 150,
 };
+
+// Community Manager
+export type CMPlatform = "google" | "instagram" | "facebook";
+export type CMInteractionType = "review" | "comment" | "dm";
+export type CMClassification = "positive" | "negative" | "neutral" | "question" | "crisis";
+export type CMResponseStatus = "pending" | "approved" | "edited" | "rejected" | "auto_published";
+
+export interface CMInteraction {
+  id: string;
+  brand_id: string;
+  platform: CMPlatform;
+  interaction_type: CMInteractionType;
+  external_id: string;
+  commenter_name: string;
+  content: string;
+  rating: number | null;
+  sentiment_score: number;
+  classification: CMClassification;
+  confidence_score: number;
+  ai_response_draft: string | null;
+  ai_reasoning: string | null;
+  final_response: string | null;
+  response_status: CMResponseStatus;
+  human_rating: number | null;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+  extra_metadata: Record<string, unknown> | null;
+}
+
+export interface CMInteractionListResponse {
+  interactions: CMInteraction[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface CMStats {
+  period_days: number;
+  total_interactions: number;
+  pending_count: number;
+  published_count: number;
+  response_rate: number;
+  avg_sentiment: number;
+  by_status: Record<string, number>;
+  by_classification: Record<string, number>;
+}

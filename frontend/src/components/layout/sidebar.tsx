@@ -23,6 +23,7 @@ import {
   FileText,
   HelpCircle,
   Camera,
+  MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ const navigation = [
   { name: "💡 Idées de posts", href: "/ideas", icon: Lightbulb },
   { name: "📊 Analyser Instagram", href: "/brain", icon: Brain },
   { name: "🤖 Mes Assistants", href: "/agents", icon: Bot },
+  { name: "💬 Inbox CM", href: "/inbox", icon: MessageSquare },
   { name: "📅 Calendrier", href: "/planner", icon: Calendar },
   { name: "📝 Mes posts", href: "/posts", icon: FileText },
   { name: "🔗 Mes comptes", href: "/accounts", icon: UserIcon },
