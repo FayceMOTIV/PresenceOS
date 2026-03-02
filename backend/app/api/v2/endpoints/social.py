@@ -7,11 +7,12 @@ Falls back to Upload-Post if Blotato is not configured.
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from app.api.v2.deps import FirebaseUser, DBSession, get_brand
 from app.core.config import settings
+from app.middleware.rate_limit import limiter
 from app.services.blotato_client import BlotatoClient, BlotatoError
 
 logger = structlog.get_logger()
@@ -60,7 +61,9 @@ class PublishResponse(BaseModel):
 
 
 @router.get("/accounts")
+@limiter.limit("30/minute")
 async def get_accounts(
+    request: Request,
     current_user: FirebaseUser,
     db: DBSession,
     platform: str | None = None,
@@ -91,7 +94,9 @@ async def get_accounts(
 
 
 @router.get("/accounts/{account_id}/subaccounts")
+@limiter.limit("30/minute")
 async def get_subaccounts(
+    request: Request,
     account_id: str,
     current_user: FirebaseUser,
     db: DBSession,
@@ -115,7 +120,9 @@ async def get_subaccounts(
 
 
 @router.post("/publish")
+@limiter.limit("10/minute")
 async def publish_post(
+    request: Request,
     body: PublishRequest,
     current_user: FirebaseUser,
     db: DBSession,

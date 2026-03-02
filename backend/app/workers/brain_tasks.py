@@ -11,7 +11,11 @@ logger = structlog.get_logger()
 def weekly_reflection_all_brands():
     """Run weekly reflection for all brands with autopilot enabled."""
     import asyncio
-    asyncio.run(_weekly_reflection_all())
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_weekly_reflection_all())
+    finally:
+        loop.close()
 
 
 async def _weekly_reflection_all():
@@ -39,7 +43,11 @@ async def _weekly_reflection_all():
 def weekly_visual_reflection_all():
     """Run visual reflection for all brands."""
     import asyncio
-    asyncio.run(_weekly_visual_reflection_all())
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_weekly_visual_reflection_all())
+    finally:
+        loop.close()
 
 
 async def _weekly_visual_reflection_all():
@@ -67,7 +75,11 @@ async def _weekly_visual_reflection_all():
 def post_published_learning(brand_id: str, caption: str, platform: str, engagement: dict):
     """Learn from a published post."""
     import asyncio
-    asyncio.run(_post_published_learning(brand_id, caption, platform, engagement))
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_post_published_learning(brand_id, caption, platform, engagement))
+    finally:
+        loop.close()
 
 
 async def _post_published_learning(brand_id: str, caption: str, platform: str, engagement: dict):

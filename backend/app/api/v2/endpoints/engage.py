@@ -6,10 +6,11 @@ Unified inbox: comments, DMs, classification, reply generation.
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from app.api.v2.deps import FirebaseUser, DBSession
+from app.middleware.rate_limit import limiter
 from app.services.engager.inbox_manager import InboxManager
 from app.services.engager.comment_fetcher import MockCommentFetcher
 
@@ -72,7 +73,9 @@ class StatsResponse(BaseModel):
     response_model=ScanResponse,
     summary="Scan & process new comments",
 )
+@limiter.limit("10/minute")
 async def scan_comments(
+    request: Request,
     brand_id: str,
     body: ScanRequest,
     user: FirebaseUser,
@@ -92,7 +95,9 @@ async def scan_comments(
     response_model=list[CommentResponse],
     summary="Get inbox items",
 )
+@limiter.limit("60/minute")
 async def get_inbox(
+    request: Request,
     brand_id: str,
     user: FirebaseUser,
     db: DBSession,
@@ -114,7 +119,9 @@ async def get_inbox(
     response_model=CommentResponse,
     summary="Approve a reply",
 )
+@limiter.limit("30/minute")
 async def approve_reply(
+    request: Request,
     brand_id: str,
     comment_id: str,
     body: ApproveRequest,
@@ -140,7 +147,9 @@ async def approve_reply(
     "/{brand_id}/inbox/{comment_id}/reject",
     summary="Reject a reply",
 )
+@limiter.limit("30/minute")
 async def reject_reply(
+    request: Request,
     brand_id: str,
     comment_id: str,
     user: FirebaseUser,
@@ -165,7 +174,9 @@ async def reject_reply(
     response_model=StatsResponse,
     summary="Get inbox stats",
 )
+@limiter.limit("60/minute")
 async def get_stats(
+    request: Request,
     brand_id: str,
     user: FirebaseUser,
     db: DBSession,

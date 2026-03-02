@@ -7,9 +7,10 @@ POST /voice/{brand_id}/transcribe — Audio → text
 
 import logging
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form
 
 from app.api.v2.deps import FirebaseUser, DBSession
+from app.middleware.rate_limit import limiter
 from app.services.whisper_transcriber import get_transcriber
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,9 @@ router = APIRouter()
     "/{brand_id}/transcribe",
     summary="Transcribe audio to text",
 )
+@limiter.limit("10/minute")
 async def transcribe_audio(
+    request: Request,
     brand_id: str,
     user: FirebaseUser,
     db: DBSession,

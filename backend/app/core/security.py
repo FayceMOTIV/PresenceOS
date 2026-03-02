@@ -81,10 +81,11 @@ class TokenEncryption:
             encryption_key = secrets.token_urlsafe(32)
 
         # Derive a proper Fernet key from the encryption key
+        salt = getattr(settings, "token_encryption_salt", "") or "presenceos_salt_v1"
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
-            salt=b"presenceos_salt_v1",  # Static salt for deterministic key derivation
+            salt=salt.encode(),
             iterations=100000,
         )
         key_bytes = kdf.derive(encryption_key.encode())

@@ -7,10 +7,11 @@ Structural copy of cm_chat_api.py with vision + Mem0 support.
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from app.api.v2.deps import FirebaseUser, DBSession, get_brand
+from app.middleware.rate_limit import limiter
 from app.services.ilyas.agent import IlyasAgent
 
 logger = structlog.get_logger()
@@ -92,7 +93,9 @@ def _message_response(m) -> MessageResponse:
 
 
 @router.post("/{brand_id}/chat")
+@limiter.limit("30/minute")
 async def chat(
+    request: Request,
     brand_id: UUID,
     body: IlyasChatRequest,
     current_user: FirebaseUser,
@@ -123,7 +126,9 @@ async def chat(
 
 
 @router.get("/{brand_id}/sessions")
+@limiter.limit("60/minute")
 async def list_sessions(
+    request: Request,
     brand_id: UUID,
     current_user: FirebaseUser,
     db: DBSession,
@@ -142,7 +147,9 @@ async def list_sessions(
 
 
 @router.get("/{brand_id}/sessions/{session_id}/messages")
+@limiter.limit("60/minute")
 async def get_session_messages(
+    request: Request,
     brand_id: UUID,
     session_id: UUID,
     current_user: FirebaseUser,
@@ -157,7 +164,9 @@ async def get_session_messages(
 
 
 @router.delete("/{brand_id}/sessions/{session_id}")
+@limiter.limit("20/minute")
 async def delete_session(
+    request: Request,
     brand_id: UUID,
     session_id: UUID,
     current_user: FirebaseUser,
@@ -178,7 +187,9 @@ async def delete_session(
 
 
 @router.get("/{brand_id}/context")
+@limiter.limit("30/minute")
 async def get_context(
+    request: Request,
     brand_id: UUID,
     current_user: FirebaseUser,
     db: DBSession,

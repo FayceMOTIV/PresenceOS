@@ -14,7 +14,11 @@ logger = structlog.get_logger()
 def autopilot_daily_orchestrate():
     """Run daily content orchestration for all autopilot-enabled brands."""
     import asyncio
-    asyncio.run(_autopilot_daily_orchestrate_async())
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_autopilot_daily_orchestrate_async())
+    finally:
+        loop.close()
 
 
 async def _autopilot_daily_orchestrate_async():
@@ -63,7 +67,11 @@ async def _autopilot_daily_orchestrate_async():
 def autopilot_check_publish():
     """Check for approved posts that should be auto-published."""
     import asyncio
-    asyncio.run(_autopilot_check_publish_async())
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_autopilot_check_publish_async())
+    finally:
+        loop.close()
 
 
 async def _autopilot_check_publish_async():
@@ -144,7 +152,11 @@ async def _autopilot_check_publish_async():
 def detect_trends_daily():
     """Detect daily trends and store as brain memories."""
     import asyncio
-    asyncio.run(_detect_trends_daily_async())
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_detect_trends_daily_async())
+    finally:
+        loop.close()
 
 
 async def _detect_trends_daily_async():
@@ -181,7 +193,11 @@ async def _detect_trends_daily_async():
 def run_weekly_planning_all_brands():
     """Generate weekly content plans for all autopilot-enabled brands."""
     import asyncio
-    asyncio.run(_run_weekly_planning_async())
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_run_weekly_planning_async())
+    finally:
+        loop.close()
 
 
 async def _run_weekly_planning_async():
@@ -229,7 +245,11 @@ async def _run_weekly_planning_async():
 def check_calendar_gaps():
     """Check for gaps in the content calendar and fill them."""
     import asyncio
-    asyncio.run(_check_calendar_gaps_async())
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_check_calendar_gaps_async())
+    finally:
+        loop.close()
 
 
 async def _check_calendar_gaps_async():

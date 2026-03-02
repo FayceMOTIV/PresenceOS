@@ -7,10 +7,11 @@ Create A/B tests and view results.
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.api.v2.deps import FirebaseUser, DBSession
+from app.middleware.rate_limit import limiter
 from app.services.ab_testing import ABTestingService
 from app.services.firebase_firestore import FirestoreService
 
@@ -29,7 +30,9 @@ class CreateABTestRequest(BaseModel):
     "/{brand_id}/create",
     summary="Create an A/B test",
 )
+@limiter.limit("10/minute")
 async def create_ab_test(
+    request: Request,
     brand_id: str,
     body: CreateABTestRequest,
     user: FirebaseUser,
@@ -61,7 +64,9 @@ async def create_ab_test(
     "/{brand_id}/tests",
     summary="Get A/B test history",
 )
+@limiter.limit("30/minute")
 async def get_ab_tests(
+    request: Request,
     brand_id: str,
     user: FirebaseUser,
     db: DBSession,

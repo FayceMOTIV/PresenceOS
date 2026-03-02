@@ -7,10 +7,11 @@ Conversational onboarding endpoints for Ilyas Business DNA.
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from app.api.v2.deps import FirebaseUser, DBSession, get_brand
+from app.middleware.rate_limit import limiter
 from app.services.ilyas.onboarding_agent import OnboardingAgent, TOTAL_STEPS
 
 logger = logging.getLogger(__name__)
@@ -56,7 +57,9 @@ class DNAResponse(BaseModel):
     response_model=StartResponse,
     summary="Start or resume onboarding",
 )
+@limiter.limit("20/minute")
 async def start_onboarding(
+    request: Request,
     brand_id: str,
     user: FirebaseUser,
     db: DBSession,
@@ -72,7 +75,9 @@ async def start_onboarding(
     response_model=AnswerResponse,
     summary="Submit an onboarding answer",
 )
+@limiter.limit("20/minute")
 async def submit_answer(
+    request: Request,
     brand_id: str,
     body: AnswerRequest,
     user: FirebaseUser,
@@ -93,7 +98,9 @@ async def submit_answer(
     response_model=DNAResponse,
     summary="Get current Business DNA",
 )
+@limiter.limit("30/minute")
 async def get_dna(
+    request: Request,
     brand_id: str,
     user: FirebaseUser,
     db: DBSession,
@@ -111,7 +118,9 @@ async def get_dna(
     "/brands/{brand_id}/scrape",
     summary="Scrape website and pre-fill Business DNA",
 )
+@limiter.limit("5/minute")
 async def scrape_website(
+    request: Request,
     brand_id: str,
     body: ScrapeRequest,
     user: FirebaseUser,

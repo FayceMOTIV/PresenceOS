@@ -79,6 +79,7 @@ class Settings(BaseSettings):
 
     # Encryption
     token_encryption_key: str = ""
+    token_encryption_salt: str = ""
 
     # AI Agents
     firecrawl_api_key: str = ""
