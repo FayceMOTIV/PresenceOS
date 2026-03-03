@@ -25,5 +25,14 @@
         "autoIncrement": true
       }
     }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "lefamilys01@gmail.com",
+        "ascAppId": "6759484970",
+        "appleTeamId": "5ZR87TPM89"
+      }
+    }
   }
 }
