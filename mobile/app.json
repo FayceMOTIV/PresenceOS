@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "fr.appysolution.rs3",
-      "buildNumber": "11",
+      "buildNumber": "12",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "RS3 a besoin d'accéder à vos photos pour uploader du contenu visuel.",
@@ -61,9 +61,7 @@
       "expo-secure-store",
       "expo-asset",
       "expo-font",
-      "expo-web-browser",
-      "expo-auth-session",
-      "expo-crypto"
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {
