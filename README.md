@@ -288,3 +288,6 @@ MIT License - voir [LICENSE](LICENSE) pour plus de details.
 Construit par [Faical Kriouar](https://github.com/FayceMOTIV)
 
 **Technologies** : [OpenAI](https://openai.com) | [Anthropic](https://anthropic.com) | [Upload-Post](https://upload-post.com) | [FastAPI](https://fastapi.tiangolo.com) | [Next.js](https://nextjs.org)
+
+---
+Modifié par Nexus Agent le 2026-03-03
