@@ -35,6 +35,7 @@ from app.models.autopilot import (
 )
 from app.services.ai_service import AIService
 from app.services.whatsapp import WhatsAppService
+from app.core.database import async_session_maker
 
 logger = structlog.get_logger()
 
@@ -405,6 +406,25 @@ async def _refresh_expiring_tokens():
         await db.commit()
         logger.info("Tokens refreshed", count=refreshed_count)
         return {"refreshed": refreshed_count}
+
+
+@celery_app.task
+def refresh_meta_token():
+    """Refresh Meta long-lived access token (60-day cycle)."""
+    return run_async(_refresh_meta_token())
+
+
+async def _refresh_meta_token():
+    """Refresh the global Meta token stored in Redis."""
+    from app.services.meta_token_manager import MetaTokenManager
+
+    manager = MetaTokenManager()
+    try:
+        result = await manager.refresh()
+        logger.info("Meta token refresh result", **result)
+        return result
+    finally:
+        await manager.close()
 
 
 # ── Autopilot Tasks (Sprint 9) ─────────────────────────────────────

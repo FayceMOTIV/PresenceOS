@@ -1,13 +1,31 @@
 """
 PresenceOS - Orchestrator Celery Tasks
 Periodic tasks for autopilot content generation and publishing.
+
+IMPORTANT: Uses _make_session_maker() to create a fresh engine per task.
+The module-level async_session_maker from app.core.database is bound to the
+import-time event loop; Celery workers get a NEW loop → "Future attached to
+a different loop". See breakout_tasks.py / tasks.py for the same pattern.
 """
 import structlog
-from celery import shared_task
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.workers.celery_app import celery_app
+from app.core.config import settings
 
 logger = structlog.get_logger()
+
+
+def _make_session_maker():
+    """Create a fresh engine + session maker for each Celery task."""
+    eng = create_async_engine(
+        settings.database_url,
+        pool_pre_ping=True,
+        pool_size=2,
+        max_overflow=3,
+    )
+    return async_sessionmaker(eng, class_=AsyncSession, expire_on_commit=False), eng
 
 
 @celery_app.task(name="app.workers.orchestrator_tasks.autopilot_daily_orchestrate")
@@ -24,43 +42,46 @@ def autopilot_daily_orchestrate():
 async def _autopilot_daily_orchestrate_async():
     """Async implementation of daily orchestration."""
     from sqlalchemy import select
-    from app.core.database import async_session_maker
     from app.models.brand import Brand
 
-    async with async_session_maker() as db:
-        result = await db.execute(
-            select(Brand).where(Brand.autopilot_enabled.is_(True))
-        )
-        brands = result.scalars().all()
+    session_maker, engine = _make_session_maker()
+    try:
+        async with session_maker() as db:
+            result = await db.execute(
+                select(Brand).where(Brand.autopilot_enabled.is_(True))
+            )
+            brands = result.scalars().all()
 
-        logger.info("Orchestrator daily run", brands_count=len(brands))
+            logger.info("Orchestrator daily run", brands_count=len(brands))
 
-        for brand in brands:
-            try:
-                from app.services.orchestrator import AutoPilotOrchestrator
-                orchestrator = AutoPilotOrchestrator(brand.id, db)
-                await orchestrator.run_daily_generation(
-                    posts_count=1,
-                    stories_count=2,
-                    niche=brand.niche or "restaurant",
-                    brand_name=brand.name,
-                )
-
-                # Send push notification
-                if brand.expo_push_token:
-                    from app.services.push_service import send_validation_notification
-                    await send_validation_notification(
-                        expo_push_token=brand.expo_push_token,
+            for brand in brands:
+                try:
+                    from app.services.orchestrator import AutoPilotOrchestrator
+                    orchestrator = AutoPilotOrchestrator(brand.id, db)
+                    await orchestrator.run_daily_generation(
                         posts_count=1,
+                        stories_count=2,
+                        niche=brand.niche or "restaurant",
                         brand_name=brand.name,
                     )
 
-            except Exception as e:
-                logger.error(
-                    "Orchestrator failed for brand",
-                    brand_id=str(brand.id),
-                    error=str(e),
-                )
+                    # Send push notification
+                    if brand.expo_push_token:
+                        from app.services.push_service import send_validation_notification
+                        await send_validation_notification(
+                            expo_push_token=brand.expo_push_token,
+                            posts_count=1,
+                            brand_name=brand.name,
+                        )
+
+                except Exception as e:
+                    logger.error(
+                        "Orchestrator failed for brand",
+                        brand_id=str(brand.id),
+                        error=str(e),
+                    )
+    finally:
+        await engine.dispose()
 
 
 @celery_app.task(name="app.workers.orchestrator_tasks.autopilot_check_publish")
@@ -78,74 +99,77 @@ async def _autopilot_check_publish_async():
     """Auto-publish approved posts that are past their scheduled time."""
     from datetime import datetime, timezone
     from sqlalchemy import select
-    from app.core.database import async_session_maker
     from app.models.ai_proposal import AIProposal
     from app.models.brand import Brand
 
-    async with async_session_maker() as db:
-        now = datetime.now(timezone.utc)
-        result = await db.execute(
-            select(AIProposal)
-            .where(
-                AIProposal.status == "approved",
-                AIProposal.scheduled_at.isnot(None),
-                AIProposal.scheduled_at <= now,
-            )
-            .limit(10)
-        )
-        proposals = result.scalars().all()
-
-        for proposal in proposals:
-            try:
-                # Get brand for publishing
-                brand_result = await db.execute(
-                    select(Brand).where(Brand.id == proposal.brand_id)
+    session_maker, engine = _make_session_maker()
+    try:
+        async with session_maker() as db:
+            now = datetime.now(timezone.utc)
+            result = await db.execute(
+                select(AIProposal)
+                .where(
+                    AIProposal.status == "approved",
+                    AIProposal.scheduled_at.isnot(None),
+                    AIProposal.scheduled_at <= now,
                 )
-                brand = brand_result.scalar_one_or_none()
-                if not brand:
-                    continue
+                .limit(10)
+            )
+            proposals = result.scalars().all()
 
-                # Publish via SocialPublisher
-                if proposal.image_url:
-                    from app.services.social_publisher import SocialPublisher
-                    try:
-                        publisher = SocialPublisher()
-                        await publisher.publish_photo(
-                            brand_id=str(brand.id),
-                            image_url=proposal.image_url,
-                            caption=proposal.caption or "",
-                            platforms=[proposal.platform or "instagram"],
-                            hashtags=proposal.hashtags or [],
-                        )
-                        proposal.status = "published"
-                        proposal.published_at = now
+            for proposal in proposals:
+                try:
+                    # Get brand for publishing
+                    brand_result = await db.execute(
+                        select(Brand).where(Brand.id == proposal.brand_id)
+                    )
+                    brand = brand_result.scalar_one_or_none()
+                    if not brand:
+                        continue
 
-                        # Learn from publication
-                        from app.services.brand_brain import BrandBrain
-                        brain = BrandBrain(brand.id, db)
-                        await brain.post_published_learning(
-                            caption=proposal.caption or "",
-                            platform=proposal.platform or "instagram",
-                            engagement={},
-                        )
+                    # Publish via SocialPublisher
+                    if proposal.image_url:
+                        from app.services.social_publisher import SocialPublisher
+                        try:
+                            publisher = SocialPublisher()
+                            await publisher.publish_photo(
+                                brand_id=str(brand.id),
+                                image_url=proposal.image_url,
+                                caption=proposal.caption or "",
+                                platforms=[proposal.platform or "instagram"],
+                                hashtags=proposal.hashtags or [],
+                            )
+                            proposal.status = "published"
+                            proposal.published_at = now
 
-                        # Send push notification
-                        if brand.expo_push_token:
-                            from app.services.push_service import send_published_notification
-                            await send_published_notification(
-                                expo_push_token=brand.expo_push_token,
+                            # Learn from publication
+                            from app.services.brand_brain import BrandBrain
+                            brain = BrandBrain(brand.id, db)
+                            await brain.post_published_learning(
+                                caption=proposal.caption or "",
                                 platform=proposal.platform or "instagram",
-                                brand_name=brand.name,
+                                engagement={},
                             )
 
-                    except Exception as pub_err:
-                        logger.error("Auto-publish failed", proposal_id=str(proposal.id), error=str(pub_err))
-                        proposal.status = "publish_failed"
+                            # Send push notification
+                            if brand.expo_push_token:
+                                from app.services.push_service import send_published_notification
+                                await send_published_notification(
+                                    expo_push_token=brand.expo_push_token,
+                                    platform=proposal.platform or "instagram",
+                                    brand_name=brand.name,
+                                )
 
-                await db.commit()
+                        except Exception as pub_err:
+                            logger.error("Auto-publish failed", proposal_id=str(proposal.id), error=str(pub_err))
+                            proposal.status = "publish_failed"
 
-            except Exception as e:
-                logger.error("Auto-publish check error", proposal_id=str(proposal.id), error=str(e))
+                    await db.commit()
+
+                except Exception as e:
+                    logger.error("Auto-publish check error", proposal_id=str(proposal.id), error=str(e))
+    finally:
+        await engine.dispose()
 
 
 @celery_app.task(name="app.workers.orchestrator_tasks.detect_trends_daily")
@@ -162,31 +186,34 @@ def detect_trends_daily():
 async def _detect_trends_daily_async():
     """Detect trends and store relevant ones in BrandBrain."""
     from sqlalchemy import select
-    from app.core.database import async_session_maker
     from app.models.brand import Brand
     from app.services.trend_detector import detect_trends
     from app.services.brand_brain import BrandBrain
 
-    async with async_session_maker() as db:
-        result = await db.execute(
-            select(Brand).where(Brand.autopilot_enabled.is_(True))
-        )
-        brands = result.scalars().all()
+    session_maker, engine = _make_session_maker()
+    try:
+        async with session_maker() as db:
+            result = await db.execute(
+                select(Brand).where(Brand.autopilot_enabled.is_(True))
+            )
+            brands = result.scalars().all()
 
-        for brand in brands:
-            try:
-                trends = await detect_trends(niche=brand.niche or "restaurant")
-                if trends.get("trends"):
-                    brain = BrandBrain(brand.id, db)
-                    for trend in trends["trends"][:3]:
-                        await brain.remember(
-                            content=f"Trending: {trend.get('topic', '')} — {trend.get('content_idea', '')}",
-                            memory_type="episodic",
-                            source="trend_detector",
-                            confidence=0.6,
-                        )
-            except Exception as e:
-                logger.error("Trend detection failed for brand", brand_id=str(brand.id), error=str(e))
+            for brand in brands:
+                try:
+                    trends = await detect_trends(niche=brand.niche or "restaurant")
+                    if trends.get("trends"):
+                        brain = BrandBrain(brand.id, db)
+                        for trend in trends["trends"][:3]:
+                            await brain.remember(
+                                content=f"Trending: {trend.get('topic', '')} — {trend.get('content_idea', '')}",
+                                memory_type="episodic",
+                                source="trend_detector",
+                                confidence=0.6,
+                            )
+                except Exception as e:
+                    logger.error("Trend detection failed for brand", brand_id=str(brand.id), error=str(e))
+    finally:
+        await engine.dispose()
 
 
 @celery_app.task(name="app.workers.orchestrator_tasks.run_weekly_planning_all_brands")
@@ -203,42 +230,45 @@ def run_weekly_planning_all_brands():
 async def _run_weekly_planning_async():
     """Async implementation of weekly planning."""
     from sqlalchemy import select
-    from app.core.database import async_session_maker
     from app.models.brand import Brand
 
-    async with async_session_maker() as db:
-        result = await db.execute(
-            select(Brand).where(Brand.autopilot_enabled.is_(True))
-        )
-        brands = result.scalars().all()
+    session_maker, engine = _make_session_maker()
+    try:
+        async with session_maker() as db:
+            result = await db.execute(
+                select(Brand).where(Brand.autopilot_enabled.is_(True))
+            )
+            brands = result.scalars().all()
 
-        logger.info("Weekly planning run", brands_count=len(brands))
+            logger.info("Weekly planning run", brands_count=len(brands))
 
-        for brand in brands:
-            try:
-                from app.services.orchestrator import AutoPilotOrchestrator
-                orchestrator = AutoPilotOrchestrator(brand.id, db)
-                await orchestrator.run_weekly_planning(
-                    niche=brand.niche or "restaurant",
-                    brand_name=brand.name,
-                )
-
-                # Send push notification
-                if brand.expo_push_token:
-                    from app.services.push_service import send_templated_notification
-                    await send_templated_notification(
-                        expo_push_token=brand.expo_push_token,
-                        template_key="weekly_plan_ready",
+            for brand in brands:
+                try:
+                    from app.services.orchestrator import AutoPilotOrchestrator
+                    orchestrator = AutoPilotOrchestrator(brand.id, db)
+                    await orchestrator.run_weekly_planning(
+                        niche=brand.niche or "restaurant",
                         brand_name=brand.name,
-                        count=7,
                     )
 
-            except Exception as e:
-                logger.error(
-                    "Weekly planning failed for brand",
-                    brand_id=str(brand.id),
-                    error=str(e),
-                )
+                    # Send push notification
+                    if brand.expo_push_token:
+                        from app.services.push_service import send_templated_notification
+                        await send_templated_notification(
+                            expo_push_token=brand.expo_push_token,
+                            template_key="weekly_plan_ready",
+                            brand_name=brand.name,
+                            count=7,
+                        )
+
+                except Exception as e:
+                    logger.error(
+                        "Weekly planning failed for brand",
+                        brand_id=str(brand.id),
+                        error=str(e),
+                    )
+    finally:
+        await engine.dispose()
 
 
 @celery_app.task(name="app.workers.orchestrator_tasks.check_calendar_gaps")
@@ -256,56 +286,59 @@ async def _check_calendar_gaps_async():
     """Check for days without scheduled content and auto-generate."""
     from datetime import datetime, timezone, timedelta
     from sqlalchemy import select, func
-    from app.core.database import async_session_maker
     from app.models.brand import Brand
     from app.models.ai_proposal import AIProposal
 
-    async with async_session_maker() as db:
-        result = await db.execute(
-            select(Brand).where(Brand.autopilot_enabled.is_(True))
-        )
-        brands = result.scalars().all()
+    session_maker, engine = _make_session_maker()
+    try:
+        async with session_maker() as db:
+            result = await db.execute(
+                select(Brand).where(Brand.autopilot_enabled.is_(True))
+            )
+            brands = result.scalars().all()
 
-        now = datetime.now(timezone.utc)
-        next_3_days = [now.date() + timedelta(days=i) for i in range(1, 4)]
+            now = datetime.now(timezone.utc)
+            next_3_days = [now.date() + timedelta(days=i) for i in range(1, 4)]
 
-        for brand in brands:
-            try:
-                # Count scheduled/approved proposals for next 3 days
-                for day in next_3_days:
-                    day_start = datetime.combine(day, datetime.min.time()).replace(tzinfo=timezone.utc)
-                    day_end = day_start + timedelta(days=1)
+            for brand in brands:
+                try:
+                    # Count scheduled/approved proposals for next 3 days
+                    for day in next_3_days:
+                        day_start = datetime.combine(day, datetime.min.time()).replace(tzinfo=timezone.utc)
+                        day_end = day_start + timedelta(days=1)
 
-                    count_result = await db.execute(
-                        select(func.count(AIProposal.id)).where(
-                            AIProposal.brand_id == brand.id,
-                            AIProposal.status.in_(["approved", "pending", "scheduled"]),
-                            AIProposal.scheduled_at >= day_start,
-                            AIProposal.scheduled_at < day_end,
+                        count_result = await db.execute(
+                            select(func.count(AIProposal.id)).where(
+                                AIProposal.brand_id == brand.id,
+                                AIProposal.status.in_(["approved", "pending", "scheduled"]),
+                                AIProposal.scheduled_at >= day_start,
+                                AIProposal.scheduled_at < day_end,
+                            )
                         )
+                        count = count_result.scalar() or 0
+
+                        if count == 0:
+                            logger.info(
+                                "Calendar gap detected",
+                                brand_id=str(brand.id),
+                                date=str(day),
+                            )
+                            # Trigger generation for this gap
+                            from app.services.orchestrator import AutoPilotOrchestrator
+                            orchestrator = AutoPilotOrchestrator(brand.id, db)
+                            await orchestrator.run_daily_generation(
+                                posts_count=1,
+                                stories_count=0,
+                                niche=brand.niche or "restaurant",
+                                brand_name=brand.name,
+                                target_date=day,
+                            )
+
+                except Exception as e:
+                    logger.error(
+                        "Calendar gap check failed for brand",
+                        brand_id=str(brand.id),
+                        error=str(e),
                     )
-                    count = count_result.scalar() or 0
-
-                    if count == 0:
-                        logger.info(
-                            "Calendar gap detected",
-                            brand_id=str(brand.id),
-                            date=str(day),
-                        )
-                        # Trigger generation for this gap
-                        from app.services.orchestrator import AutoPilotOrchestrator
-                        orchestrator = AutoPilotOrchestrator(brand.id, db)
-                        await orchestrator.run_daily_generation(
-                            posts_count=1,
-                            stories_count=0,
-                            niche=brand.niche or "restaurant",
-                            brand_name=brand.name,
-                            target_date=day,
-                        )
-
-            except Exception as e:
-                logger.error(
-                    "Calendar gap check failed for brand",
-                    brand_id=str(brand.id),
-                    error=str(e),
-                )
+    finally:
+        await engine.dispose()
