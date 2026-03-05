@@ -22,7 +22,6 @@ class Sentiment(str, Enum):
     QUESTION = "question"
     SPAM = "spam"
     NEUTRAL = "neutral"
-    URGENT = "urgent"
 
 
 class ReplyStatus(str, Enum):
@@ -62,6 +61,7 @@ class Comment:
 
     # Metadata
     brand_id: str = ""
+    language: str = "fr"
     is_dm: bool = False
     parent_comment_id: str = ""           # for threaded replies
     media_url: str = ""                   # post image/video URL

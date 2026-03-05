@@ -1,11 +1,11 @@
 # PresenceOS — Reply Generator (Sprint 5: Engager)
-# Uses Claude Sonnet for quality reply generation with Brand DNA context
+# Uses GPT-4o for quality reply generation with Brand DNA context
 
 from __future__ import annotations
 
 import logging
 
-import anthropic
+from openai import OpenAI
 
 from app.core.config import settings
 from app.models.comment import Comment
@@ -14,44 +14,66 @@ from app.services.firebase_firestore import FirestoreService
 
 logger = logging.getLogger(__name__)
 
-REPLY_SYSTEM_PROMPT = """Tu es Ilyas, le community manager IA de ce commerce.
-Tu rediges des reponses aux commentaires sur les reseaux sociaux.
+REPLY_SYSTEM_PROMPT = """Tu es le community manager IA de ce commerce local.
+Tu rédiges des réponses aux commentaires sur les réseaux sociaux.
 
 REGLES :
-- Ton chaleureux et professionnel, adapte a la marque
-- Reponse courte (1 a 3 phrases max)
-- Tutoiement ou vouvoiement selon le ton de la marque
-- Si commentaire negatif → empathie + solution concrete
-- Si question → reponse directe et utile
-- Si positif → remerciement sincere (pas generique)
-- Jamais de hashtags dans les reponses
-- Jamais d'emoji excessif (1-2 max)
-- Signe avec le prenom du commerce si pertinent
+- Ton chaleureux et professionnel, adapté à la marque
+- Réponse courte : 1 à 3 phrases maximum
+- Tutoiement ou vouvoiement selon le ton de la marque (défaut: vouvoiement)
+- Mentionne le prénom de l'auteur quand il est disponible
+- Référence un détail spécifique du commentaire (ne pas faire de réponse générique)
+- Réponds dans la même langue que le commentaire
+- Maximum 1-2 emojis, jamais de hashtags
+
+PAR TYPE DE COMMENTAIRE :
+- Positif → remerciement sincère et personnalisé, invitation à revenir
+- Négatif → empathie + proposition concrète (ex: "contactez-nous en DM pour qu'on arrange ça")
+- Question → réponse directe et utile, avec une info supplémentaire si pertinent
+- Urgent (score >= 7) → empathie forte + redirection vers DM ou téléphone pour suivi rapide
+
+INTERDICTIONS ABSOLUES :
+- Ne JAMAIS promettre de remise, geste commercial ou compensation
+- Ne JAMAIS confirmer un fait non vérifié (horaires précis, disponibilité plat)
+- Ne JAMAIS minimiser un problème d'hygiène ou de santé
+- Ne JAMAIS utiliser un ton sarcastique ou défensif face à une critique
+- Ne JAMAIS signer avec un prénom fictif — signer "L'équipe [nom du commerce]" si DNA disponible
+
+EXEMPLES DE BONNES REPONSES :
+Commentaire: "Le burger était incroyable, bravo !" (positif)
+→ "Merci beaucoup Marie, ça nous fait super plaisir ! On espère vous revoir bientôt 😊"
+
+Commentaire: "45 min d'attente pour un café, c'est abusé" (négatif, urgence 7)
+→ "On comprend votre frustration Thomas, ce n'est pas notre standard. Envoyez-nous un DM pour qu'on en discute et qu'on se rattrape."
+
+Commentaire: "Vous faites des plats végé ?" (question)
+→ "Oui bien sûr ! On a plusieurs options végétariennes sur notre carte. N'hésitez pas à demander au serveur 😊"
 
 {dna_context}"""
 
-REPLY_USER_PROMPT = """Commentaire a traiter :
+REPLY_USER_PROMPT = """Commentaire à traiter :
 Plateforme: {platform}
 Auteur: {author}
+Langue détectée: {language}
 Sentiment: {sentiment} (urgence: {urgency}/10)
 Texte: "{text}"
 
-Redige une reponse naturelle et adaptee."""
+Rédige une réponse naturelle et adaptée."""
 
 
 class ReplyGenerator:
-    """Generates brand-voice replies using Claude Sonnet + Brand DNA."""
+    """Generates brand-voice replies using GPT-4o + Brand DNA."""
 
     def __init__(self) -> None:
-        self._client: anthropic.Anthropic | None = None
+        self._client: OpenAI | None = None
         self._firestore = FirestoreService()
 
-    def _get_client(self) -> anthropic.Anthropic:
+    def _get_client(self) -> OpenAI:
         if self._client is None:
-            api_key = settings.anthropic_api_key
+            api_key = settings.openai_api_key
             if not api_key:
-                raise RuntimeError("ANTHROPIC_API_KEY not configured")
-            self._client = anthropic.Anthropic(api_key=api_key)
+                raise RuntimeError("OPENAI_API_KEY not configured")
+            self._client = OpenAI(api_key=api_key)
         return self._client
 
     async def _get_dna_context(self, brand_id: str) -> str:
@@ -81,20 +103,24 @@ class ReplyGenerator:
             user_msg = REPLY_USER_PROMPT.format(
                 platform=comment.platform,
                 author=comment.author_name,
+                language=getattr(comment, "language", "fr"),
                 sentiment=comment.sentiment,
                 urgency=comment.urgency_score,
                 text=comment.text,
             )
 
-            response = client.messages.create(
-                model=settings.ilyas_model,
+            response = client.chat.completions.create(
+                model="gpt-4o",
                 max_tokens=300,
-                system=system,
-                messages=[{"role": "user", "content": user_msg}],
+                temperature=0.7,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_msg},
+                ],
             )
 
-            reply = response.content[0].text.strip()
-            # Strip quotes if Sonnet wraps the reply
+            reply = response.choices[0].message.content.strip()
+            # Strip quotes if GPT wraps the reply
             if reply.startswith('"') and reply.endswith('"'):
                 reply = reply[1:-1]
 

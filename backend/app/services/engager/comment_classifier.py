@@ -1,55 +1,80 @@
 # PresenceOS — Comment Classifier (Sprint 5: Engager)
-# Uses Claude Haiku for fast, cheap sentiment classification + urgency scoring
+# Uses GPT-4o-mini for fast, cheap sentiment classification + urgency scoring
 
 from __future__ import annotations
 
 import json
 import logging
 
-import anthropic
+from openai import OpenAI
 
 from app.core.config import settings
 from app.models.comment import Comment
 
 logger = logging.getLogger(__name__)
 
-CLASSIFIER_PROMPT = """Tu es un classificateur de commentaires pour un commerce local.
+CLASSIFIER_PROMPT = """Tu es un classificateur de commentaires pour un commerce local (restaurant, café, boulangerie).
 
 Analyse ce commentaire et retourne un JSON strict :
 {{
-  "sentiment": "positive|negative|question|spam|neutral|urgent",
-  "urgency_score": <float 0-10>,
-  "topics": [<liste de mots-cles>],
-  "needs_reply": <bool>
+  "sentiment": "<positive|negative|question|spam|neutral>",
+  "urgency_score": <float 0.0-10.0>,
+  "topics": [<liste parmi: service, nourriture, prix, hygiene, horaires, livraison, reservation, ambiance, personnel, menu, autre>],
+  "needs_reply": <bool>,
+  "language": "<fr|en|ar|es|autre>"
 }}
 
-Regles :
-- "urgent" = plainte grave, probleme sanitaire, reservation non confirmee
-- "spam" = pub, bots, liens suspects
-- "question" = demande d'info (horaires, menu, livraison, reservation)
-- urgency_score >= 8 → urgent (humain doit valider)
-- urgency_score 5-7 → important (reponse rapide)
-- urgency_score < 5 → normal
-- needs_reply = false pour spam, emoji-only, tags sans texte
+REGLES DE CLASSIFICATION :
+- "positive" = compliment, recommandation, satisfaction
+- "negative" = plainte, déception, critique
+- "question" = demande d'information (horaires, menu, livraison, réservation)
+- "spam" = publicité, bots, liens suspects, promotions tierces
+- "neutral" = emoji seul, tag sans texte, commentaire factuel sans émotion
 
+REGLES D'URGENCE (urgency_score) :
+- 9-10 : crise sanitaire (intoxication, allergène, corps étranger), menace légale
+- 7-8 : plainte grave (attente excessive, commande incorrecte, hygiène), réservation urgente non confirmée
+- 5-6 : question pressante, retour négatif modéré
+- 3-4 : question standard, retour mitigé
+- 1-2 : commentaire positif, remarque neutre
+- 0 : spam, emoji seul, tag sans contexte
+
+REGLES needs_reply :
+- false : spam, emoji seul (🔥❤️👍 sans texte), tags sans message, commentaire de bot
+- true : tout le reste
+
+EXEMPLES :
+Commentaire: "J'ai attendu 1h pour ma pizza, c'est inadmissible"
+→ {{"sentiment": "negative", "urgency_score": 7.5, "topics": ["service"], "needs_reply": true, "language": "fr"}}
+
+Commentaire: "🔥🔥🔥"
+→ {{"sentiment": "neutral", "urgency_score": 0.0, "topics": [], "needs_reply": false, "language": "fr"}}
+
+Commentaire: "Vous êtes ouverts le dimanche ?"
+→ {{"sentiment": "question", "urgency_score": 3.0, "topics": ["horaires"], "needs_reply": true, "language": "fr"}}
+
+Commentaire: "ALERTE : cheveu trouvé dans la salade, j'ai des photos"
+→ {{"sentiment": "negative", "urgency_score": 9.0, "topics": ["hygiene", "nourriture"], "needs_reply": true, "language": "fr"}}
+
+---
 Commentaire a analyser :
 Plateforme: {platform}
 Auteur: {author}
-Texte: {text}"""
+Texte: \"{text}\""""
 
 
 class CommentClassifier:
-    """Classifies comments using Claude Haiku for speed and cost efficiency."""
+    """Classifies comments using GPT-4o-mini for speed and cost efficiency."""
 
     def __init__(self) -> None:
-        self._client: anthropic.Anthropic | None = None
+        self._client: OpenAI | None = None
 
-    def _get_client(self) -> anthropic.Anthropic:
+    def _get_client(self) -> OpenAI:
         if self._client is None:
-            api_key = settings.anthropic_api_key
+            api_key = settings.openai_api_key
             if not api_key:
-                raise RuntimeError("ANTHROPIC_API_KEY not configured")
-            self._client = anthropic.Anthropic(api_key=api_key)
+                raise RuntimeError("OPENAI_API_KEY not configured")
+            self._client = OpenAI(api_key=api_key)
         return self._client
 
     async def classify(self, comment: Comment) -> Comment:
@@ -62,22 +87,24 @@ class CommentClassifier:
                 text=comment.text,
             )
 
-            response = client.messages.create(
-                model="claude-haiku-4-5-20251001",
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
                 max_tokens=256,
-                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": "Tu retournes uniquement du JSON valide."},
+                    {"role": "user", "content": prompt},
+                ],
             )
 
-            raw = response.content[0].text.strip()
-            # Strip markdown code block if present
-            if raw.startswith("```"):
-                raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
-
+            raw = response.choices[0].message.content.strip()
             result = json.loads(raw)
 
             comment.sentiment = result.get("sentiment", "neutral")
             comment.urgency_score = float(result.get("urgency_score", 0))
             comment.topics = result.get("topics", [])
+            comment.language = result.get("language", "fr")
 
             needs_reply = result.get("needs_reply", True)
             if not needs_reply:
