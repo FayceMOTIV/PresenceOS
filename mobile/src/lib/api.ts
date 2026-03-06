@@ -15,6 +15,7 @@ const API_V2_BASE = __DEV__
 
 // ── 401 interceptor: logout callback set by App.tsx ──
 let _onUnauthorized: (() => void) | null = null;
+let _isRefreshing = false;
 
 export function setOnUnauthorized(cb: () => void) {
   _onUnauthorized = cb;
@@ -113,9 +114,35 @@ async function request<T = any>(
     }
 
     if (!res.ok) {
-      // 401 → token expired, trigger auto-logout
-      if (res.status === 401 && _onUnauthorized) {
-        _onUnauthorized();
+      // 401 → try refreshing the Firebase token once before logging out
+      if (res.status === 401 && !_isRefreshing) {
+        _isRefreshing = true;
+        try {
+          const freshToken = await useAuthStore.getState().refreshToken();
+          if (freshToken) {
+            // Retry the original request with the fresh token
+            const retryHeaders = { ...headers, Authorization: `Bearer ${freshToken}` };
+            const retryRes = await fetch(url, { ...fetchOptions, headers: retryHeaders, signal: undefined });
+            _isRefreshing = false;
+            if (retryRes.ok) {
+              const retryContentType = retryRes.headers.get("content-type") || "";
+              const retryData = retryContentType.includes("application/json")
+                ? await retryRes.json()
+                : await retryRes.text();
+              return { data: retryData, status: retryRes.status };
+            }
+            // Retry also 401 → truly expired, logout
+            if (retryRes.status === 401 && _onUnauthorized) {
+              _onUnauthorized();
+            }
+          } else if (_onUnauthorized) {
+            _isRefreshing = false;
+            _onUnauthorized();
+          }
+        } catch {
+          _isRefreshing = false;
+          if (_onUnauthorized) _onUnauthorized();
+        }
       }
       const error: any = new Error(
         data?.detail || `HTTP ${res.status}`
