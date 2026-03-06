@@ -179,8 +179,9 @@ def test_verify_token_expired():
         mock_fb_auth.RevokedIdTokenError = RevokedError
         mock_fb_auth.verify_id_token.side_effect = ExpiredError("expired")
 
-        result = fb_mod.verify_firebase_token("expired-token")
-        assert result is None
+        from app.core.firebase_auth import TokenExpiredError
+        with pytest.raises(TokenExpiredError):
+            fb_mod.verify_firebase_token("expired-token")
 
     fb_mod._firebase_app = None
 

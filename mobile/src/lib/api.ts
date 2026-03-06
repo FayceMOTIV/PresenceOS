@@ -3,6 +3,7 @@
 
 import Constants from "expo-constants";
 import { useAuthStore } from "@/stores/authStore";
+import { auth } from "@/lib/firebase";
 
 const API_BASE = __DEV__
   ? "http://192.168.10.114:8000/api/v1"
@@ -192,8 +193,37 @@ async function requestV2<T = any>(
     }
 
     if (!res.ok) {
-      if (res.status === 401 && _onUnauthorized) {
-        _onUnauthorized();
+      if (res.status === 401) {
+        // Use Firebase Auth instance directly (always up-to-date, not stale Zustand ref)
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          try {
+            const freshToken = await currentUser.getIdToken(true);
+            // Update store so subsequent requests use the fresh token
+            useAuthStore.setState({ token: freshToken });
+            // Retry once with fresh token
+            const retryController = new AbortController();
+            const retryTimeout = setTimeout(() => retryController.abort(), 30000);
+            const retryHeaders = { ...headers, Authorization: `Bearer ${freshToken}` };
+            const retryOpts: RequestInit = { method, headers: retryHeaders, signal: retryController.signal };
+            if (options?.body !== undefined) {
+              retryOpts.body = options.isFormData ? options.body : JSON.stringify(options.body);
+            }
+            const retryRes = await fetch(fullUrl, retryOpts);
+            clearTimeout(retryTimeout);
+            if (retryRes.ok) {
+              const retryContentType = retryRes.headers.get("content-type") || "";
+              const retryData = retryContentType.includes("application/json")
+                ? await retryRes.json()
+                : await retryRes.text();
+              return { data: retryData, status: retryRes.status };
+            }
+          } catch {
+            // Force refresh failed — Firebase session truly dead
+          }
+        }
+        // No current user or refresh failed — trigger logout
+        if (_onUnauthorized) _onUnauthorized();
       }
       const error: any = new Error(data?.detail || `HTTP ${res.status}`);
       error.response = { data, status: res.status };
@@ -495,6 +525,21 @@ export const socialV2Api = {
     requestV2("POST", "/social/publish", {
       body: { account_id: accountId, platform, text, media_urls: mediaUrls, page_id: pageId, scheduled_at: scheduledAt },
     }),
+};
+
+// ── Breakout v2 (3D frame-break effect) ──
+export const breakoutApi = {
+  generate: (
+    brandId: string,
+    body: {
+      source_type: "ai_prompt" | "image" | "video";
+      source_url?: string | null;
+      ai_prompt?: string | null;
+    }
+  ) => requestV2("POST", `/breakout/${brandId}/generate`, { body }),
+
+  getStatus: (brandId: string, jobId: string) =>
+    requestV2("GET", `/breakout/${brandId}/status/${jobId}`),
 };
 
 export default api;

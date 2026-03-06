@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.firebase_auth import verify_firebase_token
+from app.core.firebase_auth import verify_firebase_token, TokenExpiredError
 from app.models.user import User, WorkspaceMember
 from app.models.brand import Brand
 
@@ -90,11 +90,18 @@ async def get_firebase_user(
             detail="Database unavailable",
         )
 
-    decoded = verify_firebase_token(token)
+    try:
+        decoded = verify_firebase_token(token)
+    except TokenExpiredError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Firebase token expired",
+            headers={"WWW-Authenticate": "Bearer", "X-Token-Expired": "true"},
+        )
     if not decoded:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired Firebase token",
+            detail="Invalid Firebase token",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -150,6 +157,52 @@ async def get_firebase_user(
     return new_user
 
 
+async def verify_brand_access(
+    brand_id: str,
+    user: User,
+    db: AsyncSession,
+) -> Brand:
+    """Verify the authenticated user has access to this brand.
+
+    Works with string brand_ids (v2 endpoints) by parsing to UUID
+    and checking workspace membership in PostgreSQL.
+    Returns the validated Brand object.
+    Raises 400 (bad format), 404 (not found), or 403 (no access).
+    """
+    try:
+        brand_uuid = uuid.UUID(brand_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid brand_id format",
+        )
+
+    result = await db.execute(
+        select(Brand).where(Brand.id == brand_uuid)
+    )
+    brand = result.scalar_one_or_none()
+
+    if not brand:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Brand not found",
+        )
+
+    membership_result = await db.execute(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == brand.workspace_id,
+            WorkspaceMember.user_id == user.id,
+        )
+    )
+    if not membership_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this brand",
+        )
+
+    return brand
+
+
 # Type aliases
 FirebaseUser = Annotated[User, Depends(get_firebase_user)]
 DBSession = Annotated[AsyncSession, Depends(get_db)]
@@ -158,6 +211,7 @@ __all__ = [
     "FirebaseUser",
     "DBSession",
     "get_brand",
+    "verify_brand_access",
     "get_optional_db",
     "OptionalDBSession",
 ]

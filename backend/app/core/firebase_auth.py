@@ -59,10 +59,16 @@ def init_firebase() -> firebase_admin.App | None:
         return None
 
 
+class TokenExpiredError(Exception):
+    """Raised when a Firebase ID token is expired (distinct from invalid)."""
+    pass
+
+
 def verify_firebase_token(id_token: str) -> dict | None:
     """Verify a Firebase ID token and return decoded claims.
 
-    Returns None on any verification failure (invalid, expired, revoked).
+    Returns None on invalid/revoked tokens.
+    Raises TokenExpiredError when the token is expired (client should refresh).
     """
     if _firebase_app is None:
         logger.warning("verify_firebase_token called but Firebase is not initialized")
@@ -71,11 +77,11 @@ def verify_firebase_token(id_token: str) -> dict | None:
     try:
         decoded = firebase_auth.verify_id_token(id_token, check_revoked=True)
         return decoded
-    except firebase_auth.InvalidIdTokenError:
-        logger.debug("Firebase token invalid")
-        return None
     except firebase_auth.ExpiredIdTokenError:
         logger.debug("Firebase token expired")
+        raise TokenExpiredError("Firebase token expired")
+    except firebase_auth.InvalidIdTokenError:
+        logger.debug("Firebase token invalid")
         return None
     except firebase_auth.RevokedIdTokenError:
         logger.debug("Firebase token revoked")
