@@ -42,7 +42,7 @@ export { AuthContext, BrandContext };
 export default function App() {
   // Firebase auth store
   const authStore = useAuthStore();
-  const { isAuthenticated, isLoading: authLoading, user } = authStore;
+  const { isAuthenticated, isLoading: authLoading, isInitializing, user } = authStore;
 
   // Business store (Firestore)
   const businessStore = useBusinessStore();
@@ -143,8 +143,8 @@ export default function App() {
     isLoading: bizLoading,
   };
 
-  // ── Loading screen (auth initializing) ──
-  if (authLoading) {
+  // ── Loading screen (Firebase restoring session from AsyncStorage) ──
+  if (isInitializing) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.bg.primary }}>

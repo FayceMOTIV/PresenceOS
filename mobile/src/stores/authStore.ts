@@ -20,6 +20,7 @@ interface AuthState {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isInitializing: boolean;
 }
 
 interface AuthActions {
@@ -40,6 +41,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   token: null,
   isLoading: true,
   isAuthenticated: false,
+  isInitializing: true,
 
   login: async (email, password) => {
     const credential = await signInWithEmailAndPassword(auth, email, password);
@@ -97,9 +99,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const token = await user.getIdToken();
-        set({ user, token, isAuthenticated: true, isLoading: false });
+        set({ user, token, isAuthenticated: true, isLoading: false, isInitializing: false });
       } else {
-        set({ user: null, token: null, isAuthenticated: false, isLoading: false });
+        set({ user: null, token: null, isAuthenticated: false, isLoading: false, isInitializing: false });
       }
     });
     return unsubscribe;
