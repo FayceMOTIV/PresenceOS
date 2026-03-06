@@ -3,9 +3,10 @@
 // Gracefully handles missing config (app works without Firebase in dev).
 
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { initializeAuth, getAuth, Auth } from "firebase/auth";
-// @ts-expect-error — getReactNativePersistence resolves via react-native condition in @firebase/auth
-import { getReactNativePersistence } from "@firebase/auth";
+// All auth imports from @firebase/auth to ensure Metro resolves to the RN bundle
+// (firebase/auth has no react-native condition → resolves to browser bundle → no persistence)
+// @ts-expect-error — RN types not in default TS resolution
+import { initializeAuth, getAuth, getReactNativePersistence, Auth } from "@firebase/auth";
 import { getFirestore, Firestore } from "firebase/firestore";
 import { getStorage, FirebaseStorage } from "firebase/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";

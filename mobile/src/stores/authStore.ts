@@ -2,6 +2,8 @@
 // Wraps Firebase Auth with a Zustand store for reactive state.
 
 import { create } from "zustand";
+// All auth imports from @firebase/auth (same module as firebase.ts)
+// firebase/auth resolves to browser bundle on Metro — causes module mismatch
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -12,7 +14,7 @@ import {
   signInWithCredential,
   GoogleAuthProvider,
   User as FirebaseUser,
-} from "firebase/auth";
+} from "@firebase/auth";
 import { auth } from "@/lib/firebase";
 
 interface AuthState {
