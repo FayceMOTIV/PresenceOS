@@ -11,6 +11,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import TabNavigator from "@/navigation/TabNavigator";
 import LoginScreen from "@/screens/auth/LoginScreen";
 import RegisterScreen from "@/screens/auth/RegisterScreen";
@@ -27,6 +28,7 @@ import { useBusinessStore } from "@/stores/businessStore";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 import { setOnUnauthorized } from "@/lib/api";
 import { addNotificationResponseListener, removeNotificationSubscriptions } from "@/lib/pushNotifications";
+import { createBusiness, FirestoreBusiness } from "@/services/businessService";
 
 // Navigation ref for programmatic navigation (e.g. from push notification taps)
 export const navigationRef = createNavigationContainerRef<any>();
@@ -68,6 +70,25 @@ export default function App() {
       setOnboardingStep(0);
     }
   }, [isAuthenticated, user?.uid]);
+
+  // ── Auto-create default business for new users (no businesses in Firestore) ──
+  useEffect(() => {
+    if (!isAuthenticated || !user || bizLoading) return;
+    if (brands.length > 0) return;
+
+    const uid = user.uid;
+    const displayName = user.displayName || "Mon Restaurant";
+    const defaultBiz: FirestoreBusiness = {
+      id: uid,
+      name: displayName,
+      slug: displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      businessType: "restaurant",
+      ownerId: uid,
+      memberIds: [uid],
+      isActive: true,
+    };
+    createBusiness(defaultBiz).catch(() => {});
+  }, [isAuthenticated, user?.uid, bizLoading, brands.length]);
 
   // ── Push notification tap → navigate to CMChat ──
   useEffect(() => {
@@ -195,18 +216,20 @@ export default function App() {
   // ── Main app ──
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <BottomSheetModalProvider>
-          <NavigationContainer ref={navigationRef} linking={deepLinkingConfig}>
-            <StatusBar style="dark" />
-            <AuthContext.Provider value={authCtx}>
-              <BrandContext.Provider value={brandCtx}>
-                <TabNavigator />
-              </BrandContext.Provider>
-            </AuthContext.Provider>
-          </NavigationContainer>
-        </BottomSheetModalProvider>
-      </SafeAreaProvider>
+      <ErrorBoundary>
+        <SafeAreaProvider>
+          <BottomSheetModalProvider>
+            <NavigationContainer ref={navigationRef} linking={deepLinkingConfig}>
+              <StatusBar style="dark" />
+              <AuthContext.Provider value={authCtx}>
+                <BrandContext.Provider value={brandCtx}>
+                  <TabNavigator />
+                </BrandContext.Provider>
+              </AuthContext.Provider>
+            </NavigationContainer>
+          </BottomSheetModalProvider>
+        </SafeAreaProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }

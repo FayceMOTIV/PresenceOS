@@ -72,7 +72,8 @@ class TestCommentModel:
 
     def test_enums(self):
         assert CommentPlatform.INSTAGRAM.value == "instagram"
-        assert Sentiment.URGENT.value == "urgent"
+        assert Sentiment.POSITIVE.value == "positive"
+        assert Sentiment.NEGATIVE.value == "negative"
         assert ReplyStatus.PUBLISHED.value == "published"
         assert ReplyStatus.SKIPPED.value == "skipped"
 
@@ -139,60 +140,56 @@ class TestMockCommentFetcher:
 
 
 class TestCommentClassifier:
-    """Tests for CommentClassifier with mocked Anthropic client."""
+    """Tests for CommentClassifier with mocked OpenAI client."""
+
+    def _mock_openai_response(self, content: str):
+        """Create a mock OpenAI ChatCompletion response."""
+        mock_message = MagicMock()
+        mock_message.content = content
+        mock_choice = MagicMock()
+        mock_choice.message = mock_message
+        mock_resp = MagicMock()
+        mock_resp.choices = [mock_choice]
+        return mock_resp
 
     @pytest.mark.asyncio
     async def test_classify_positive(self):
         from app.services.engager.comment_classifier import CommentClassifier
 
         classifier = CommentClassifier()
-
-        mock_response = MagicMock()
-        mock_response.content = [
-            MagicMock(
-                text=json.dumps(
-                    {
-                        "sentiment": "positive",
-                        "urgency_score": 2.0,
-                        "topics": ["compliment"],
-                        "needs_reply": True,
-                    }
-                )
-            )
-        ]
+        resp = self._mock_openai_response(json.dumps({
+            "sentiment": "positive",
+            "urgency_score": 2.0,
+            "topics": ["nourriture"],
+            "needs_reply": True,
+            "language": "fr",
+        }))
 
         with patch.object(classifier, "_get_client") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_response
+            mock_client.return_value.chat.completions.create.return_value = resp
             comment = Comment(id="c1", text="Super restaurant !", platform="instagram")
             result = await classifier.classify(comment)
 
         assert result.sentiment == "positive"
         assert result.urgency_score == 2.0
-        assert result.topics == ["compliment"]
         assert result.reply_status == "classified"
+        assert result.language == "fr"
 
     @pytest.mark.asyncio
     async def test_classify_spam(self):
         from app.services.engager.comment_classifier import CommentClassifier
 
         classifier = CommentClassifier()
-
-        mock_response = MagicMock()
-        mock_response.content = [
-            MagicMock(
-                text=json.dumps(
-                    {
-                        "sentiment": "spam",
-                        "urgency_score": 0.0,
-                        "topics": ["spam"],
-                        "needs_reply": False,
-                    }
-                )
-            )
-        ]
+        resp = self._mock_openai_response(json.dumps({
+            "sentiment": "spam",
+            "urgency_score": 0.0,
+            "topics": [],
+            "needs_reply": False,
+            "language": "en",
+        }))
 
         with patch.object(classifier, "_get_client") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_response
+            mock_client.return_value.chat.completions.create.return_value = resp
             comment = Comment(id="c2", text="Follow me for free!", platform="instagram")
             result = await classifier.classify(comment)
 
@@ -200,31 +197,24 @@ class TestCommentClassifier:
         assert result.reply_status == "skipped"
 
     @pytest.mark.asyncio
-    async def test_classify_urgent(self):
+    async def test_classify_negative_high_urgency(self):
         from app.services.engager.comment_classifier import CommentClassifier
 
         classifier = CommentClassifier()
-
-        mock_response = MagicMock()
-        mock_response.content = [
-            MagicMock(
-                text=json.dumps(
-                    {
-                        "sentiment": "urgent",
-                        "urgency_score": 9.0,
-                        "topics": ["hygiene", "plainte"],
-                        "needs_reply": True,
-                    }
-                )
-            )
-        ]
+        resp = self._mock_openai_response(json.dumps({
+            "sentiment": "negative",
+            "urgency_score": 9.0,
+            "topics": ["hygiene", "nourriture"],
+            "needs_reply": True,
+            "language": "fr",
+        }))
 
         with patch.object(classifier, "_get_client") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_response
+            mock_client.return_value.chat.completions.create.return_value = resp
             comment = Comment(id="c3", text="Cheveu dans mon assiette!", platform="google")
             result = await classifier.classify(comment)
 
-        assert result.sentiment == "urgent"
+        assert result.sentiment == "negative"
         assert result.urgency_score == 9.0
         assert result.reply_status == "classified"
 
@@ -233,12 +223,10 @@ class TestCommentClassifier:
         from app.services.engager.comment_classifier import CommentClassifier
 
         classifier = CommentClassifier()
-
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text="not json at all")]
+        resp = self._mock_openai_response("not json at all")
 
         with patch.object(classifier, "_get_client") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_response
+            mock_client.return_value.chat.completions.create.return_value = resp
             comment = Comment(id="c4", text="Test", platform="instagram")
             result = await classifier.classify(comment)
 
@@ -253,7 +241,7 @@ class TestCommentClassifier:
         classifier = CommentClassifier()
 
         with patch.object(classifier, "_get_client") as mock_client:
-            mock_client.return_value.messages.create.side_effect = RuntimeError("API down")
+            mock_client.return_value.chat.completions.create.side_effect = RuntimeError("API down")
             comment = Comment(id="c5", text="Test", platform="facebook")
             result = await classifier.classify(comment)
 
@@ -265,23 +253,16 @@ class TestCommentClassifier:
         from app.services.engager.comment_classifier import CommentClassifier
 
         classifier = CommentClassifier()
-
-        mock_response = MagicMock()
-        mock_response.content = [
-            MagicMock(
-                text=json.dumps(
-                    {
-                        "sentiment": "positive",
-                        "urgency_score": 1.0,
-                        "topics": [],
-                        "needs_reply": True,
-                    }
-                )
-            )
-        ]
+        resp = self._mock_openai_response(json.dumps({
+            "sentiment": "positive",
+            "urgency_score": 1.0,
+            "topics": [],
+            "needs_reply": True,
+            "language": "fr",
+        }))
 
         with patch.object(classifier, "_get_client") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_response
+            mock_client.return_value.chat.completions.create.return_value = resp
             comments = [
                 Comment(id="b1", text="Cool", platform="instagram"),
                 Comment(id="b2", text="Nice", platform="facebook"),
@@ -292,20 +273,20 @@ class TestCommentClassifier:
         assert all(r.reply_status == "classified" for r in results)
 
     @pytest.mark.asyncio
-    async def test_classify_strips_markdown_code_block(self):
+    async def test_classify_question(self):
         from app.services.engager.comment_classifier import CommentClassifier
 
         classifier = CommentClassifier()
-
-        mock_response = MagicMock()
-        mock_response.content = [
-            MagicMock(
-                text='```json\n{"sentiment": "question", "urgency_score": 4.0, "topics": ["horaires"], "needs_reply": true}\n```'
-            )
-        ]
+        resp = self._mock_openai_response(json.dumps({
+            "sentiment": "question",
+            "urgency_score": 4.0,
+            "topics": ["horaires"],
+            "needs_reply": True,
+            "language": "fr",
+        }))
 
         with patch.object(classifier, "_get_client") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_response
+            mock_client.return_value.chat.completions.create.return_value = resp
             comment = Comment(id="c6", text="Ouvert dimanche ?", platform="instagram")
             result = await classifier.classify(comment)
 
@@ -317,22 +298,30 @@ class TestCommentClassifier:
 
 
 class TestReplyGenerator:
-    """Tests for ReplyGenerator with mocked Anthropic client."""
+    """Tests for ReplyGenerator with mocked OpenAI client."""
+
+    def _mock_openai_response(self, content: str):
+        """Create a mock OpenAI ChatCompletion response."""
+        mock_message = MagicMock()
+        mock_message.content = content
+        mock_choice = MagicMock()
+        mock_choice.message = mock_message
+        mock_resp = MagicMock()
+        mock_resp.choices = [mock_choice]
+        return mock_resp
 
     @pytest.mark.asyncio
     async def test_generate_reply(self):
         from app.services.engager.reply_generator import ReplyGenerator
 
         gen = ReplyGenerator()
-
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text="Merci beaucoup pour votre avis !")]
+        resp = self._mock_openai_response("Merci beaucoup pour votre avis !")
 
         with (
             patch.object(gen, "_get_client") as mock_client,
             patch.object(gen, "_get_dna_context", return_value=""),
         ):
-            mock_client.return_value.messages.create.return_value = mock_response
+            mock_client.return_value.chat.completions.create.return_value = resp
             comment = Comment(
                 id="r1",
                 text="Super resto !",
@@ -365,7 +354,7 @@ class TestReplyGenerator:
             patch.object(gen, "_get_client") as mock_client,
             patch.object(gen, "_get_dna_context", return_value=""),
         ):
-            mock_client.return_value.messages.create.side_effect = RuntimeError("fail")
+            mock_client.return_value.chat.completions.create.side_effect = RuntimeError("fail")
             comment = Comment(
                 id="r3",
                 text="Question",
@@ -382,15 +371,13 @@ class TestReplyGenerator:
         from app.services.engager.reply_generator import ReplyGenerator
 
         gen = ReplyGenerator()
-
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text='"Merci beaucoup !"')]
+        resp = self._mock_openai_response('"Merci beaucoup !"')
 
         with (
             patch.object(gen, "_get_client") as mock_client,
             patch.object(gen, "_get_dna_context", return_value=""),
         ):
-            mock_client.return_value.messages.create.return_value = mock_response
+            mock_client.return_value.chat.completions.create.return_value = resp
             comment = Comment(
                 id="r4",
                 text="Genial",
@@ -407,15 +394,13 @@ class TestReplyGenerator:
         from app.services.engager.reply_generator import ReplyGenerator
 
         gen = ReplyGenerator()
-
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text="Merci !")]
+        resp = self._mock_openai_response("Merci !")
 
         with (
             patch.object(gen, "_get_client") as mock_client,
             patch.object(gen, "_get_dna_context", return_value=""),
         ):
-            mock_client.return_value.messages.create.return_value = mock_response
+            mock_client.return_value.chat.completions.create.return_value = resp
             comments = [
                 Comment(id="rb1", text="Cool", reply_status="classified", brand_id="b1"),
                 Comment(id="rb2", text="Nice", reply_status="classified", brand_id="b1"),

@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
-from app.api.v2.deps import FirebaseUser, DBSession, get_brand
+from app.api.v2.deps import FirebaseUser, DBSession, verify_brand_access
 from app.middleware.rate_limit import limiter
 from app.services.ilyas.onboarding_agent import OnboardingAgent, TOTAL_STEPS
 
@@ -65,6 +65,7 @@ async def start_onboarding(
     db: DBSession,
 ):
     """Start onboarding or resume from where the user left off."""
+    await verify_brand_access(brand_id, user, db)
     agent = OnboardingAgent()
     result = await agent.start_onboarding(brand_id)
     return result
@@ -84,6 +85,7 @@ async def submit_answer(
     db: DBSession,
 ):
     """Process a user's answer for the current onboarding step."""
+    await verify_brand_access(brand_id, user, db)
     agent = OnboardingAgent()
     result = await agent.process_answer(
         business_id=brand_id,
@@ -106,6 +108,7 @@ async def get_dna(
     db: DBSession,
 ):
     """Retrieve the current Business DNA profile."""
+    await verify_brand_access(brand_id, user, db)
     agent = OnboardingAgent()
     dna = await agent.get_dna(brand_id)
     return {
@@ -127,6 +130,7 @@ async def scrape_website(
     db: DBSession,
 ):
     """Scrape a business website and pre-fill the Business DNA before onboarding."""
+    await verify_brand_access(brand_id, user, db)
     try:
         from app.services.firecrawl_scraper import FirecrawlScraper
         from app.services.firebase_firestore import FirestoreService

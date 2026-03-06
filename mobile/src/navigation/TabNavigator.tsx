@@ -22,6 +22,7 @@ import IlyasChatScreen from "@/screens/chat/IlyasChatScreen";
 import SocialAccountsScreen from "@/screens/social/SocialAccountsScreen";
 import VideoStudioScreen from "@/screens/video/VideoStudioScreen";
 import VideoPlansScreen from "@/screens/video/VideoPlansScreen";
+import BreakoutScreen from "@/screens/breakout/BreakoutScreen";
 import ValidationInboxScreen from "@/screens/validation/ValidationInboxScreen";
 import BrainDashboardScreen from "@/screens/brain/BrainDashboardScreen";
 import AnalyticsScreen from "@/screens/analytics/AnalyticsScreen";
@@ -63,6 +64,10 @@ export type InboxStackParams = {
 export type VideoStackParams = {
   VideoStudio: undefined;
   VideoPlans: undefined;
+};
+
+export type BreakoutStackParams = {
+  BreakoutMain: undefined;
 };
 
 const Tab = createBottomTabNavigator();
@@ -180,6 +185,16 @@ function VideoStackScreen() {
   );
 }
 
+// ── Breakout Stack ──
+const BreakoutStackNav = createNativeStackNavigator<BreakoutStackParams>();
+function BreakoutStackScreen() {
+  return (
+    <BreakoutStackNav.Navigator screenOptions={{ headerShown: false, headerBackVisible: false }}>
+      <BreakoutStackNav.Screen name="BreakoutMain" component={BreakoutScreen} />
+    </BreakoutStackNav.Navigator>
+  );
+}
+
 // ── Tab Navigator ──
 export default function TabNavigator() {
   return (
@@ -211,6 +226,7 @@ export default function TabNavigator() {
             Files: "folder",
             Ilyas: "chatbubble-ellipses",
             Video: "videocam",
+            Breakout: "layers",
             Inbox: "chatbubbles",
           };
           return (
@@ -242,6 +258,11 @@ export default function TabNavigator() {
         name="Video"
         component={VideoStackScreen}
         options={{ tabBarLabel: "Vidéo" }}
+      />
+      <Tab.Screen
+        name="Breakout"
+        component={BreakoutStackScreen}
+        options={{ tabBarLabel: "Breakout" }}
       />
       <Tab.Screen
         name="Inbox"

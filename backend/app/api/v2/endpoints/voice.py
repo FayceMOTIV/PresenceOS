@@ -9,7 +9,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form
 
-from app.api.v2.deps import FirebaseUser, DBSession
+from app.api.v2.deps import FirebaseUser, DBSession, verify_brand_access
 from app.middleware.rate_limit import limiter
 from app.services.whisper_transcriber import get_transcriber
 
@@ -35,6 +35,7 @@ async def transcribe_audio(
     Transcribe an audio file to text using Whisper.
     Formats: mp4, mp3, m4a, wav, webm, ogg. Max 25MB.
     """
+    await verify_brand_access(brand_id, user, db)
     try:
         audio_bytes = await audio.read()
         transcriber = get_transcriber()

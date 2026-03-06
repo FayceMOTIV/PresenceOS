@@ -187,6 +187,34 @@ export default function HomeScreen() {
           <StatCard label={FR.home_stats_published} value={stats.published} color="#10B981" />
         </View>
 
+        {/* Quick-access services */}
+        <View style={styles.servicesRow}>
+          <TouchableOpacity
+            style={styles.serviceBtn}
+            onPress={() => nav.navigate("BrainDashboard")}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="bulb-outline" size={22} color={Colors.brand.primary} />
+            <Text style={styles.serviceBtnLabel}>{FR.brain_title}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.serviceBtn}
+            onPress={() => nav.navigate("Analytics")}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="bar-chart-outline" size={22} color={Colors.brand.amber} />
+            <Text style={styles.serviceBtnLabel}>{FR.analytics_title}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.serviceBtn}
+            onPress={() => nav.navigate("ValidationInbox")}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="checkmark-circle-outline" size={22} color={Colors.status.success} />
+            <Text style={styles.serviceBtnLabel}>{FR.validation_title}</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Video IA card */}
         <TouchableOpacity
           style={styles.videoCard}
@@ -368,6 +396,33 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 20,
     marginBottom: 16
+  },
+  servicesRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  serviceBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: Colors.border.default,
+    shadowColor: "#7C5CBF",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  serviceBtnLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: Colors.text.secondary,
   },
   videoCard: {
     marginHorizontal: 16,

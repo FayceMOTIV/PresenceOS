@@ -120,6 +120,11 @@ class Settings(BaseSettings):
     # Community Manager AI
     cm_auto_publish_threshold: float = 0.85
 
+    # Meta Engage (Instagram/Facebook comment fetching)
+    meta_access_token: str = ""
+    meta_instagram_account_id: str = ""
+    meta_page_id: str = ""
+
     # Blotato Social Publishing API
     blotato_api_key: str = ""
 

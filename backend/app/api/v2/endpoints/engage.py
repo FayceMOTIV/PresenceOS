@@ -9,10 +9,11 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
-from app.api.v2.deps import FirebaseUser, DBSession
+from app.core.config import settings
+from app.api.v2.deps import FirebaseUser, DBSession, verify_brand_access
 from app.middleware.rate_limit import limiter
 from app.services.engager.inbox_manager import InboxManager
-from app.services.engager.comment_fetcher import MockCommentFetcher
+from app.services.engager.comment_fetcher import MetaCommentFetcher, MockCommentFetcher
 
 router = APIRouter()
 
@@ -21,7 +22,7 @@ router = APIRouter()
 
 
 class ScanRequest(BaseModel):
-    since_hours: int = Field(default=24, ge=1, le=168, description="Lookback window in hours")
+    since_hours: int = Field(default=24, ge=1, le=8760, description="Lookback window in hours (max 1 year)")
 
 
 class ScanResponse(BaseModel):
@@ -82,9 +83,22 @@ async def scan_comments(
     db: DBSession,
 ):
     """Fetch new comments, classify them, generate replies, store in Firestore."""
-    manager = InboxManager(fetcher=MockCommentFetcher())
+    await verify_brand_access(brand_id, user, db)
+    # Use real Meta Graph API when token is configured, else mock
+    from app.services.meta_token_manager import MetaTokenManager
+    manager = MetaTokenManager()
+    meta_token = await manager.get_token()
+    if meta_token:
+        fetcher = MetaCommentFetcher(
+            instagram_account_id=settings.meta_instagram_account_id,
+        )
+    else:
+        fetcher = MockCommentFetcher()
+
+    manager = InboxManager(fetcher=fetcher)
     result = await manager.scan_and_process(
         brand_id=brand_id,
+        access_token=meta_token,
         since_hours=body.since_hours,
     )
     return result
@@ -105,6 +119,7 @@ async def get_inbox(
     limit: int = 50,
 ):
     """Get comments/DMs from the inbox, optionally filtered by status."""
+    await verify_brand_access(brand_id, user, db)
     manager = InboxManager()
     comments = await manager.get_inbox(
         brand_id=brand_id,
@@ -129,6 +144,7 @@ async def approve_reply(
     db: DBSession,
 ):
     """Approve a suggested reply, optionally editing it before publishing."""
+    await verify_brand_access(brand_id, user, db)
     manager = InboxManager()
     comment = await manager.approve_reply(
         brand_id=brand_id,
@@ -156,6 +172,7 @@ async def reject_reply(
     db: DBSession,
 ):
     """Reject a suggested reply."""
+    await verify_brand_access(brand_id, user, db)
     manager = InboxManager()
     comment = await manager.reject_reply(
         brand_id=brand_id,
@@ -182,6 +199,7 @@ async def get_stats(
     db: DBSession,
 ):
     """Get engagement statistics for the brand inbox."""
+    await verify_brand_access(brand_id, user, db)
     manager = InboxManager()
     stats = await manager.get_stats(brand_id)
     return stats

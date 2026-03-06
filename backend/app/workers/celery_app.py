@@ -1,5 +1,7 @@
 """
 PresenceOS - Celery Application Configuration
+
+All crontab hours are in Europe/Paris timezone.
 """
 from celery import Celery
 from celery.schedules import crontab
@@ -10,7 +12,15 @@ celery_app = Celery(
     "presenceos",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["app.workers.tasks", "app.workers.cm_tasks", "app.workers.content_tasks", "app.workers.brain_tasks", "app.workers.orchestrator_tasks", "app.workers.proactive_cm_tasks"],
+    include=[
+        "app.workers.tasks",
+        "app.workers.cm_tasks",
+        "app.workers.content_tasks",
+        "app.workers.brain_tasks",
+        "app.workers.orchestrator_tasks",
+        "app.workers.proactive_cm_tasks",
+        "app.workers.breakout_tasks",
+    ],
 )
 
 # Celery configuration
@@ -18,7 +28,7 @@ celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
-    timezone="UTC",
+    timezone="Europe/Paris",
     enable_utc=True,
     task_track_started=True,
     task_time_limit=600,  # 10 minutes max
@@ -28,91 +38,88 @@ celery_app.conf.update(
     task_reject_on_worker_lost=True,
 )
 
-# Periodic tasks (beat schedule)
+# ── Periodic tasks (beat schedule) ────────────────────────────────────
+# All hours are Europe/Paris local time.
 celery_app.conf.beat_schedule = {
-    # Check for scheduled posts every minute
+    # ── Every minute / interval ──
     "check-scheduled-posts": {
         "task": "app.workers.tasks.check_scheduled_posts",
-        "schedule": 60.0,  # Every minute
+        "schedule": 60.0,
     },
-    # Sync metrics every hour
+    "autopilot-check-auto-publish": {
+        "task": "app.workers.tasks.autopilot_check_auto_publish",
+        "schedule": 900.0,  # Every 15 min
+    },
+    "poll-google-reviews": {
+        "task": "app.workers.cm_tasks.poll_google_reviews_all",
+        "schedule": 900.0,  # Every 15 min
+    },
+    "orchestrator-check-publish": {
+        "task": "app.workers.orchestrator_tasks.autopilot_check_publish",
+        "schedule": 600.0,  # Every 10 min
+    },
+    # ── Every hour ──
     "sync-all-metrics": {
         "task": "app.workers.tasks.sync_all_metrics",
-        "schedule": crontab(minute=0),  # Every hour
+        "schedule": crontab(minute=0),
     },
-    # Generate daily ideas at 6 AM
-    "generate-daily-ideas": {
-        "task": "app.workers.tasks.generate_daily_ideas",
-        "schedule": crontab(hour=6, minute=0),
-    },
-    # Refresh expiring tokens daily
+    # ── Night (3h Paris) ──
     "refresh-expiring-tokens": {
         "task": "app.workers.tasks.refresh_expiring_tokens",
         "schedule": crontab(hour=3, minute=0),
     },
-    # Autopilot: generate daily content at 7 AM UTC
-    "autopilot-daily-generate": {
-        "task": "app.workers.tasks.autopilot_daily_generate",
-        "schedule": crontab(hour=7, minute=0),
+    # ── Morning intelligence (6h-7h Paris) ──
+    "generate-daily-ideas": {
+        "task": "app.workers.tasks.generate_daily_ideas",
+        "schedule": crontab(hour=6, minute=0),
     },
-    # Autopilot: check for auto-publish every 15 minutes
-    "autopilot-check-auto-publish": {
-        "task": "app.workers.tasks.autopilot_check_auto_publish",
-        "schedule": 900.0,  # Every 15 minutes
-    },
-    # Community Manager: poll Google reviews every 15 minutes
-    "poll-google-reviews": {
-        "task": "app.workers.cm_tasks.poll_google_reviews_all",
-        "schedule": 900.0,  # Every 15 minutes
-    },
-    # Content Library: send daily brief notifications at 8 AM Europe/Paris
-    "send-daily-brief-notif": {
-        "task": "app.workers.content_tasks.send_daily_brief_notifications",
-        "schedule": crontab(hour=7, minute=0),  # 7 UTC = 8 AM Paris (CET)
-    },
-    # Brain: weekly text reflection (Sunday 6 AM UTC)
-    "brain-weekly-reflection": {
-        "task": "app.workers.brain_tasks.weekly_reflection_all_brands",
-        "schedule": crontab(hour=6, minute=0, day_of_week=0),
-    },
-    # Brain: weekly visual reflection (Sunday 7 AM UTC)
-    "brain-weekly-visual-reflection": {
-        "task": "app.workers.brain_tasks.weekly_visual_reflection_all",
-        "schedule": crontab(hour=7, minute=0, day_of_week=0),
-    },
-    # Orchestrator: daily content generation at 8 AM UTC
-    "orchestrator-daily-generate": {
-        "task": "app.workers.orchestrator_tasks.autopilot_daily_orchestrate",
-        "schedule": crontab(hour=8, minute=0),
-    },
-    # Orchestrator: check auto-publish every 10 minutes
-    "orchestrator-check-publish": {
-        "task": "app.workers.orchestrator_tasks.autopilot_check_publish",
-        "schedule": 600.0,  # Every 10 minutes
-    },
-    # Trend detection: daily at 6:30 AM UTC
     "detect-trends-daily": {
         "task": "app.workers.orchestrator_tasks.detect_trends_daily",
         "schedule": crontab(hour=6, minute=30),
     },
-    # Orchestrator: weekly planning (Sunday 20h UTC)
-    "orchestrator-weekly-planning": {
-        "task": "app.workers.orchestrator_tasks.run_weekly_planning_all_brands",
-        "schedule": crontab(hour=20, minute=0, day_of_week=0),
+    # ── Ilyas wake-up (7h Paris) ──
+    "autopilot-daily-generate": {
+        "task": "app.workers.tasks.autopilot_daily_generate",
+        "schedule": crontab(hour=7, minute=0),
     },
-    # Orchestrator: gap check (daily 8h UTC)
+    # ── Daily brief + orchestrator (8h Paris) ──
+    "send-daily-brief-notif": {
+        "task": "app.workers.content_tasks.send_daily_brief_notifications",
+        "schedule": crontab(hour=8, minute=0),
+    },
+    "orchestrator-daily-generate": {
+        "task": "app.workers.orchestrator_tasks.autopilot_daily_orchestrate",
+        "schedule": crontab(hour=8, minute=0),
+    },
     "orchestrator-gap-check": {
         "task": "app.workers.orchestrator_tasks.check_calendar_gaps",
         "schedule": crontab(hour=8, minute=30),
     },
-    # GMB: weekly post (Monday 9h UTC)
+    # ── Daily token refresh ──
+    "refresh-meta-token": {
+        "task": "app.workers.tasks.refresh_meta_token",
+        "schedule": crontab(hour=4, minute=0),  # 4 AM UTC = 5 AM Paris
+    },
+    # ── Weekly Sunday ──
+    "brain-weekly-reflection": {
+        "task": "app.workers.brain_tasks.weekly_reflection_all_brands",
+        "schedule": crontab(hour=6, minute=0, day_of_week=0),
+    },
+    "brain-weekly-visual-reflection": {
+        "task": "app.workers.brain_tasks.weekly_visual_reflection_all",
+        "schedule": crontab(hour=7, minute=0, day_of_week=0),
+    },
+    "orchestrator-weekly-planning": {
+        "task": "app.workers.orchestrator_tasks.run_weekly_planning_all_brands",
+        "schedule": crontab(hour=20, minute=0, day_of_week=0),
+    },
+    # ── Weekly Monday ──
+    "proactive-weekly-cm": {
+        "task": "app.workers.proactive_cm_tasks.proactive_weekly_all",
+        "schedule": crontab(hour=8, minute=0, day_of_week=1),
+    },
     "gmb-weekly-post": {
         "task": "app.workers.tasks.gmb_weekly_post",
         "schedule": crontab(hour=9, minute=0, day_of_week=1),
-    },
-    # Proactive CM: weekly content generation (Monday 7 UTC = 8 AM Paris)
-    "proactive-weekly-cm": {
-        "task": "app.workers.proactive_cm_tasks.proactive_weekly_all",
-        "schedule": crontab(hour=7, minute=0, day_of_week=1),
     },
 }

@@ -93,11 +93,17 @@ class InboxManager:
         limit: int = 50,
     ) -> list[Comment]:
         """Get inbox items from Firestore."""
-        # Firestore doesn't have a list-subcollection method yet.
-        # For now, we use get_document on the brand to check inbox state.
-        # Full Firestore query will be added when needed.
-        # Return empty list — the API endpoint serves from mock data in dev.
-        return []
+        docs = await self.firestore.list_subcollection(
+            "businesses",
+            brand_id,
+            "inbox",
+            limit=limit,
+            order_by="created_at",
+            direction="DESCENDING",
+            where_field="reply_status" if status else None,
+            where_value=status,
+        )
+        return [Comment.from_dict(d) for d in docs]
 
     async def approve_reply(self, brand_id: str, comment_id: str, final_reply: str | None = None) -> Comment | None:
         """Approve a suggested reply (optionally with edits)."""

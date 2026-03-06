@@ -32,15 +32,27 @@ class BaseCommentFetcher(ABC):
 class MetaCommentFetcher(BaseCommentFetcher):
     """Fetches comments from Instagram/Facebook via Meta Graph API."""
 
+    def __init__(self, instagram_account_id: str = "") -> None:
+        self.instagram_account_id = instagram_account_id
+
     async def fetch_comments(
         self, brand_id: str, access_token: str, since_hours: int = 24
     ) -> list[Comment]:
         comments: list[Comment] = []
+        if not access_token:
+            logger.warning("MetaCommentFetcher: no access_token, returning empty")
+            return comments
+
         try:
             async with httpx.AsyncClient(timeout=30) as client:
-                # Get recent media
+                # Use Instagram Business Account ID if available, else /me/media
+                media_endpoint = (
+                    f"{GRAPH_API_BASE}/{self.instagram_account_id}/media"
+                    if self.instagram_account_id
+                    else f"{GRAPH_API_BASE}/me/media"
+                )
                 media_resp = await client.get(
-                    f"{GRAPH_API_BASE}/me/media",
+                    media_endpoint,
                     params={
                         "fields": "id,caption,permalink,timestamp,media_url",
                         "limit": 25,
@@ -49,6 +61,11 @@ class MetaCommentFetcher(BaseCommentFetcher):
                 )
                 media_resp.raise_for_status()
                 media_data = media_resp.json().get("data", [])
+
+                logger.info(
+                    "Meta media fetched",
+                    extra={"brand_id": brand_id, "media_count": len(media_data)},
+                )
 
                 for post in media_data:
                     post_comments = await self._fetch_post_comments(
@@ -59,7 +76,11 @@ class MetaCommentFetcher(BaseCommentFetcher):
         except httpx.HTTPStatusError as exc:
             logger.error(
                 "Meta API error",
-                extra={"status": exc.response.status_code, "brand_id": brand_id},
+                extra={
+                    "status": exc.response.status_code,
+                    "body": exc.response.text[:500],
+                    "brand_id": brand_id,
+                },
             )
         except Exception as exc:
             logger.error(

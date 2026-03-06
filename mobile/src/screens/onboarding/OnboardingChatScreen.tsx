@@ -11,6 +11,7 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
@@ -203,49 +204,58 @@ export default function OnboardingChatScreen({ brandId, onComplete }: Props) {
   if (urlStep) {
     return (
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-        <View style={styles.urlScreen}>
-          <Text style={styles.urlEmoji}>{"🌐"}</Text>
-          <Text style={styles.urlTitle}>Votre site web</Text>
-          <Text style={styles.urlSubtitle}>
-            Collez votre URL et je recupere automatiquement les infos de votre
-            commerce en 30 secondes.
-          </Text>
-          <TextInput
-            style={styles.urlInput}
-            value={websiteUrl}
-            onChangeText={setWebsiteUrl}
-            placeholder="https://votre-restaurant.fr"
-            placeholderTextColor={Colors.text.muted}
-            autoCapitalize="none"
-            keyboardType="url"
-            autoCorrect={false}
-          />
-          <TouchableOpacity
-            style={[styles.urlBtn, (scraping || !websiteUrl.trim()) && styles.urlBtnDisabled]}
-            onPress={handleScrape}
-            disabled={scraping || !websiteUrl.trim()}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <ScrollView
+            contentContainerStyle={styles.urlScreen}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
           >
-            {scraping ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.urlBtnText}>Analyser mon site</Text>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.urlSkip}
-            onPress={() => setUrlStep(false)}
-          >
-            <Text style={styles.urlSkipText}>
-              {"Je n'ai pas de site web →"}
+            <Text style={styles.urlEmoji}>{"🌐"}</Text>
+            <Text style={styles.urlTitle}>Votre site web</Text>
+            <Text style={styles.urlSubtitle}>
+              Collez votre URL et je recupere automatiquement les infos de votre
+              commerce en 30 secondes.
             </Text>
-          </TouchableOpacity>
-          {scrapeMessage && (
-            <View style={styles.scrapeResultBox}>
-              <Ionicons name="checkmark-circle" size={20} color={Colors.status.success} />
-              <Text style={styles.scrapeResultText}>{scrapeMessage}</Text>
-            </View>
-          )}
-        </View>
+            <TextInput
+              style={styles.urlInput}
+              value={websiteUrl}
+              onChangeText={setWebsiteUrl}
+              placeholder="https://votre-restaurant.fr"
+              placeholderTextColor={Colors.text.muted}
+              autoCapitalize="none"
+              keyboardType="url"
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              style={[styles.urlBtn, (scraping || !websiteUrl.trim()) && styles.urlBtnDisabled]}
+              onPress={handleScrape}
+              disabled={scraping || !websiteUrl.trim()}
+            >
+              {scraping ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.urlBtnText}>Analyser mon site</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.urlSkip}
+              onPress={() => setUrlStep(false)}
+            >
+              <Text style={styles.urlSkipText}>
+                {"Je n'ai pas de site web →"}
+              </Text>
+            </TouchableOpacity>
+            {scrapeMessage && (
+              <View style={styles.scrapeResultBox}>
+                <Ionicons name="checkmark-circle" size={20} color={Colors.status.success} />
+                <Text style={styles.scrapeResultText}>{scrapeMessage}</Text>
+              </View>
+            )}
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
@@ -500,10 +510,11 @@ const styles = StyleSheet.create({
 
   // URL Scrape step (Sprint 6)
   urlScreen: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 32,
+    paddingVertical: 40,
   },
   urlEmoji: { fontSize: 48, marginBottom: 20 },
   urlTitle: {

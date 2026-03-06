@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "fr.appysolution.rs3",
-      "buildNumber": "12",
+      "buildNumber": "16",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "RS3 a besoin d'accéder à vos photos pour uploader du contenu visuel.",
@@ -68,6 +68,12 @@
         "projectId": "986daedd-7a05-4d22-82bd-ab76a2a8234c"
       }
     },
-    "owner": "fayce"
+    "owner": "fayce",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/986daedd-7a05-4d22-82bd-ab76a2a8234c"
+    }
   }
 }

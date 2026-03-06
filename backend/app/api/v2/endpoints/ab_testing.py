@@ -10,7 +10,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.api.v2.deps import FirebaseUser, DBSession
+from app.api.v2.deps import FirebaseUser, DBSession, verify_brand_access
 from app.middleware.rate_limit import limiter
 from app.services.ab_testing import ABTestingService
 from app.services.firebase_firestore import FirestoreService
@@ -39,6 +39,7 @@ async def create_ab_test(
     db: DBSession,
 ):
     """Generate 2 caption variants for A/B testing."""
+    await verify_brand_access(brand_id, user, db)
     try:
         # Load DNA for brand context
         firestore = FirestoreService()
@@ -72,6 +73,7 @@ async def get_ab_tests(
     db: DBSession,
 ):
     """Get A/B test history and accumulated insights."""
+    await verify_brand_access(brand_id, user, db)
     service = ABTestingService()
     tests = await service.get_tests_for_business(brand_id)
     return {"tests": tests, "total": len(tests)}

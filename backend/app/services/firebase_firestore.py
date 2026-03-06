@@ -95,6 +95,47 @@ class FirestoreService:
             )
             return None
 
+    async def list_subcollection(
+        self,
+        collection: str,
+        doc_id: str,
+        subcollection: str,
+        limit: int = 50,
+        order_by: str | None = None,
+        direction: str = "DESCENDING",
+        where_field: str | None = None,
+        where_value: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """List documents from a subcollection with optional filtering."""
+        db = self._get_db()
+        if db is None:
+            return []
+        try:
+            from google.cloud.firestore_v1 import query as fs_query
+
+            ref = (
+                db.collection(collection)
+                .document(doc_id)
+                .collection(subcollection)
+            )
+            q = ref
+            if where_field and where_value is not None:
+                q = q.where(where_field, "==", where_value)
+            if order_by:
+                desc = direction.upper() == "DESCENDING"
+                q = q.order_by(
+                    order_by,
+                    direction=fs_query.Query.DESCENDING if desc else fs_query.Query.ASCENDING,
+                )
+            q = q.limit(limit)
+            return [doc.to_dict() for doc in q.stream()]
+        except Exception as exc:
+            logger.warning(
+                "Firestore list subcollection failed: %s/%s/%s — %s",
+                collection, doc_id, subcollection, exc,
+            )
+            return []
+
     async def set_subcollection_doc(
         self,
         collection: str,

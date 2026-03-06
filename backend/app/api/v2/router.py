@@ -3,7 +3,7 @@ PresenceOS - API v2 Router
 """
 from fastapi import APIRouter
 
-from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing
+from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout
 
 api_v2_router = APIRouter()
 
@@ -24,3 +24,6 @@ api_v2_router.include_router(voice.router, prefix="/voice", tags=["Voice"])
 
 # A/B Testing — Caption variant testing (Sprint 8)
 api_v2_router.include_router(ab_testing.router, prefix="/ab", tags=["A/B Testing"])
+
+# Breakout — 3D frame-break video effect
+api_v2_router.include_router(breakout.router, prefix="/breakout", tags=["Breakout"])
