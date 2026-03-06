@@ -13,4 +13,12 @@ module.exports = {
     "!src/__tests__/**",
   ],
   testMatch: ["<rootDir>/src/__tests__/**/*.test.(ts|tsx)"],
+  coverageThreshold: {
+    global: {
+      branches: 60,
+      functions: 60,
+      lines: 60,
+      statements: 60,
+    },
+  },
 };

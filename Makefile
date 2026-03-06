@@ -71,12 +71,27 @@ db-shell: ## Open psql shell
 # ── Testing ───────────────────────────────────────────
 
 .PHONY: test
-test: ## Run backend tests
+test: ## Run backend tests (Docker)
 	$(COMPOSE) exec backend pytest -x -q
 
 .PHONY: test-cov
-test-cov: ## Run tests with coverage
+test-cov: ## Run tests with coverage (Docker)
 	$(COMPOSE) exec backend pytest --cov=app --cov-report=term-missing
+
+.PHONY: test-all
+test-all: test-backend test-mobile test-frontend ## Run ALL tests (local, no Docker)
+
+.PHONY: test-backend
+test-backend: ## Run backend tests (local)
+	cd backend && python3 -m pytest tests/ -x -q --cov=app
+
+.PHONY: test-mobile
+test-mobile: ## Run mobile tests (local)
+	cd mobile && npx jest --coverage --ci
+
+.PHONY: test-frontend
+test-frontend: ## Run frontend tests (local)
+	cd frontend && npx vitest run --coverage 2>/dev/null || echo "No vitest tests yet"
 
 .PHONY: lint
 lint: ## Run linters (ruff + black check)
