@@ -275,7 +275,7 @@ export default function BreakoutScreen() {
           <Ionicons name="layers-outline" size={28} color={Colors.brand.primary} />
           <Text style={styles.title}>Breakout</Text>
         </View>
-        <Text style={styles.subtitle}>Ton contenu sort du cadre — effet viral</Text>
+        <Text style={styles.subtitle}>Effet 3D viral — ton contenu sort du cadre ✨</Text>
 
         {/* Sélecteur de mode */}
         <View style={styles.modeRow}>
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 16,
   },
-  generateBtnText: { color: "#FFF", fontWeight: "800", fontSize: 15 },
+  generateBtnText: { color: "#FFF", fontWeight: "800", fontSize: 16 },
   costHint: { color: Colors.text.muted, fontSize: 11, textAlign: "center", marginTop: 10 },
 
   // Progress
