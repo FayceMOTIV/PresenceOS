@@ -26,7 +26,6 @@ import { deepLinkingConfig } from "@/lib/deepLinking";
 import { useAuthStore } from "@/stores/authStore";
 import { useBusinessStore } from "@/stores/businessStore";
 import { useOnboardingStore } from "@/stores/onboardingStore";
-import { setOnUnauthorized } from "@/lib/api";
 import { addNotificationResponseListener, removeNotificationSubscriptions } from "@/lib/pushNotifications";
 import { createBusiness, FirestoreBusiness } from "@/services/businessService";
 
@@ -102,13 +101,6 @@ export default function App() {
       }
     });
     return () => removeNotificationSubscriptions(sub);
-  }, []);
-
-  // ── 401 interceptor: auto-logout on expired token ──
-  useEffect(() => {
-    setOnUnauthorized(() => {
-      authStore.logout();
-    });
   }, []);
 
   // ── Auth context bridging (Firebase → legacy AuthContextType) ──

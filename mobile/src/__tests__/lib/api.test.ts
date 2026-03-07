@@ -49,7 +49,6 @@ import api, {
   abTestApi,
   engageApi,
   socialV2Api,
-  setOnUnauthorized,
 } from "@/lib/api";
 
 function mockJsonResponse(data: any, status = 200) {
@@ -99,16 +98,12 @@ describe("API Client — Core", () => {
     );
   });
 
-  test("appelle _onUnauthorized sur 401", async () => {
-    const onUnauth = jest.fn();
-    setOnUnauthorized(onUnauth);
-
+  test("throws on 401 without forcing logout", async () => {
     mockFetch.mockReturnValue(
       mockJsonResponse({ detail: "Not authenticated" }, 401)
     );
 
     await expect(contentApi.listDishes("brand-1")).rejects.toThrow();
-    expect(onUnauth).toHaveBeenCalledTimes(1);
   });
 
   test("gère le timeout (AbortError)", async () => {

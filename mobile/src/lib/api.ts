@@ -13,13 +13,11 @@ const API_V2_BASE = __DEV__
   ? "http://192.168.10.114:8000/api/v2"
   : "https://rs3-api-production.up.railway.app/api/v2";
 
-// ── 401 interceptor: logout callback set by App.tsx ──
-let _onUnauthorized: (() => void) | null = null;
+// ── 401 handling: refresh Firebase token, never force-logout ──
+// Firebase Auth manages its own session via onAuthStateChanged.
+// A backend 401 means "bad token", not "session expired".
+// Force-logout on 401 destroys the Firebase session → infinite auth loop.
 let _isRefreshing = false;
-
-export function setOnUnauthorized(cb: () => void) {
-  _onUnauthorized = cb;
-}
 
 // ── Lightweight fetch wrapper (axios-compatible response shape) ──
 
@@ -114,13 +112,12 @@ async function request<T = any>(
     }
 
     if (!res.ok) {
-      // 401 → try refreshing the Firebase token once before logging out
+      // 401 → refresh Firebase token and retry once (no logout)
       if (res.status === 401 && !_isRefreshing) {
         _isRefreshing = true;
         try {
           const freshToken = await useAuthStore.getState().refreshToken();
           if (freshToken) {
-            // Retry the original request with the fresh token
             const retryHeaders = { ...headers, Authorization: `Bearer ${freshToken}` };
             const retryRes = await fetch(url, { ...fetchOptions, headers: retryHeaders, signal: undefined });
             _isRefreshing = false;
@@ -131,17 +128,11 @@ async function request<T = any>(
                 : await retryRes.text();
               return { data: retryData, status: retryRes.status };
             }
-            // Retry also 401 → truly expired, logout
-            if (retryRes.status === 401 && _onUnauthorized) {
-              _onUnauthorized();
-            }
-          } else if (_onUnauthorized) {
-            _isRefreshing = false;
-            _onUnauthorized();
           }
         } catch {
+          // Token refresh failed — let the error propagate, don't logout
+        } finally {
           _isRefreshing = false;
-          if (_onUnauthorized) _onUnauthorized();
         }
       }
       const error: any = new Error(
@@ -249,8 +240,7 @@ async function requestV2<T = any>(
             // Force refresh failed — Firebase session truly dead
           }
         }
-        // No current user or refresh failed — trigger logout
-        if (_onUnauthorized) _onUnauthorized();
+        // No current user or refresh failed — error will propagate naturally
       }
       const error: any = new Error(data?.detail || `HTTP ${res.status}`);
       error.response = { data, status: res.status };
