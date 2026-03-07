@@ -29,6 +29,7 @@ type SourceMode = "ai_prompt" | "image" | "video";
 type Step = "input" | "generating" | "preview" | "error";
 
 const POLL_INTERVAL_MS = 3000;
+const POLL_TIMEOUT_MS = 180_000; // 3 minutes max polling
 
 const PROGRESS_STEPS = [
   { label: "Génération vidéo source", threshold: 15 },
@@ -53,6 +54,8 @@ export default function BreakoutScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollStartRef = useRef<number>(0);
+  const pollFailCount = useRef<number>(0);
 
   useEffect(() => {
     return () => {
@@ -125,10 +128,13 @@ export default function BreakoutScreen() {
       if (!newJobId) throw new Error("Pas de job_id dans la réponse");
 
       setJobId(newJobId);
+      pollStartRef.current = Date.now();
+      pollFailCount.current = 0;
       pollTimer.current = setInterval(() => pollStatus(newJobId), POLL_INTERVAL_MS);
     } catch (e: any) {
       setStep("error");
-      setErrorMsg(e.message || "Erreur lors du lancement");
+      const detail = e.response?.data?.detail || e.message || "Erreur lors du lancement";
+      setErrorMsg(detail);
     }
   }, [brandId, mode, prompt, sourceUri]);
 
@@ -137,11 +143,21 @@ export default function BreakoutScreen() {
   const pollStatus = useCallback(
     async (id: string) => {
       if (!brandId) return;
+
+      // Timeout check — stop polling after 3 minutes
+      if (Date.now() - pollStartRef.current > POLL_TIMEOUT_MS) {
+        if (pollTimer.current) clearInterval(pollTimer.current);
+        setStep("error");
+        setErrorMsg("Timeout — la génération prend trop de temps. Le worker Celery est peut-être arrêté.");
+        return;
+      }
+
       try {
         const res = await breakoutApi.getStatus(brandId, id);
         const data = res.data;
         const p = data?.progress || 0;
         setProgress(p);
+        pollFailCount.current = 0; // reset on success
 
         const currentStep = PROGRESS_STEPS.find((s) => p <= s.threshold);
         setProgressLabel(currentStep?.label || "Traitement...");
@@ -153,10 +169,18 @@ export default function BreakoutScreen() {
         } else if (data?.status === "FAILURE") {
           if (pollTimer.current) clearInterval(pollTimer.current);
           setStep("error");
-          setErrorMsg(data?.error || "Génération échouée");
+          setErrorMsg(data?.error || "Génération échouée côté serveur");
+        } else if (data?.status === "PENDING" && Date.now() - pollStartRef.current > 30_000) {
+          // Still PENDING after 30s → worker likely not running
+          setProgressLabel("En attente du worker...");
         }
-      } catch {
-        // Silent — continue polling
+      } catch (e: any) {
+        pollFailCount.current += 1;
+        if (pollFailCount.current >= 5) {
+          if (pollTimer.current) clearInterval(pollTimer.current);
+          setStep("error");
+          setErrorMsg(`Erreur de polling: ${e.message || "connexion perdue"}`);
+        }
       }
     },
     [brandId]
