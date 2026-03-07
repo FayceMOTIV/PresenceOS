@@ -13,7 +13,7 @@ from typing import Any
 
 import structlog
 from openai import AsyncOpenAI
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -21,6 +21,10 @@ from app.core.config import settings
 from app.models.ai_proposal import AIProposal
 from app.models.brand import Brand, BrandVoice, KnowledgeItem
 from app.models.cm_session import CmMessage, CmSession
+from app.models.dish import Dish
+from app.models.media import MediaAsset, MediaType
+from app.models.publishing import SocialConnector, SocialPlatform, ConnectorStatus
+from app.models.video_credits import VideoCredits
 from app.services.calendar_intelligence import CalendarIntelligence
 
 logger = structlog.get_logger()
@@ -112,15 +116,38 @@ class CMChatService:
         except Exception as exc:
             logger.warning("Temporal context failed, skipping", error=str(exc))
 
+        # ── Superpowers: enrichissement contextuel ──
+        superpower_fns = [
+            self._social_accounts_section,
+            self._video_credits_section,
+            self._menu_section,
+            self._media_library_section,
+            self._proposals_section,
+            self._visual_style_section,
+        ]
+        for section_fn in superpower_fns:
+            try:
+                section = await section_fn(brand.id)
+                if section:
+                    sections.append(section)
+            except Exception as exc:
+                logger.warning(
+                    "Superpower section failed",
+                    fn=section_fn.__name__,
+                    error=str(exc),
+                )
+
         # Capabilities
         sections.append(
             "TES CAPACITÉS :\n"
-            "- Répondre à toute question sur la stratégie social media\n"
-            "- Proposer des idées de posts (Reel, Story, Post)\n"
-            "- Rédiger des légendes Instagram optimisées\n"
-            "- Analyser et améliorer du contenu existant\n"
+            "- Répondre sur la stratégie social media\n"
+            "- Proposer des posts (Reel, Story, Post) pour les plateformes connectées\n"
+            "- Rédiger des légendes optimisées\n"
+            "- Analyser les performances passées et proposer des améliorations\n"
+            "- Suggérer du contenu basé sur le menu et les plats\n"
             "- Conseiller sur le calendrier éditorial\n"
-            "- Expliquer les tendances et meilleures pratiques\n"
+            "- Référencer les assets médias existants\n"
+            "- Proposer des vidéos si crédits disponibles\n"
             "\n"
             "Quand tu proposes du contenu concret (post, reel, story), "
             "emballe CHAQUE proposition dans un bloc <proposals> JSON :\n"
@@ -141,6 +168,136 @@ class CMChatService:
         )
 
         return "\n\n".join(sections)
+
+    # ── Superpower sections (fail-safe, each returns Optional[str]) ─────────
+
+    async def _social_accounts_section(self, brand_id: uuid.UUID) -> str | None:
+        """List connected/disconnected social platforms."""
+        result = await self.db.execute(
+            select(SocialConnector).where(SocialConnector.brand_id == brand_id)
+        )
+        connectors = list(result.scalars().all())
+        if not connectors:
+            return "COMPTES SOCIAUX : Aucun compte connecté. Suggère de connecter Instagram, TikTok, Facebook."
+
+        lines: list[str] = []
+        all_platforms = {p.value for p in SocialPlatform}
+        connected_platforms: set[str] = set()
+        for c in connectors:
+            status_icon = "✓" if c.status == ConnectorStatus.CONNECTED else "✗"
+            platform_name = c.platform.value if hasattr(c.platform, "value") else str(c.platform)
+            lines.append(f"{platform_name} {status_icon}")
+            if c.status == ConnectorStatus.CONNECTED:
+                connected_platforms.add(platform_name)
+
+        missing = all_platforms - connected_platforms
+        if missing:
+            lines.append(f"Non connectés : {', '.join(sorted(missing))}")
+
+        return "COMPTES SOCIAUX : " + " | ".join(lines)
+
+    async def _video_credits_section(self, brand_id: uuid.UUID) -> str | None:
+        """Show video credit balance."""
+        result = await self.db.execute(
+            select(VideoCredits).where(VideoCredits.brand_id == brand_id)
+        )
+        credits = result.scalar_one_or_none()
+        if not credits:
+            return "VIDÉO : Pas de crédits vidéo. Suggère l'achat si le client demande une vidéo."
+
+        remaining = credits.credits_remaining or 0
+        if remaining > 0:
+            return f"CRÉDITS VIDÉO : {remaining} crédits restants (Kling 3.0). Tu peux proposer des vidéos."
+        return "VIDÉO : 0 crédits restants. Suggère l'achat de crédits si le client veut une vidéo."
+
+    async def _menu_section(self, brand_id: uuid.UUID) -> str | None:
+        """List top dishes from the menu."""
+        result = await self.db.execute(
+            select(Dish)
+            .where(Dish.brand_id == brand_id, Dish.is_available == True)
+            .order_by(Dish.is_featured.desc(), Dish.display_order.asc())
+            .limit(15)
+        )
+        dishes = list(result.scalars().all())
+        if not dishes:
+            return None
+
+        dish_parts: list[str] = []
+        for d in dishes:
+            tag = " (vedette)" if d.is_featured else ""
+            cat = f" [{d.category}]" if d.category else ""
+            dish_parts.append(f"{d.name}{tag}{cat}")
+
+        return "MENU SPÉCIALITÉS : " + ", ".join(dish_parts)
+
+    async def _media_library_section(self, brand_id: uuid.UUID) -> str | None:
+        """Count available media assets by type."""
+        result = await self.db.execute(
+            select(MediaAsset.media_type, func.count(MediaAsset.id))
+            .where(MediaAsset.brand_id == brand_id, MediaAsset.is_archived == False)
+            .group_by(MediaAsset.media_type)
+        )
+        counts = {row[0]: row[1] for row in result.all()}
+        if not counts:
+            return "MÉDIATHÈQUE : Vide. Suggère d'uploader des photos/vidéos."
+
+        photos = counts.get(MediaType.IMAGE, 0)
+        videos = counts.get(MediaType.VIDEO, 0)
+        return f"MÉDIATHÈQUE : {photos} photos, {videos} vidéos disponibles."
+
+    async def _proposals_section(self, brand_id: uuid.UUID) -> str | None:
+        """Show proposal stats and top performers."""
+        # Count by status
+        result = await self.db.execute(
+            select(AIProposal.status, func.count(AIProposal.id))
+            .where(AIProposal.brand_id == brand_id)
+            .group_by(AIProposal.status)
+        )
+        status_counts = {row[0]: row[1] for row in result.all()}
+        if not status_counts:
+            return None
+
+        pending = status_counts.get("pending", 0)
+        published = status_counts.get("published", 0)
+        approved = status_counts.get("approved", 0)
+
+        parts = [f"{pending} en attente, {approved} approuvées, {published} publiées"]
+
+        # Top 3 published with highest confidence
+        if published > 0:
+            top_result = await self.db.execute(
+                select(AIProposal)
+                .where(
+                    AIProposal.brand_id == brand_id,
+                    AIProposal.status == "published",
+                )
+                .order_by(AIProposal.confidence_score.desc())
+                .limit(3)
+            )
+            top_proposals = list(top_result.scalars().all())
+            if top_proposals:
+                top_parts: list[str] = []
+                for p in top_proposals:
+                    caption_preview = (p.caption or "")[:60]
+                    score = f" ({p.confidence_score:.0%})" if p.confidence_score else ""
+                    top_parts.append(f"'{caption_preview}'{score}")
+                parts.append("Top publiés : " + " | ".join(top_parts))
+
+        return "HISTORIQUE PROPOSITIONS : " + ". ".join(parts)
+
+    async def _visual_style_section(self, brand_id: uuid.UUID) -> str | None:
+        """Get visual brain preferences if available."""
+        try:
+            from app.services.visual_brain import VisualBrain
+
+            vb = VisualBrain(brand_id=brand_id, db=self.db)
+            status = await vb.get_visual_brain_status()
+            if status and status.get("total_memories", 0) > 0:
+                maturity = status.get("maturity_pct", 0)
+                return f"STYLE VISUEL : Cerveau visuel actif ({maturity}% maturité). Adapte tes suggestions visuelles au style appris."
+        except Exception:
+            pass
+        return None
 
     # ── Session management ───────────────────────────────────────────────────
 

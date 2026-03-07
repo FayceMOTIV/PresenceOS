@@ -225,10 +225,12 @@ export default function CMChatScreen() {
   }, [text, isSending, sendMessage]);
 
   const quickPrompts = [
-    "Reel pour ce weekend",
-    "Post plat du jour",
-    "Story promo",
-    "Idée de contenu",
+    "Analyse mes performances",
+    "Que poster cette semaine ?",
+    "Propose un Reel avec mon menu",
+    "Quels comptes connecter ?",
+    "Story promo du jour",
+    "Idée de vidéo",
   ];
 
   return (

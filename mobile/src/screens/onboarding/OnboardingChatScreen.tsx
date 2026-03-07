@@ -60,7 +60,8 @@ export default function OnboardingChatScreen({ brandId, onComplete }: Props) {
         setUrlStep(false);
       }, 1500);
     } catch {
-      setUrlStep(false);
+      setScrapeMessage("L'analyse du site a échoué. On continue sans.");
+      setTimeout(() => setUrlStep(false), 2000);
     } finally {
       setScraping(false);
     }
@@ -90,6 +91,7 @@ export default function OnboardingChatScreen({ brandId, onComplete }: Props) {
         addAssistantMessage(data.question);
       }
     } catch (err) {
+      if (__DEV__) console.warn("Onboarding start failed:", err);
       addAssistantMessage(
         "Salut ! Je suis Ilyas, ton CM IA. Comment s'appelle ton commerce ?"
       );
@@ -249,9 +251,15 @@ export default function OnboardingChatScreen({ brandId, onComplete }: Props) {
               </Text>
             </TouchableOpacity>
             {scrapeMessage && (
-              <View style={styles.scrapeResultBox}>
-                <Ionicons name="checkmark-circle" size={20} color={Colors.status.success} />
-                <Text style={styles.scrapeResultText}>{scrapeMessage}</Text>
+              <View style={[styles.scrapeResultBox, scrapeMessage.includes("échoué") && { backgroundColor: Colors.status.warning + "15" }]}>
+                <Ionicons
+                  name={scrapeMessage.includes("échoué") ? "warning" : "checkmark-circle"}
+                  size={20}
+                  color={scrapeMessage.includes("échoué") ? Colors.status.warning : Colors.status.success}
+                />
+                <Text style={[styles.scrapeResultText, scrapeMessage.includes("échoué") && { color: Colors.status.warning }]}>
+                  {scrapeMessage}
+                </Text>
               </View>
             )}
           </ScrollView>

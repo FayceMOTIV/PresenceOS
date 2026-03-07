@@ -17,7 +17,8 @@ const API_V2_BASE = __DEV__
 // Firebase Auth manages its own session via onAuthStateChanged.
 // A backend 401 means "bad token", not "session expired".
 // Force-logout on 401 destroys the Firebase session → infinite auth loop.
-let _isRefreshing = false;
+// Shared promise prevents concurrent refresh races: all 401s wait on the same refresh.
+let _refreshPromise: Promise<string | null> | null = null;
 
 // ── Lightweight fetch wrapper (axios-compatible response shape) ──
 
@@ -113,14 +114,18 @@ async function request<T = any>(
 
     if (!res.ok) {
       // 401 → refresh Firebase token and retry once (no logout)
-      if (res.status === 401 && !_isRefreshing) {
-        _isRefreshing = true;
+      // Shared promise ensures concurrent 401s all wait on the same refresh
+      if (res.status === 401) {
         try {
-          const freshToken = await useAuthStore.getState().refreshToken();
+          if (!_refreshPromise) {
+            _refreshPromise = useAuthStore.getState().refreshToken().finally(() => {
+              _refreshPromise = null;
+            });
+          }
+          const freshToken = await _refreshPromise;
           if (freshToken) {
             const retryHeaders = { ...headers, Authorization: `Bearer ${freshToken}` };
             const retryRes = await fetch(url, { ...fetchOptions, headers: retryHeaders, signal: undefined });
-            _isRefreshing = false;
             if (retryRes.ok) {
               const retryContentType = retryRes.headers.get("content-type") || "";
               const retryData = retryContentType.includes("application/json")
@@ -131,8 +136,6 @@ async function request<T = any>(
           }
         } catch {
           // Token refresh failed — let the error propagate, don't logout
-        } finally {
-          _isRefreshing = false;
         }
       }
       const error: any = new Error(
@@ -212,14 +215,19 @@ async function requestV2<T = any>(
 
     if (!res.ok) {
       if (res.status === 401) {
-        // Use Firebase Auth instance directly (always up-to-date, not stale Zustand ref)
-        const currentUser = auth.currentUser;
-        if (currentUser) {
-          try {
-            const freshToken = await currentUser.getIdToken(true);
-            // Update store so subsequent requests use the fresh token
-            useAuthStore.setState({ token: freshToken });
-            // Retry once with fresh token
+        // Shared promise ensures concurrent 401s all wait on the same refresh
+        try {
+          if (!_refreshPromise) {
+            _refreshPromise = (async () => {
+              const currentUser = auth.currentUser;
+              if (!currentUser) return null;
+              const freshToken = await currentUser.getIdToken(true);
+              useAuthStore.setState({ token: freshToken });
+              return freshToken;
+            })().finally(() => { _refreshPromise = null; });
+          }
+          const freshToken = await _refreshPromise;
+          if (freshToken) {
             const retryController = new AbortController();
             const retryTimeout = setTimeout(() => retryController.abort(), 30000);
             const retryHeaders = { ...headers, Authorization: `Bearer ${freshToken}` };
@@ -236,11 +244,10 @@ async function requestV2<T = any>(
                 : await retryRes.text();
               return { data: retryData, status: retryRes.status };
             }
-          } catch {
-            // Force refresh failed — Firebase session truly dead
           }
+        } catch {
+          // Force refresh failed — Firebase session truly dead
         }
-        // No current user or refresh failed — error will propagate naturally
       }
       const error: any = new Error(data?.detail || `HTTP ${res.status}`);
       error.response = { data, status: res.status };

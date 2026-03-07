@@ -96,9 +96,10 @@ export default function HomeScreen() {
       }
       if (propRes.status === "fulfilled") {
         const list = propRes.value.data.proposals || propRes.value.data || [];
-        setProposals(list.slice(0, 5));
+        const pendingList = list.filter((p: AIProposal) => p.status === "pending");
+        setProposals(pendingList.slice(0, 5));
         setStats({
-          pending: list.filter((p: AIProposal) => p.status === "pending").length,
+          pending: pendingList.length,
           approved: list.filter((p: AIProposal) => p.status === "approved").length,
           published: list.filter((p: AIProposal) => p.status === "published").length,
         });

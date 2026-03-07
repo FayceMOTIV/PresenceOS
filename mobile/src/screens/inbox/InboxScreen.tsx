@@ -66,6 +66,7 @@ export default function InboxScreen() {
   const [items, setItems] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingReply, setEditingReply] = useState<string>("");
@@ -75,6 +76,9 @@ export default function InboxScreen() {
   const fetchAll = useCallback(async () => {
     if (!brandId) return;
     const allItems: InboxItem[] = [];
+    let v1Failed = false;
+    let v2Failed = false;
+    setFetchError(null);
 
     // v1 — Google reviews / CM interactions
     try {
@@ -97,7 +101,7 @@ export default function InboxScreen() {
         });
       }
     } catch {
-      // v1 may not be available
+      v1Failed = true;
     }
 
     // v2 — Engage inbox (comments + DMs)
@@ -121,7 +125,11 @@ export default function InboxScreen() {
         });
       }
     } catch {
-      // v2 may not be available yet
+      v2Failed = true;
+    }
+
+    if (allItems.length === 0 && v1Failed && v2Failed) {
+      setFetchError("Impossible de charger les messages. Réessaie.");
     }
 
     // Sort by urgency (high first), then by date (recent first)
@@ -377,6 +385,17 @@ export default function InboxScreen() {
         {renderFilterTab("done", "Traites")}
       </View>
 
+      {/* Error banner */}
+      {fetchError && (
+        <View style={styles.errorBanner}>
+          <Ionicons name="warning-outline" size={16} color={Colors.status.danger} />
+          <Text style={styles.errorText}>{fetchError}</Text>
+          <TouchableOpacity onPress={onRefresh}>
+            <Text style={styles.errorRetry}>Réessayer</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Content */}
       {loading ? (
         <View style={styles.center}>
@@ -473,6 +492,21 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
   },
   filterTabTextActive: { color: "#FFF" },
+
+  // Error
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: Colors.status.danger + "12",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  errorText: { flex: 1, fontSize: 13, color: Colors.status.danger },
+  errorRetry: { fontSize: 13, fontWeight: "600", color: Colors.brand.primary },
 
   // Content
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
