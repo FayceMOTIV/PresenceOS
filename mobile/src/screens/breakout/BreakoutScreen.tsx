@@ -21,7 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { BrandContext } from "@/contexts/BrandContext";
 import { Colors } from "@/constants/colors";
-import { breakoutApi } from "@/lib/api";
+import { breakoutApi, assetsApi } from "@/lib/api";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -98,9 +98,26 @@ export default function BreakoutScreen() {
     setErrorMsg(null);
 
     try {
+      // Upload local file to get a public URL for the backend pipeline
+      let publicUrl: string | undefined;
+      if (mode !== "ai_prompt" && sourceUri) {
+        setProgressLabel("Upload du fichier...");
+        const formData = new FormData();
+        const ext = mode === "image" ? "jpg" : "mp4";
+        const mimeType = mode === "image" ? "image/jpeg" : "video/mp4";
+        formData.append("file", {
+          uri: sourceUri,
+          name: `breakout_source.${ext}`,
+          type: mimeType,
+        } as any);
+        const uploadRes = await assetsApi.upload(brandId, formData);
+        publicUrl = uploadRes.data?.public_url || uploadRes.data?.url;
+        if (!publicUrl) throw new Error("Upload échoué — pas d'URL retournée");
+      }
+
       const res = await breakoutApi.generate(brandId, {
         source_type: mode,
-        source_url: mode !== "ai_prompt" ? sourceUri : undefined,
+        source_url: publicUrl,
         ai_prompt: mode === "ai_prompt" ? prompt : undefined,
       });
 
