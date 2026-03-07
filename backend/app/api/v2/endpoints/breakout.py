@@ -1,21 +1,20 @@
 """
-PresenceOS — Breakout API v2
+PresenceOS — Breakout API v2 (V3 architecture)
 
-Architecture async (pipeline 60-120s) :
-  POST /{brand_id}/generate → asyncio background task → retourne job_id
-  GET  /{brand_id}/status/{job_id} → poll statut (PENDING/PROCESSING/SUCCESS/FAILURE)
+Synchronous endpoint: photo upload -> rembg -> Remotion -> MP4 URL
+~35-40s response time. No polling needed.
 
-Uses in-process asyncio tasks instead of Celery to avoid broker dependency.
-Job state is tracked in-memory (sufficient for user-initiated one-off jobs).
+Keeps backward-compatible status endpoint (returns NOT_FOUND for old jobs).
 """
 
 import asyncio
 import logging
-import uuid
+import os
+import tempfile
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form, status
+from pydantic import BaseModel
 
 from app.api.v2.deps import FirebaseUser, DBSession, verify_brand_access
 from app.middleware.rate_limit import limiter
@@ -24,25 +23,15 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# ── In-memory job store (process-local, sufficient for breakout) ─────────
 
-_jobs: dict[str, dict] = {}
-
-
-# ── Request / Response models ────────────────────────────────────────────
+# ── Response models ──────────────────────────────────────────────────────
 
 
-class BreakoutGenerateRequest(BaseModel):
-    source_type: str = Field(
-        description="'ai_prompt' | 'image' | 'video'",
-    )
-    source_url: Optional[str] = None
-    ai_prompt: Optional[str] = None
-
-
-class BreakoutGenerateResponse(BaseModel):
-    job_id: str
-    status: str
+class BreakoutResponse(BaseModel):
+    video_url: str
+    duration_seconds: int = 3
+    original_url: Optional[str] = None
+    cutout_url: Optional[str] = None
 
 
 class BreakoutStatusResponse(BaseModel):
@@ -53,98 +42,100 @@ class BreakoutStatusResponse(BaseModel):
     progress: int = 0
 
 
-# ── Background runner ───────────────────────────────────────────────────
-
-
-async def _run_breakout(
-    job_id: str,
-    brand_id: str,
-    source_type: str,
-    source_url: str | None,
-    ai_prompt: str | None,
-) -> None:
-    """Run breakout pipeline as an asyncio task with progress tracking."""
-    try:
-        _jobs[job_id] = {"status": "PROCESSING", "progress": 5}
-
-        from app.services.breakout.breakout_engine import BreakoutEngine
-
-        engine = BreakoutEngine()
-        result = await engine.generate(
-            source_type=source_type,
-            source_url=source_url,
-            ai_prompt=ai_prompt,
-            brand_id=brand_id,
-        )
-
-        _jobs[job_id] = {
-            "status": "SUCCESS",
-            "progress": 100,
-            "video_url": result.get("video_url"),
-        }
-        logger.info("Breakout complete", extra={"job_id": job_id, "brand_id": brand_id})
-
-    except Exception as exc:
-        logger.error("Breakout failed", extra={"job_id": job_id, "error": str(exc)})
-        _jobs[job_id] = {
-            "status": "FAILURE",
-            "progress": 0,
-            "error": str(exc),
-        }
-
-
-# ── Endpoints ────────────────────────────────────────────────────────────
+# ── Main endpoint ────────────────────────────────────────────────────────
 
 
 @router.post(
     "/{brand_id}/generate",
-    response_model=BreakoutGenerateResponse,
-    summary="Lance la génération Breakout en tâche async",
+    summary="Upload photo -> Breakout MP4 (~35s)",
 )
 @limiter.limit("5/minute")
 async def generate_breakout(
     request: Request,
     brand_id: str,
-    body: BreakoutGenerateRequest,
     user: FirebaseUser,
     db: DBSession,
+    photo: UploadFile = File(...),
+    business_name: str = Form(default="Mon Restaurant"),
+    instagram_handle: str = Form(default="@monrestaurant"),
+    accent_color: str = Form(default="#F59E0B"),
 ):
-    """Lance le pipeline Breakout en arrière-plan via asyncio."""
+    """
+    Upload a photo -> rembg background removal -> Remotion render -> MP4.
+    Returns video_url directly (no polling).
+    """
     await verify_brand_access(brand_id, user, db)
 
-    if body.source_type not in ("ai_prompt", "image", "video"):
+    content_type = photo.content_type or ""
+    if not content_type.startswith("image/"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="source_type must be 'ai_prompt', 'image', or 'video'",
+            detail="Le fichier doit etre une image (JPEG, PNG)",
         )
 
-    if body.source_type == "ai_prompt" and not body.ai_prompt:
+    contents = await photo.read()
+    if len(contents) > 20 * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="ai_prompt is required when source_type is 'ai_prompt'",
+            detail="Image trop volumineuse (max 20 Mo)",
         )
 
-    if body.source_type in ("image", "video") and not body.source_url:
+    # Upload photo to fal.ai to get a public URL
+    import fal_client
+    from app.core.config import settings
+
+    fal_key = settings.fal_key
+    if fal_key:
+        os.environ["FAL_KEY"] = fal_key
+
+    suffix = ".jpg" if "jpeg" in content_type else ".png"
+
+    def _upload_photo() -> str:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
+            f.write(contents)
+            tmp = f.name
+        try:
+            return fal_client.upload_file(tmp)
+        finally:
+            os.unlink(tmp)
+
+    image_url = await asyncio.to_thread(_upload_photo)
+
+    # Run the V3 pipeline
+    from app.services.breakout.breakout_engine import BreakoutEngine
+
+    engine = BreakoutEngine()
+
+    try:
+        result = await engine.generate(
+            image_url=image_url,
+            business_name=business_name,
+            likes_count=1200,
+            instagram_handle=instagram_handle,
+            accent_color=accent_color,
+        )
+    except Exception as exc:
+        logger.error("Breakout V3 failed", extra={"brand_id": brand_id, "error": str(exc)})
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="source_url is required when source_type is 'image' or 'video'",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Generation echouee: {str(exc)[:200]}",
         )
 
-    job_id = str(uuid.uuid4())
-    _jobs[job_id] = {"status": "PENDING", "progress": 0}
-
-    # Launch as asyncio background task (runs in the same event loop)
-    asyncio.create_task(
-        _run_breakout(job_id, brand_id, body.source_type, body.source_url, body.ai_prompt)
+    return BreakoutResponse(
+        video_url=result["video_url"],
+        duration_seconds=result.get("duration_seconds", 3),
+        original_url=result.get("original_url"),
+        cutout_url=result.get("cutout_url"),
     )
 
-    return BreakoutGenerateResponse(job_id=job_id, status="queued")
+
+# ── Backward-compatible status endpoint (for old mobile versions) ────────
 
 
 @router.get(
     "/{brand_id}/status/{job_id}",
     response_model=BreakoutStatusResponse,
-    summary="Poll le statut de la génération Breakout",
+    summary="Legacy status endpoint (V3 is synchronous)",
 )
 @limiter.limit("60/minute")
 async def get_breakout_status(
@@ -154,17 +145,6 @@ async def get_breakout_status(
     user: FirebaseUser,
     db: DBSession,
 ):
-    """Le mobile appelle cet endpoint toutes les 3 secondes."""
+    """Kept for backward compatibility. V3 is synchronous — no polling needed."""
     await verify_brand_access(brand_id, user, db)
-
-    job = _jobs.get(job_id)
-    if not job:
-        return BreakoutStatusResponse(job_id=job_id, status="NOT_FOUND", progress=0)
-
-    return BreakoutStatusResponse(
-        job_id=job_id,
-        status=job.get("status", "PENDING"),
-        progress=job.get("progress", 0),
-        video_url=job.get("video_url"),
-        error=job.get("error"),
-    )
+    return BreakoutStatusResponse(job_id=job_id, status="NOT_FOUND", progress=0)

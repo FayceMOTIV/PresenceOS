@@ -6,6 +6,7 @@ import {
 } from "./templates/RestaurantShowcase";
 import { PromoFlash, PromoFlashProps } from "./templates/PromoFlash";
 import { DailyStory, DailyStoryProps } from "./templates/DailyStory";
+import { BreakoutClip, BreakoutClipProps } from "./templates/BreakoutClip";
 
 // Default data for Remotion Studio preview
 const defaultRestaurantProps: RestaurantShowcaseProps = {
@@ -63,13 +64,24 @@ const defaultDailyStoryProps: DailyStoryProps = {
   primaryColor: "#6C63FF",
 };
 
+const defaultBreakoutProps: BreakoutClipProps = {
+  originalPhotoUrl:
+    "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1080",
+  cutoutUrl:
+    "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1080",
+  businessName: "Le Family's",
+  likesCount: 1247,
+  instagramHandle: "@lefamilys",
+  accentColor: "#F59E0B",
+};
+
 export const RemotionRoot: React.FC = () => {
   return (
     <>
       <Composition
         id="RestaurantShowcase"
         component={RestaurantShowcase}
-        durationInFrames={300} // 10s at 30fps
+        durationInFrames={300}
         fps={30}
         width={1080}
         height={1920}
@@ -78,7 +90,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="PromoFlash"
         component={PromoFlash}
-        durationInFrames={240} // 8s at 30fps
+        durationInFrames={240}
         fps={30}
         width={1080}
         height={1920}
@@ -87,11 +99,20 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="DailyStory"
         component={DailyStory}
-        durationInFrames={270} // 9s at 30fps
+        durationInFrames={270}
         fps={30}
         width={1080}
         height={1920}
         defaultProps={defaultDailyStoryProps}
+      />
+      <Composition
+        id="BreakoutClip"
+        component={BreakoutClip}
+        durationInFrames={90}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={defaultBreakoutProps}
       />
     </>
   );

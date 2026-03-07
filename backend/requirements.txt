@@ -65,6 +65,10 @@ factory-boy>=3.3.0
 fal-client>=0.5.0
 numpy>=1.24.0
 
+# Breakout V3 — background removal
+rembg[cpu]>=2.0.50
+onnxruntime>=1.16.0
+
 # AI Agents
 crewai>=0.102.0
 crewai[tools]>=0.102.0

@@ -553,17 +553,11 @@ export const socialV2Api = {
 
 // ── Breakout v2 (3D frame-break effect) ──
 export const breakoutApi = {
-  generate: (
-    brandId: string,
-    body: {
-      source_type: "ai_prompt" | "image" | "video";
-      source_url?: string | null;
-      ai_prompt?: string | null;
-    }
-  ) => requestV2("POST", `/breakout/${brandId}/generate`, { body }),
-
-  getStatus: (brandId: string, jobId: string) =>
-    requestV2("GET", `/breakout/${brandId}/status/${jobId}`),
+  generate: (brandId: string, formData: FormData) =>
+    requestV2("POST", `/breakout/${brandId}/generate`, {
+      body: formData,
+      isFormData: true,
+    }),
 };
 
 export default api;

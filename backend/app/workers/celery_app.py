@@ -19,7 +19,6 @@ celery_app = Celery(
         "app.workers.brain_tasks",
         "app.workers.orchestrator_tasks",
         "app.workers.proactive_cm_tasks",
-        "app.workers.breakout_tasks",
     ],
 )
 

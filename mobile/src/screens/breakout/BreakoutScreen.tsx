@@ -1,11 +1,10 @@
-// PresenceOS Mobile — Breakout Screen
-// "Tim Gray" 3D frame-break video effect generator
+// PresenceOS Mobile — Breakout Screen V3
+// Photo upload -> rembg -> Remotion template -> MP4
 
-import React, { useContext, useState, useEffect, useRef, useCallback } from "react";
+import React, { useContext, useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
@@ -21,187 +20,115 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { BrandContext } from "@/contexts/BrandContext";
 import { Colors } from "@/constants/colors";
-import { breakoutApi, assetsApi } from "@/lib/api";
+import { breakoutApi } from "@/lib/api";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
-type SourceMode = "ai_prompt" | "image" | "video";
 type Step = "input" | "generating" | "preview" | "error";
 
-const POLL_INTERVAL_MS = 3000;
-const POLL_TIMEOUT_MS = 180_000; // 3 minutes max polling
-
 const PROGRESS_STEPS = [
-  { label: "Génération vidéo source", threshold: 15 },
-  { label: "Détection du sujet", threshold: 35 },
-  { label: "Segmentation SAM2", threshold: 60 },
-  { label: "Compositing Breakout", threshold: 85 },
-  { label: "Finalisation", threshold: 100 },
-];
+  { label: "Detourage du sujet", range: [0, 20] },
+  { label: "Composition Breakout", range: [20, 80] },
+  { label: "Finalisation video", range: [80, 100] },
+] as const;
+
+function getStepLabel(progress: number): string {
+  const step = PROGRESS_STEPS.find(
+    (s) => progress >= s.range[0] && progress < s.range[1]
+  );
+  return step?.label || "Finalisation...";
+}
 
 export default function BreakoutScreen() {
   const brand = useContext(BrandContext);
   const brandId = brand?.activeBrand?.id;
+  const brandName = brand?.activeBrand?.name || "Mon Restaurant";
 
-  const [mode, setMode] = useState<SourceMode>("ai_prompt");
-  const [prompt, setPrompt] = useState("");
-  const [sourceUri, setSourceUri] = useState<string | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("input");
-  const [jobId, setJobId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("Initialisation...");
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pollStartRef = useRef<number>(0);
-  const pollFailCount = useRef<number>(0);
+  const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (pollTimer.current) clearInterval(pollTimer.current);
-    };
-  }, []);
-
-  // ── Sélection média ────────────────────────────────────────────────────
-
-  const pickMedia = useCallback(async (type: "image" | "video") => {
+  const pickPhoto = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes:
-        type === "image"
-          ? ImagePicker.MediaTypeOptions.Images
-          : ImagePicker.MediaTypeOptions.Videos,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.9,
     });
     if (!result.canceled && result.assets.length > 0) {
-      setSourceUri(result.assets[0].uri);
-      setMode(type);
+      setSelectedPhoto(result.assets[0].uri);
     }
   }, []);
 
-  // ── Lancer la génération ───────────────────────────────────────────────
-
   const handleGenerate = useCallback(async () => {
     if (!brandId) {
-      Alert.alert("Erreur", "Aucune marque sélectionnée");
+      Alert.alert("Erreur", "Aucune marque selectionnee");
       return;
     }
-    if (mode === "ai_prompt" && !prompt.trim()) {
-      Alert.alert("Prompt requis", "Entre une description pour la génération IA");
-      return;
-    }
-    if ((mode === "image" || mode === "video") && !sourceUri) {
-      Alert.alert("Fichier requis", "Sélectionne une photo ou vidéo");
+    if (!selectedPhoto) {
+      Alert.alert("Photo requise", "Selectionne une photo de plat ou produit");
       return;
     }
 
     setStep("generating");
     setProgress(0);
-    setProgressLabel("Démarrage...");
+    setProgressLabel("Upload de la photo...");
     setErrorMsg(null);
 
+    // Simulated progress during the ~35-40s pipeline
+    progressTimer.current = setInterval(() => {
+      setProgress((prev) => {
+        const next = Math.min(prev + 2, 92);
+        setProgressLabel(getStepLabel(next));
+        return next;
+      });
+    }, 800);
+
     try {
-      // Upload local file to get a public URL for the backend pipeline
-      let publicUrl: string | undefined;
-      if (mode !== "ai_prompt" && sourceUri) {
-        setProgressLabel("Upload du fichier...");
-        const formData = new FormData();
-        const ext = mode === "image" ? "jpg" : "mp4";
-        const mimeType = mode === "image" ? "image/jpeg" : "video/mp4";
-        formData.append("file", {
-          uri: sourceUri,
-          name: `breakout_source.${ext}`,
-          type: mimeType,
-        } as any);
-        const uploadRes = await assetsApi.upload(brandId, formData);
-        publicUrl = uploadRes.data?.public_url || uploadRes.data?.url;
-        if (!publicUrl) throw new Error("Upload échoué — pas d'URL retournée");
+      const formData = new FormData();
+      formData.append("photo", {
+        uri: selectedPhoto,
+        type: "image/jpeg",
+        name: "breakout_photo.jpg",
+      } as any);
+      formData.append("business_name", brandName);
+      formData.append("instagram_handle", `@${brandName.toLowerCase().replace(/\s+/g, "")}`);
+      formData.append("accent_color", "#F59E0B");
+
+      const res = await breakoutApi.generate(brandId, formData);
+      const videoUrl = res.data?.video_url;
+
+      if (progressTimer.current) clearInterval(progressTimer.current);
+
+      if (!videoUrl) {
+        throw new Error("Pas de video_url dans la reponse");
       }
 
-      const res = await breakoutApi.generate(brandId, {
-        source_type: mode,
-        source_url: publicUrl,
-        ai_prompt: mode === "ai_prompt" ? prompt : undefined,
-      });
-
-      const newJobId = res.data?.job_id;
-      if (!newJobId) throw new Error("Pas de job_id dans la réponse");
-
-      setJobId(newJobId);
-      pollStartRef.current = Date.now();
-      pollFailCount.current = 0;
-      pollTimer.current = setInterval(() => pollStatus(newJobId), POLL_INTERVAL_MS);
+      setProgress(100);
+      setResultUrl(videoUrl);
+      setStep("preview");
     } catch (e: any) {
+      if (progressTimer.current) clearInterval(progressTimer.current);
       setStep("error");
-      const detail = e.response?.data?.detail || e.message || "Erreur lors du lancement";
+      const detail =
+        e.response?.data?.detail || e.message || "Generation echouee";
       setErrorMsg(detail);
     }
-  }, [brandId, mode, prompt, sourceUri]);
-
-  // ── Polling statut ─────────────────────────────────────────────────────
-
-  const pollStatus = useCallback(
-    async (id: string) => {
-      if (!brandId) return;
-
-      // Timeout check — stop polling after 3 minutes
-      if (Date.now() - pollStartRef.current > POLL_TIMEOUT_MS) {
-        if (pollTimer.current) clearInterval(pollTimer.current);
-        setStep("error");
-        setErrorMsg("Timeout — la génération prend trop de temps. Le worker Celery est peut-être arrêté.");
-        return;
-      }
-
-      try {
-        const res = await breakoutApi.getStatus(brandId, id);
-        const data = res.data;
-        const p = data?.progress || 0;
-        setProgress(p);
-        pollFailCount.current = 0; // reset on success
-
-        const currentStep = PROGRESS_STEPS.find((s) => p <= s.threshold);
-        setProgressLabel(currentStep?.label || "Traitement...");
-
-        if (data?.status === "SUCCESS" && data?.video_url) {
-          if (pollTimer.current) clearInterval(pollTimer.current);
-          setResultUrl(data.video_url);
-          setStep("preview");
-        } else if (data?.status === "FAILURE") {
-          if (pollTimer.current) clearInterval(pollTimer.current);
-          setStep("error");
-          setErrorMsg(data?.error || "Génération échouée côté serveur");
-        } else if (data?.status === "NOT_FOUND") {
-          if (pollTimer.current) clearInterval(pollTimer.current);
-          setStep("error");
-          setErrorMsg("Job introuvable — le serveur a peut-être redémarré. Réessaie.");
-        } else if (data?.status === "PENDING" && Date.now() - pollStartRef.current > 30_000) {
-          // Still PENDING after 30s → worker likely not running
-          setProgressLabel("En attente du worker...");
-        }
-      } catch (e: any) {
-        pollFailCount.current += 1;
-        if (pollFailCount.current >= 5) {
-          if (pollTimer.current) clearInterval(pollTimer.current);
-          setStep("error");
-          setErrorMsg(`Erreur de polling: ${e.message || "connexion perdue"}`);
-        }
-      }
-    },
-    [brandId]
-  );
-
-  // ── Reset ──────────────────────────────────────────────────────────────
+  }, [brandId, brandName, selectedPhoto]);
 
   const handleReset = useCallback(() => {
+    if (progressTimer.current) clearInterval(progressTimer.current);
     setStep("input");
     setResultUrl(null);
-    setSourceUri(null);
-    setPrompt("");
-    setJobId(null);
+    setSelectedPhoto(null);
     setProgress(0);
+    setErrorMsg(null);
   }, []);
 
-  // ── RENDER ─────────────────────────────────────────────────────────────
+  // ── Generating ──────────────────────────────────────────────────────────
 
   if (step === "generating") {
     return (
@@ -213,36 +140,50 @@ export default function BreakoutScreen() {
               colors={Colors.gradient.hero}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={[styles.progressBar, { width: `${Math.max(progress, 3)}%` as any }]}
+              style={[
+                styles.progressBar,
+                { width: `${Math.max(progress, 3)}%` as any },
+              ]}
             />
           </View>
           <Text style={styles.progressPercent}>{progress}%</Text>
           <Text style={styles.progressLabel}>{progressLabel}</Text>
-          <Text style={styles.progressEta}>~60-90 secondes</Text>
+          <Text style={styles.progressEta}>~35 secondes</Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  // ── Error ───────────────────────────────────────────────────────────────
+
   if (step === "error") {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <Ionicons name="alert-circle" size={56} color={Colors.status.danger} />
-          <Text style={styles.errorText}>Génération échouée</Text>
+          <Ionicons
+            name="alert-circle"
+            size={56}
+            color={Colors.status.danger}
+          />
+          <Text style={styles.errorText}>Generation echouee</Text>
           <Text style={styles.errorDetail}>{errorMsg}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={handleReset}>
-            <Text style={styles.retryBtnText}>Réessayer</Text>
+            <Text style={styles.retryBtnText}>Reessayer</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
+  // ── Preview ─────────────────────────────────────────────────────────────
+
   if (step === "preview" && resultUrl) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.content}
+        >
           <Text style={styles.title}>Preview Breakout</Text>
           <Video
             source={{ uri: resultUrl }}
@@ -253,12 +194,28 @@ export default function BreakoutScreen() {
             shouldPlay
           />
           <View style={styles.actionsRow}>
-            <TouchableOpacity style={[styles.actionBtn, styles.btnRefuse]} onPress={handleReset}>
-              <Ionicons name="refresh" size={18} color="#FFF" style={{ marginRight: 6 }} />
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.btnRefuse]}
+              onPress={handleReset}
+            >
+              <Ionicons
+                name="refresh"
+                size={18}
+                color="#FFF"
+                style={{ marginRight: 6 }}
+              />
               <Text style={styles.actionBtnText}>Refaire</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionBtn, styles.btnAccept]} onPress={handleReset}>
-              <Ionicons name="checkmark" size={18} color="#FFF" style={{ marginRight: 6 }} />
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.btnAccept]}
+              onPress={handleReset}
+            >
+              <Ionicons
+                name="checkmark"
+                size={18}
+                color="#FFF"
+                style={{ marginRight: 6 }}
+              />
               <Text style={styles.actionBtnText}>Sauvegarder</Text>
             </TouchableOpacity>
           </View>
@@ -267,95 +224,85 @@ export default function BreakoutScreen() {
     );
   }
 
-  // ── Écran input ────────────────────────────────────────────────────────
+  // ── Input ───────────────────────────────────────────────────────────────
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
         <View style={styles.headerRow}>
-          <Ionicons name="layers-outline" size={28} color={Colors.brand.primary} />
+          <Ionicons
+            name="layers-outline"
+            size={28}
+            color={Colors.brand.primary}
+          />
           <Text style={styles.title}>Breakout</Text>
         </View>
-        <Text style={styles.subtitle}>Effet 3D viral — ton contenu sort du cadre ✨</Text>
+        <Text style={styles.subtitle}>
+          Effet 3D viral — ton contenu sort du cadre
+        </Text>
 
-        {/* Sélecteur de mode */}
-        <View style={styles.modeRow}>
-          {(
-            [
-              { key: "ai_prompt" as SourceMode, label: "IA", icon: "sparkles" as const },
-              { key: "image" as SourceMode, label: "Photo", icon: "camera" as const },
-              { key: "video" as SourceMode, label: "Vidéo", icon: "videocam" as const },
-            ] as const
-          ).map((m) => (
-            <TouchableOpacity
-              key={m.key}
-              style={[styles.modeBtn, mode === m.key && styles.modeBtnActive]}
-              onPress={() => {
-                if (m.key === "image") pickMedia("image");
-                else if (m.key === "video") pickMedia("video");
-                else {
-                  setMode("ai_prompt");
-                  setSourceUri(null);
-                }
-              }}
-            >
+        {/* Photo picker */}
+        <TouchableOpacity style={styles.photoPickerBtn} onPress={pickPhoto}>
+          {selectedPhoto ? (
+            <Image
+              source={{ uri: selectedPhoto }}
+              style={styles.photoPreview}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.photoPlaceholder}>
               <Ionicons
-                name={m.icon}
-                size={20}
-                color={mode === m.key ? Colors.brand.primary : Colors.text.muted}
+                name="camera-outline"
+                size={48}
+                color={Colors.text.muted}
               />
-              <Text style={[styles.modeBtnText, mode === m.key && styles.modeBtnTextActive]}>
-                {m.label}
+              <Text style={styles.photoPlaceholderText}>
+                Choisis une photo de plat ou produit
               </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+            </View>
+          )}
+        </TouchableOpacity>
 
-        {/* Prompt IA */}
-        {mode === "ai_prompt" && (
-          <TextInput
-            style={styles.input}
-            placeholder="Ex: burger qui déborde de sa boîte, slow-motion..."
-            placeholderTextColor={Colors.text.muted}
-            value={prompt}
-            onChangeText={setPrompt}
-            multiline
-            numberOfLines={3}
-          />
+        {selectedPhoto && (
+          <TouchableOpacity style={styles.changePhotoBtn} onPress={pickPhoto}>
+            <Ionicons
+              name="swap-horizontal"
+              size={16}
+              color={Colors.brand.primary}
+            />
+            <Text style={styles.changePhotoBtnText}>Changer la photo</Text>
+          </TouchableOpacity>
         )}
 
-        {/* Preview source sélectionnée */}
-        {sourceUri && mode === "image" && (
-          <Image source={{ uri: sourceUri }} style={styles.sourcePreview} resizeMode="cover" />
-        )}
-        {sourceUri && mode === "video" && (
-          <Video
-            source={{ uri: sourceUri }}
-            style={styles.sourcePreview}
-            useNativeControls
-            resizeMode={ResizeMode.COVER}
-          />
-        )}
-
-        {/* Bouton génération */}
-        <TouchableOpacity style={styles.generateBtn} onPress={handleGenerate}>
+        {/* Generate button */}
+        <TouchableOpacity
+          style={[styles.generateBtn, !selectedPhoto && styles.generateBtnDisabled]}
+          onPress={handleGenerate}
+          disabled={!selectedPhoto}
+        >
           <LinearGradient
-            colors={Colors.gradient.hero}
+            colors={
+              selectedPhoto ? Colors.gradient.hero : ["#D1D5DB", "#D1D5DB"]
+            }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.generateBtnGradient}
           >
             <Ionicons name="flash" size={20} color="#FFF" />
-            <Text style={styles.generateBtnText}>Générer Breakout</Text>
+            <Text style={styles.generateBtnText}>Generer Breakout</Text>
           </LinearGradient>
         </TouchableOpacity>
 
-        <Text style={styles.costHint}>~0.01€ par vidéo · 60-90 secondes</Text>
+        <Text style={styles.costHint}>Gratuit · ~35 secondes</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// ── Styles — Light theme RS3 ─────────────────────────────────────────────
+// ── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.bg.primary },
@@ -368,48 +315,63 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bg.primary,
     padding: 24,
   },
-  headerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 4,
+  },
   title: { fontSize: 24, fontWeight: "700", color: Colors.text.primary },
-  subtitle: { fontSize: 13, color: Colors.text.secondary, marginBottom: 24 },
+  subtitle: {
+    fontSize: 13,
+    color: Colors.text.secondary,
+    marginBottom: 24,
+  },
 
-  // Mode selector
-  modeRow: { flexDirection: "row", gap: 10, marginBottom: 20 },
-  modeBtn: {
-    flex: 1,
+  // Photo picker
+  photoPickerBtn: {
+    width: "100%",
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: Colors.border.default,
+    borderStyle: "dashed",
+  },
+  photoPreview: {
+    width: "100%",
+    height: SCREEN_W * 0.8,
+    borderRadius: 14,
+  },
+  photoPlaceholder: {
+    width: "100%",
+    height: SCREEN_W * 0.6,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.bg.secondary,
+    gap: 12,
+  },
+  photoPlaceholderText: {
+    color: Colors.text.muted,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  changePhotoBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: Colors.bg.secondary,
-    borderWidth: 1,
-    borderColor: Colors.border.default,
-  },
-  modeBtnActive: {
-    borderColor: Colors.brand.primary,
-    backgroundColor: Colors.bg.elevated,
-  },
-  modeBtnText: { color: Colors.text.muted, fontWeight: "600", fontSize: 13 },
-  modeBtnTextActive: { color: Colors.brand.primary },
-
-  // Input
-  input: {
-    backgroundColor: Colors.bg.secondary,
-    color: Colors.text.primary,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 14,
-    borderWidth: 1,
-    borderColor: Colors.border.default,
-    minHeight: 80,
-    textAlignVertical: "top",
     marginBottom: 20,
   },
-  sourcePreview: { width: "100%", height: 200, borderRadius: 12, marginBottom: 20 },
+  changePhotoBtnText: {
+    color: Colors.brand.primary,
+    fontWeight: "600",
+    fontSize: 13,
+  },
 
   // Generate button
   generateBtn: { borderRadius: 14, overflow: "hidden", marginTop: 4 },
+  generateBtnDisabled: { opacity: 0.5 },
   generateBtnGradient: {
     flexDirection: "row",
     alignItems: "center",
@@ -418,7 +380,12 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   generateBtnText: { color: "#FFF", fontWeight: "800", fontSize: 16 },
-  costHint: { color: Colors.text.muted, fontSize: 11, textAlign: "center", marginTop: 10 },
+  costHint: {
+    color: Colors.text.muted,
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: 10,
+  },
 
   // Progress
   progressBarContainer: {
@@ -467,7 +434,12 @@ const styles = StyleSheet.create({
   actionBtnText: { color: "#FFF", fontWeight: "700", fontSize: 14 },
 
   // Error
-  errorText: { color: Colors.text.primary, fontSize: 18, fontWeight: "600", marginTop: 16 },
+  errorText: {
+    color: Colors.text.primary,
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 16,
+  },
   errorDetail: {
     color: Colors.text.secondary,
     fontSize: 13,
