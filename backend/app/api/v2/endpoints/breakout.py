@@ -1,11 +1,17 @@
 """
 PresenceOS — Breakout API v2
 
-Architecture async obligatoire (pipeline 60-120s) :
-  POST /{brand_id}/generate → Celery task → retourne job_id
+Architecture async (pipeline 60-120s) :
+  POST /{brand_id}/generate → asyncio background task → retourne job_id
   GET  /{brand_id}/status/{job_id} → poll statut (PENDING/PROCESSING/SUCCESS/FAILURE)
+
+Uses in-process asyncio tasks instead of Celery to avoid broker dependency.
+Job state is tracked in-memory (sufficient for user-initiated one-off jobs).
 """
 
+import asyncio
+import logging
+import uuid
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -13,9 +19,14 @@ from pydantic import BaseModel, Field
 
 from app.api.v2.deps import FirebaseUser, DBSession, verify_brand_access
 from app.middleware.rate_limit import limiter
-from app.workers.celery_app import celery_app
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# ── In-memory job store (process-local, sufficient for breakout) ─────────
+
+_jobs: dict[str, dict] = {}
 
 
 # ── Request / Response models ────────────────────────────────────────────
@@ -42,13 +53,53 @@ class BreakoutStatusResponse(BaseModel):
     progress: int = 0
 
 
+# ── Background runner ───────────────────────────────────────────────────
+
+
+async def _run_breakout(
+    job_id: str,
+    brand_id: str,
+    source_type: str,
+    source_url: str | None,
+    ai_prompt: str | None,
+) -> None:
+    """Run breakout pipeline as an asyncio task with progress tracking."""
+    try:
+        _jobs[job_id] = {"status": "PROCESSING", "progress": 5}
+
+        from app.services.breakout.breakout_engine import BreakoutEngine
+
+        engine = BreakoutEngine()
+        result = await engine.generate(
+            source_type=source_type,
+            source_url=source_url,
+            ai_prompt=ai_prompt,
+            brand_id=brand_id,
+        )
+
+        _jobs[job_id] = {
+            "status": "SUCCESS",
+            "progress": 100,
+            "video_url": result.get("video_url"),
+        }
+        logger.info("Breakout complete", extra={"job_id": job_id, "brand_id": brand_id})
+
+    except Exception as exc:
+        logger.error("Breakout failed", extra={"job_id": job_id, "error": str(exc)})
+        _jobs[job_id] = {
+            "status": "FAILURE",
+            "progress": 0,
+            "error": str(exc),
+        }
+
+
 # ── Endpoints ────────────────────────────────────────────────────────────
 
 
 @router.post(
     "/{brand_id}/generate",
     response_model=BreakoutGenerateResponse,
-    summary="Lance la génération Breakout en tâche Celery",
+    summary="Lance la génération Breakout en tâche async",
 )
 @limiter.limit("5/minute")
 async def generate_breakout(
@@ -58,7 +109,7 @@ async def generate_breakout(
     user: FirebaseUser,
     db: DBSession,
 ):
-    """Lance le pipeline Breakout en arrière-plan via Celery."""
+    """Lance le pipeline Breakout en arrière-plan via asyncio."""
     await verify_brand_access(brand_id, user, db)
 
     if body.source_type not in ("ai_prompt", "image", "video"):
@@ -79,14 +130,12 @@ async def generate_breakout(
             detail="source_url is required when source_type is 'image' or 'video'",
         )
 
-    import uuid
     job_id = str(uuid.uuid4())
+    _jobs[job_id] = {"status": "PENDING", "progress": 0}
 
-    # Lancer la tâche Celery (importée dynamiquement pour éviter circular)
-    celery_app.send_task(
-        "breakout.generate",
-        args=[job_id, brand_id, body.source_type, body.source_url, body.ai_prompt],
-        task_id=job_id,
+    # Launch as asyncio background task (runs in the same event loop)
+    asyncio.create_task(
+        _run_breakout(job_id, brand_id, body.source_type, body.source_url, body.ai_prompt)
     )
 
     return BreakoutGenerateResponse(job_id=job_id, status="queued")
@@ -107,34 +156,15 @@ async def get_breakout_status(
 ):
     """Le mobile appelle cet endpoint toutes les 3 secondes."""
     await verify_brand_access(brand_id, user, db)
-    result = celery_app.AsyncResult(job_id)
 
-    if result.state == "PENDING":
-        return BreakoutStatusResponse(job_id=job_id, status="PENDING", progress=0)
-    elif result.state == "PROGRESS":
-        meta = result.info or {}
-        return BreakoutStatusResponse(
-            job_id=job_id,
-            status="PROCESSING",
-            progress=meta.get("progress", 10),
-        )
-    elif result.state == "SUCCESS":
-        data = result.result or {}
-        return BreakoutStatusResponse(
-            job_id=job_id,
-            status="SUCCESS",
-            video_url=data.get("video_url"),
-            progress=100,
-        )
-    elif result.state == "FAILURE":
-        return BreakoutStatusResponse(
-            job_id=job_id,
-            status="FAILURE",
-            error=str(result.info) if result.info else "Unknown error",
-        )
-    else:
-        return BreakoutStatusResponse(
-            job_id=job_id,
-            status=result.state,
-            progress=5,
-        )
+    job = _jobs.get(job_id)
+    if not job:
+        return BreakoutStatusResponse(job_id=job_id, status="NOT_FOUND", progress=0)
+
+    return BreakoutStatusResponse(
+        job_id=job_id,
+        status=job.get("status", "PENDING"),
+        progress=job.get("progress", 0),
+        video_url=job.get("video_url"),
+        error=job.get("error"),
+    )

@@ -170,6 +170,10 @@ export default function BreakoutScreen() {
           if (pollTimer.current) clearInterval(pollTimer.current);
           setStep("error");
           setErrorMsg(data?.error || "Génération échouée côté serveur");
+        } else if (data?.status === "NOT_FOUND") {
+          if (pollTimer.current) clearInterval(pollTimer.current);
+          setStep("error");
+          setErrorMsg("Job introuvable — le serveur a peut-être redémarré. Réessaie.");
         } else if (data?.status === "PENDING" && Date.now() - pollStartRef.current > 30_000) {
           // Still PENDING after 30s → worker likely not running
           setProgressLabel("En attente du worker...");
