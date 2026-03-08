@@ -36,8 +36,9 @@ RUN npm run build
 # Pre-download Remotion browser at build time (avoids cold start download)
 RUN npx remotion browser ensure
 
-# Railway memory hint
-ENV NODE_OPTIONS="--max-old-space-size=1024"
+# Railway memory + performance hints
+ENV NODE_OPTIONS="--max-old-space-size=768"
+ENV MALLOC_ARENA_MAX=2
 ENV PORT=3001
 
 EXPOSE 3001

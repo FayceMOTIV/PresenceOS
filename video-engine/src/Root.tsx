@@ -110,8 +110,8 @@ export const RemotionRoot: React.FC = () => {
         component={BreakoutClip}
         durationInFrames={90}
         fps={30}
-        width={1080}
-        height={1920}
+        width={720}
+        height={1280}
         defaultProps={defaultBreakoutProps}
       />
     </>

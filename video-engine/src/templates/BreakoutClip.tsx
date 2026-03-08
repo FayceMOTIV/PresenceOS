@@ -20,12 +20,12 @@ export interface BreakoutClipProps {
   accentColor: string;
 }
 
-const CANVAS_W = 1080;
-const CANVAS_H = 1920;
+const CANVAS_W = 720;
+const CANVAS_H = 1280;
 const VIDEO_ZONE_H = Math.floor(CANVAS_H * 0.6);
 const UI_ZONE_H = CANVAS_H - VIDEO_ZONE_H;
 const SUBJECT_SCALE = 1.15;
-const OVERLAP_PX = 120;
+const OVERLAP_PX = 80;
 
 // ── Image loader with delayRender ─────────────────────────────────────
 const RemoteImg: React.FC<{
@@ -123,25 +123,25 @@ export const BreakoutClip: React.FC<BreakoutClipProps> = ({
           backgroundColor: "#FFFFFF",
           display: "flex",
           flexDirection: "column",
-          padding: "32px 40px",
+          padding: "22px 28px",
         }}
       >
         {/* Header compte */}
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
           <div
             style={{
-              width: 88,
-              height: 88,
+              width: 60,
+              height: 60,
               borderRadius: "50%",
               background: `linear-gradient(135deg, ${accentColor}, #EC4899)`,
-              border: "3px solid #E5E7EB",
+              border: "2px solid #E5E7EB",
               flexShrink: 0,
             }}
           />
-          <div style={{ marginLeft: 20 }}>
+          <div style={{ marginLeft: 14 }}>
             <div
               style={{
-                fontSize: 36,
+                fontSize: 24,
                 fontWeight: 700,
                 color: "#111827",
                 fontFamily: "sans-serif",
@@ -151,7 +151,7 @@ export const BreakoutClip: React.FC<BreakoutClipProps> = ({
             </div>
             <div
               style={{
-                fontSize: 26,
+                fontSize: 18,
                 color: "#6B7280",
                 fontFamily: "sans-serif",
                 marginTop: 4,
@@ -167,19 +167,19 @@ export const BreakoutClip: React.FC<BreakoutClipProps> = ({
             width: "100%",
             height: 1,
             backgroundColor: "#F3F4F6",
-            marginBottom: 28,
+            marginBottom: 18,
           }}
         />
 
         {/* Actions (Like / Comment / Share) */}
-        <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <svg width="52" height="52" viewBox="0 0 24 24" fill={accentColor}>
+        <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill={accentColor}>
               <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
             </svg>
             <span
               style={{
-                fontSize: 30,
+                fontSize: 20,
                 fontWeight: 600,
                 color: "#374151",
                 fontFamily: "sans-serif",
@@ -190,8 +190,8 @@ export const BreakoutClip: React.FC<BreakoutClipProps> = ({
           </div>
 
           <svg
-            width="48"
-            height="48"
+            width="32"
+            height="32"
             viewBox="0 0 24 24"
             fill="none"
             stroke="#9CA3AF"
@@ -201,8 +201,8 @@ export const BreakoutClip: React.FC<BreakoutClipProps> = ({
           </svg>
 
           <svg
-            width="48"
-            height="48"
+            width="32"
+            height="32"
             viewBox="0 0 24 24"
             fill="none"
             stroke="#9CA3AF"
@@ -214,8 +214,8 @@ export const BreakoutClip: React.FC<BreakoutClipProps> = ({
 
           <div style={{ marginLeft: "auto" }}>
             <svg
-              width="44"
-              height="44"
+              width="30"
+              height="30"
               viewBox="0 0 24 24"
               fill="none"
               stroke="#9CA3AF"
@@ -229,8 +229,8 @@ export const BreakoutClip: React.FC<BreakoutClipProps> = ({
         {/* Caption */}
         <div
           style={{
-            marginTop: 24,
-            fontSize: 26,
+            marginTop: 16,
+            fontSize: 18,
             color: "#374151",
             fontFamily: "sans-serif",
             lineHeight: 1.5,
@@ -243,8 +243,8 @@ export const BreakoutClip: React.FC<BreakoutClipProps> = ({
         {/* Hashtags */}
         <div
           style={{
-            marginTop: 12,
-            fontSize: 24,
+            marginTop: 8,
+            fontSize: 16,
             color: accentColor,
             fontFamily: "sans-serif",
           }}
