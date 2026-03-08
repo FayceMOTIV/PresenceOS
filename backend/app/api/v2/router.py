@@ -3,7 +3,7 @@ PresenceOS - API v2 Router
 """
 from fastapi import APIRouter
 
-from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout, dish_recognition
+from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout, dish_recognition, video
 
 api_v2_router = APIRouter()
 
@@ -30,3 +30,6 @@ api_v2_router.include_router(breakout.router, prefix="/breakout", tags=["Breakou
 
 # Dish Recognition — Gemini Vision auto-identification
 api_v2_router.include_router(dish_recognition.router, prefix="/dish", tags=["Dish Recognition"])
+
+# Video Assets — Save + Publish generated videos (Sprint B3)
+api_v2_router.include_router(video.router, prefix="/video", tags=["Video Assets"])

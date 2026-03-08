@@ -65,6 +65,8 @@ export default function VideoStudioScreen() {
   const [credits, setCredits] = useState<VideoCreditsInfo | null>(null);
   const [result, setResult] = useState<VideoGenerationResult | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedAssetId, setSavedAssetId] = useState<string | null>(null);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -159,9 +161,66 @@ export default function VideoStudioScreen() {
     }
   }, [brandId, prompt, duration, style, ratio, canGenerate, progressAnim]);
 
+  const handleSave = useCallback(async () => {
+    if (!brandId || !result?.video_url || saving) return;
+    setSaving(true);
+    try {
+      const res = await videoApi.save(brandId, result.video_url, prompt.trim(), duration, ratio, style);
+      const assetId = res.data?.id;
+      setSavedAssetId(assetId);
+      Alert.alert("Sauvegardé", "La vidéo a été ajoutée à votre galerie.");
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail || FR.error_generic;
+      Alert.alert("Erreur", detail);
+    } finally {
+      setSaving(false);
+    }
+  }, [brandId, result, prompt, duration, ratio, style, saving]);
+
+  const handlePublish = useCallback(async () => {
+    if (!brandId || !result?.video_url) return;
+
+    // Save first if not yet saved
+    let assetId = savedAssetId;
+    if (!assetId) {
+      setSaving(true);
+      try {
+        const res = await videoApi.save(brandId, result.video_url, prompt.trim(), duration, ratio, style);
+        assetId = res.data?.id;
+        setSavedAssetId(assetId);
+      } catch (err: any) {
+        setSaving(false);
+        Alert.alert("Erreur", "Impossible de sauvegarder la vidéo avant publication.");
+        return;
+      }
+      setSaving(false);
+    }
+
+    if (!assetId) return;
+
+    Alert.prompt(
+      "Publier sur Instagram",
+      "Écris la légende pour ta vidéo :",
+      async (caption) => {
+        if (!caption?.trim()) return;
+        try {
+          await videoApi.publish(brandId, assetId!, "instagram", caption.trim(), "");
+          Alert.alert("Publié", "Ta vidéo est en cours de publication sur Instagram !");
+        } catch (err: any) {
+          const detail = err?.response?.data?.detail || FR.error_generic;
+          Alert.alert("Erreur de publication", detail);
+        }
+      },
+      "plain-text",
+      "",
+      "default"
+    );
+  }, [brandId, result, savedAssetId, prompt, duration, ratio, style]);
+
   const handleReset = () => {
     setResult(null);
     setPrompt("");
+    setSavedAssetId(null);
     progressAnim.setValue(0);
   };
 
@@ -239,11 +298,8 @@ export default function VideoStudioScreen() {
                   <TouchableOpacity
                     style={styles.resultBtnPrimary}
                     activeOpacity={0.85}
-                    onPress={() => {
-                      if (result?.video_url) {
-                        Alert.alert("Publier", "Fonctionnalité de publication bientôt disponible.");
-                      }
-                    }}
+                    onPress={handlePublish}
+                    disabled={saving}
                   >
                     <LinearGradient
                       colors={Colors.gradient.hero}
@@ -259,14 +315,21 @@ export default function VideoStudioScreen() {
                   <TouchableOpacity
                     style={styles.resultBtnSecondary}
                     activeOpacity={0.85}
-                    onPress={() => {
-                      if (result?.video_url) {
-                        Alert.alert("Sauvegardé", "La vidéo a été ajoutée à votre galerie.");
-                      }
-                    }}
+                    onPress={handleSave}
+                    disabled={saving || !!savedAssetId}
                   >
-                    <Ionicons name="download-outline" size={18} color={Colors.brand.primary} />
-                    <Text style={styles.resultBtnSecondaryText}>Sauvegarder</Text>
+                    {saving ? (
+                      <ActivityIndicator size="small" color={Colors.brand.primary} />
+                    ) : (
+                      <Ionicons
+                        name={savedAssetId ? "checkmark-circle" : "download-outline"}
+                        size={18}
+                        color={Colors.brand.primary}
+                      />
+                    )}
+                    <Text style={styles.resultBtnSecondaryText}>
+                      {savedAssetId ? "Sauvegardé" : "Sauvegarder"}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
