@@ -4,11 +4,14 @@ PresenceOS — Google Business Profile API (Feature 7)
 Endpoints for GBP autopublish configuration and post management.
 """
 from typing import Optional
+from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.api.v1.deps import CurrentBrand, CurrentUser, DBSession
+from app.api.v1.deps import get_brand as _get_brand
 from app.services.gbp_publisher import GBPPublisherService
 
 logger = structlog.get_logger()
@@ -54,30 +57,31 @@ class GBPPublishRequest(BaseModel):
 # ── Endpoints ──────────────────────────────────────────────
 
 @router.get("/config/{brand_id}")
-async def get_config(brand_id: str):
+async def get_config(brand: CurrentBrand):
     """Get GBP autopublish configuration for a brand."""
     service = _get_service()
-    return service.get_config(brand_id)
+    return service.get_config(str(brand.id))
 
 
 @router.patch("/config/{brand_id}")
-async def update_config(brand_id: str, request: GBPConfigUpdate):
+async def update_config(brand: CurrentBrand, request: GBPConfigUpdate):
     """Update GBP autopublish configuration."""
     service = _get_service()
     updates = request.model_dump(exclude_none=True)
-    return service.update_config(brand_id, updates)
+    return service.update_config(str(brand.id), updates)
 
 
 @router.post("/config/{brand_id}/toggle")
-async def toggle_config(brand_id: str):
+async def toggle_config(brand: CurrentBrand):
     """Toggle GBP autopublish on/off."""
     service = _get_service()
-    return service.toggle(brand_id)
+    return service.toggle(str(brand.id))
 
 
 @router.post("/publish")
-async def publish_post(request: GBPPublishRequest):
+async def publish_post(request: GBPPublishRequest, current_user: CurrentUser, db: DBSession):
     """Publish a post to Google Business Profile."""
+    await _get_brand(UUID(request.brand_id), current_user, db)
     service = _get_service()
     return service.publish_post(
         brand_id=request.brand_id,
@@ -95,14 +99,14 @@ async def publish_post(request: GBPPublishRequest):
 
 
 @router.get("/posts/{brand_id}")
-async def get_published_posts(brand_id: str):
+async def get_published_posts(brand: CurrentBrand):
     """List all GBP-published posts for a brand."""
     service = _get_service()
-    return service.get_published(brand_id)
+    return service.get_published(str(brand.id))
 
 
 @router.get("/post/{post_id}")
-async def get_post(post_id: str):
+async def get_post(post_id: str, _user: CurrentUser):
     """Get a specific GBP post."""
     service = _get_service()
     result = service.get_post(post_id)
@@ -112,7 +116,7 @@ async def get_post(post_id: str):
 
 
 @router.delete("/post/{post_id}")
-async def delete_post(post_id: str):
+async def delete_post(post_id: str, _user: CurrentUser):
     """Delete a GBP post."""
     service = _get_service()
     if not service.delete_post(post_id):
@@ -121,7 +125,7 @@ async def delete_post(post_id: str):
 
 
 @router.get("/stats/{brand_id}")
-async def get_stats(brand_id: str):
+async def get_stats(brand: CurrentBrand):
     """Get GBP publishing statistics for a brand."""
     service = _get_service()
-    return service.get_stats(brand_id)
+    return service.get_stats(str(brand.id))

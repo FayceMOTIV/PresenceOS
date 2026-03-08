@@ -10,7 +10,7 @@ import structlog
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
-from app.api.v2.deps import FirebaseUser, DBSession, get_brand
+from app.api.v2.deps import FirebaseUser, DBSession, verify_brand_access
 from app.middleware.rate_limit import limiter
 from app.services.ilyas.agent import IlyasAgent
 
@@ -102,7 +102,7 @@ async def chat(
     db: DBSession,
 ) -> IlyasChatResponse:
     """Send a message to Ilyas and get a response."""
-    brand = await get_brand(brand_id, current_user, db)
+    brand = await verify_brand_access(str(brand_id), current_user, db)
     agent = IlyasAgent(db)
 
     session_uuid = UUID(body.session_id) if body.session_id else None
@@ -136,7 +136,7 @@ async def list_sessions(
     offset: int = 0,
 ) -> dict:
     """List Ilyas chat sessions for a brand."""
-    await get_brand(brand_id, current_user, db)
+    await verify_brand_access(str(brand_id), current_user, db)
     agent = IlyasAgent(db)
     sessions, total = await agent.list_sessions(brand_id, limit, offset)
 
@@ -156,7 +156,7 @@ async def get_session_messages(
     db: DBSession,
 ) -> dict:
     """Get all messages for an Ilyas session."""
-    await get_brand(brand_id, current_user, db)
+    await verify_brand_access(str(brand_id), current_user, db)
     agent = IlyasAgent(db)
     messages = await agent.get_session_messages(session_id, brand_id)
 
@@ -173,7 +173,7 @@ async def delete_session(
     db: DBSession,
 ) -> dict:
     """Delete an Ilyas session and all its messages."""
-    await get_brand(brand_id, current_user, db)
+    await verify_brand_access(str(brand_id), current_user, db)
     agent = IlyasAgent(db)
     deleted = await agent.delete_session(session_id, brand_id)
 
@@ -195,6 +195,6 @@ async def get_context(
     db: DBSession,
 ) -> dict:
     """Debug endpoint — return the context Ilyas would use."""
-    brand = await get_brand(brand_id, current_user, db)
+    brand = await verify_brand_access(str(brand_id), current_user, db)
     agent = IlyasAgent(db)
     return await agent.get_context(brand, str(current_user.id))

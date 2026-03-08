@@ -5,6 +5,7 @@ import structlog
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.api.v1.deps import CurrentBrand
 from app.services.competitor_intel import CompetitorIntelService
 
 logger = structlog.get_logger()
@@ -27,30 +28,30 @@ class AddCompetitorRequest(BaseModel):
 
 
 @router.get("/list/{brand_id}")
-async def get_competitors(brand_id: str):
+async def get_competitors(brand: CurrentBrand):
     """List tracked competitors for a brand."""
     service = _get_service()
-    return service.get_competitors(brand_id)
+    return service.get_competitors(str(brand.id))
 
 
 @router.post("/track/{brand_id}")
-async def add_competitor(brand_id: str, request: AddCompetitorRequest):
+async def add_competitor(brand: CurrentBrand, request: AddCompetitorRequest):
     """Add a competitor to track."""
     service = _get_service()
-    return service.add_competitor(brand_id, request.name, request.handle, request.platform)
+    return service.add_competitor(str(brand.id), request.name, request.handle, request.platform)
 
 
 @router.delete("/untrack/{brand_id}/{competitor_id}")
-async def remove_competitor(brand_id: str, competitor_id: str):
+async def remove_competitor(brand: CurrentBrand, competitor_id: str):
     """Stop tracking a competitor."""
     service = _get_service()
-    if not service.remove_competitor(brand_id, competitor_id):
+    if not service.remove_competitor(str(brand.id), competitor_id):
         raise HTTPException(status_code=404, detail="Concurrent non trouve")
     return {"status": "removed", "competitor_id": competitor_id}
 
 
 @router.get("/benchmark/{brand_id}")
-async def get_benchmark(brand_id: str):
+async def get_benchmark(brand: CurrentBrand):
     """Compare your brand against tracked competitors."""
     service = _get_service()
-    return service.get_benchmark(brand_id)
+    return service.get_benchmark(str(brand.id))

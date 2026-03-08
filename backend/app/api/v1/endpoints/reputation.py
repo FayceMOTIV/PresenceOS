@@ -7,6 +7,7 @@ import structlog
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
+from app.api.v1.deps import CurrentBrand, CurrentUser
 from app.services.reputation_manager import ReputationManagerService
 
 logger = structlog.get_logger()
@@ -28,18 +29,18 @@ class RespondRequest(BaseModel):
 
 @router.get("/reviews/{brand_id}")
 async def get_reviews(
-    brand_id: str,
+    brand: CurrentBrand,
     platform: Optional[str] = Query(default=None),
     sentiment: Optional[str] = Query(default=None),
     responded: Optional[bool] = Query(default=None),
 ):
     """Get reviews for a brand with optional filters."""
     service = _get_service()
-    return service.get_reviews(brand_id, platform, sentiment, responded)
+    return service.get_reviews(str(brand.id), platform, sentiment, responded)
 
 
 @router.get("/review/{review_id}")
-async def get_review(review_id: str):
+async def get_review(review_id: str, _user: CurrentUser):
     """Get a single review."""
     service = _get_service()
     result = service.get_review(review_id)
@@ -49,7 +50,7 @@ async def get_review(review_id: str):
 
 
 @router.post("/review/{review_id}/suggest")
-async def suggest_response(review_id: str):
+async def suggest_response(review_id: str, _user: CurrentUser):
     """Generate an AI response suggestion for a review."""
     service = _get_service()
     result = service.suggest_response(review_id)
@@ -59,7 +60,7 @@ async def suggest_response(review_id: str):
 
 
 @router.post("/review/{review_id}/respond")
-async def respond_to_review(review_id: str, request: RespondRequest):
+async def respond_to_review(review_id: str, request: RespondRequest, _user: CurrentUser):
     """Submit a response to a review."""
     service = _get_service()
     result = service.respond_to_review(review_id, request.response_text)
@@ -69,7 +70,7 @@ async def respond_to_review(review_id: str, request: RespondRequest):
 
 
 @router.get("/stats/{brand_id}")
-async def get_stats(brand_id: str):
+async def get_stats(brand: CurrentBrand):
     """Get reputation statistics for a brand."""
     service = _get_service()
-    return service.get_stats(brand_id)
+    return service.get_stats(str(brand.id))
