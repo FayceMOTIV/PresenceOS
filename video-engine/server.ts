@@ -19,7 +19,7 @@ async function warmupBundle() {
   try {
     console.log("[Remotion] Starting bundle warmup...");
     bundleLocation = await bundle({
-      entryPoint: path.resolve(__dirname, "./src/index.ts"),
+      entryPoint: path.resolve(process.cwd(), "src/index.ts"),
       webpackOverride: (config) => config,
     });
     isWarming = false;
