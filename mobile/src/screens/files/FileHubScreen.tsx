@@ -28,7 +28,9 @@ export default function FileHubScreen() {
     if (!brandId) return;
     kbApi.completeness(brandId).then((res) => {
       setKbScore(res.data.completeness_score ?? 0);
-    }).catch(() => {});
+    }).catch((err) => {
+      if (__DEV__) console.warn("Failed to load KB score:", err);
+    });
   }, [brandId]);
 
   return (

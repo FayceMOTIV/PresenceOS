@@ -71,6 +71,7 @@ export default function InboxScreen() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingReply, setEditingReply] = useState<string>("");
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
+  const [isMockData, setIsMockData] = useState(false);
 
   // Fetch both v1 CM interactions + v2 engage inbox
   const fetchAll = useCallback(async () => {
@@ -158,6 +159,7 @@ export default function InboxScreen() {
     try {
       const res = await engageApi.scan(brandId);
       const data = res.data;
+      setIsMockData(!!data.mock);
       Alert.alert(
         "Scan termine",
         `${data.fetched} commentaires trouves, ${data.replies_generated} reponses generees.`,
@@ -385,6 +387,16 @@ export default function InboxScreen() {
         {renderFilterTab("done", "Traites")}
       </View>
 
+      {/* Mock data banner */}
+      {isMockData && (
+        <View style={styles.mockBanner}>
+          <Ionicons name="flask-outline" size={16} color={Colors.status.warning} />
+          <Text style={styles.mockText}>
+            Donnees de demonstration — Connecte Instagram dans les parametres
+          </Text>
+        </View>
+      )}
+
       {/* Error banner */}
       {fetchError && (
         <View style={styles.errorBanner}>
@@ -505,6 +517,18 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
   },
+  mockBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: Colors.status.warning + "15",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  mockText: { flex: 1, fontSize: 13, color: Colors.status.warning },
   errorText: { flex: 1, fontSize: 13, color: Colors.status.danger },
   errorRetry: { fontSize: 13, fontWeight: "600", color: Colors.brand.primary },
 

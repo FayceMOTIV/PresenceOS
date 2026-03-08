@@ -374,7 +374,9 @@ export default function SocialAccountsScreen() {
                   try {
                     await socialApi.selectPage(brandId, page.id);
                     await fetchAccounts();
-                  } catch {}
+                  } catch {
+                    Alert.alert("Erreur", "Impossible de selectionner cette page.");
+                  }
                   setPagePickerVisible(false);
                 }}
               >

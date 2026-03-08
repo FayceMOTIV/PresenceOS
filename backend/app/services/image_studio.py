@@ -1,15 +1,17 @@
 """
 PresenceOS - ImageStudio Service
-Brain-aware image generation using GPT-Image-1 (gpt-image-1).
+Brain-aware image generation using Gemini Image.
 Bug Fix #2: ImageStudio calls VisualBrain to optimize prompts.
 VisualBrain NEVER generates images.
+
+Migration: GPT-Image-1 → Gemini Image (March 2026)
 """
+import asyncio
+import base64
 import uuid
 from datetime import datetime, timezone
 
-import httpx
 import structlog
-from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -49,8 +51,9 @@ class ImageStudio:
 
         Bug Fix #2: ImageStudio calls VisualBrain, never the reverse.
         """
-        if not settings.openai_api_key:
-            return {"image_url": None, "error": "No OpenAI API key configured", "brain_optimized": False}
+        api_key = settings.google_api_key or settings.gemini_api_key
+        if not api_key:
+            return {"image_url": None, "error": "No Google API key configured", "brain_optimized": False}
 
         # Step 1: Optionally optimize prompt via VisualBrain
         final_prompt = prompt
@@ -76,20 +79,32 @@ class ImageStudio:
         if brand_name:
             enhanced += f" For brand '{brand_name}'."
 
-        # Step 3: Generate image via GPT-Image-1
-        client = AsyncOpenAI(api_key=settings.openai_api_key)
+        # Step 3: Generate image via Gemini Image
+        import google.generativeai as genai
+
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-2.0-flash-preview-image-generation")
         try:
-            response = await client.images.generate(
-                model="gpt-image-1",
-                prompt=enhanced,
-                size=size,
-                quality="high",
-                n=1,
+            response = await asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: model.generate_content(
+                    contents=enhanced,
+                    generation_config=genai.GenerationConfig(response_modalities=["IMAGE"]),
+                ),
             )
-            image_url = response.data[0].url
+
+            image_bytes = None
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, "inline_data") and part.inline_data:
+                    raw = part.inline_data.data
+                    image_bytes = base64.b64decode(raw) if isinstance(raw, str) else raw
+                    break
+
+            if not image_bytes:
+                return {"image_url": None, "error": "Gemini returned no image", "brain_optimized": brain_optimized}
 
             # Persist to S3
-            permanent_url = await self._persist_image(image_url, niche, style)
+            permanent_url = await self._persist_image_bytes(image_bytes, niche, style)
 
             # Step 4: Record in VisualBrain memory (Bug Fix #2: ImageStudio stores, VisualBrain remembers)
             await self.vb.remember_visual_performance(
@@ -112,25 +127,17 @@ class ImageStudio:
             logger.error("Image generation failed", error=str(exc))
             return {"image_url": None, "error": str(exc), "brain_optimized": brain_optimized}
 
-    async def _persist_image(self, dalle_url: str, niche: str, style: str) -> str:
-        """Download and persist image to S3."""
+    async def _persist_image_bytes(self, image_bytes: bytes, niche: str, style: str) -> str:
+        """Persist image bytes to S3. Returns permanent URL."""
         storage = get_storage_service()
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.get(dalle_url)
-                resp.raise_for_status()
-                image_bytes = resp.content
-
-            key = storage.generate_key(
-                brand_id=str(self.brand_id),
-                media_type="image",
-                original_filename=f"gpt_image_{niche}_{style}.png",
-            )
-            result = await storage.upload_bytes(data=image_bytes, key=key, content_type="image/png")
-            return result["url"]
-        except Exception as exc:
-            logger.warning("Failed to persist image, using ephemeral URL", error=str(exc))
-            return dalle_url
+        key = storage.generate_key(
+            brand_id=str(self.brand_id),
+            media_type="image",
+            original_filename=f"gemini_{niche}_{style}_{uuid.uuid4().hex[:8]}.png",
+        )
+        result = await storage.upload_bytes(data=image_bytes, key=key, content_type="image/png")
+        logger.info("Image persisted to S3", key=key, size=len(image_bytes))
+        return result["url"]
 
     async def generate_for_post(
         self,

@@ -31,7 +31,9 @@ export default function AssetUploadScreen() {
     if (!brandId) return;
     contentApi.listDishes(brandId).then((res) => {
       setDishes(res.data.dishes || res.data || []);
-    }).catch(() => {});
+    }).catch((err) => {
+      if (__DEV__) console.warn("Failed to load dishes:", err);
+    });
   }, [brandId]);
 
   const recognizeDish = useCallback(async (uri: string) => {

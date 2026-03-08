@@ -67,9 +67,9 @@ class VideoStudio:
 
             # Model mapping: pro for 5s/10s, master for 15s
             if duration >= 15:
-                model_id = "fal-ai/kling-video/v2.1/master/text-to-video"
+                model_id = "fal-ai/kling-video/v2.6/master/text-to-video"
             else:
-                model_id = "fal-ai/kling-video/v2.1/pro/text-to-video"
+                model_id = "fal-ai/kling-video/v2.6/pro/text-to-video"
 
             result = await fal_client.subscribe_async(
                 model_id,

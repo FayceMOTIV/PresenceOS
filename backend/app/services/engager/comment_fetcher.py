@@ -90,6 +90,19 @@ class MetaCommentFetcher(BaseCommentFetcher):
 
         return comments
 
+    async def reply_to_comment(
+        self, comment_id: str, message: str, access_token: str
+    ) -> dict:
+        """Post a reply to an Instagram comment via Meta Graph API."""
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                f"{GRAPH_API_BASE}/{comment_id}/replies",
+                params={"access_token": access_token},
+                data={"message": message},
+            )
+            resp.raise_for_status()
+            return resp.json()
+
     async def _fetch_post_comments(
         self,
         client: httpx.AsyncClient,

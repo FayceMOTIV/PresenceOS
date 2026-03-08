@@ -3,7 +3,7 @@ PresenceOS - API v2 Router
 """
 from fastapi import APIRouter
 
-from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout, dish_recognition, video
+from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout, dish_recognition, video, images, ai_video
 
 api_v2_router = APIRouter()
 
@@ -33,3 +33,9 @@ api_v2_router.include_router(dish_recognition.router, prefix="/dish", tags=["Dis
 
 # Video Assets — Save + Publish generated videos (Sprint B3)
 api_v2_router.include_router(video.router, prefix="/video", tags=["Video Assets"])
+
+# Image Generation — Gemini Image (replaces DALL-E 3)
+api_v2_router.include_router(images.router, prefix="/images", tags=["Images"])
+
+# AI Video Generation — Kling 2.6 Pro / Wan 2.6 via fal.ai
+api_v2_router.include_router(ai_video.router, prefix="/ai-video", tags=["AI Video"])

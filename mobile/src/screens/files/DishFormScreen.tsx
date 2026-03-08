@@ -49,7 +49,9 @@ export default function DishFormScreen() {
         setCategory(dish.category || "plats");
         setIsFeatured(dish.is_featured || false);
       }
-    }).catch(() => {});
+    }).catch((err) => {
+      if (__DEV__) console.warn("Failed to load dish:", err);
+    });
   }, [dishId, brandId]);
 
   const handleSave = useCallback(async () => {

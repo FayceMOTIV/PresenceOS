@@ -1,18 +1,20 @@
 """
 PresenceOS - Photo Studio
 
-AI-powered photo generation using DALL-E 3. Generates high-quality marketing
+AI-powered photo generation using Gemini Image. Generates high-quality marketing
 photos tailored to any business niche with expert-grade prompt engineering.
 
 Supports 20+ business niches with specific visual direction, negative prompts,
 and platform-optimized sizing.
+
+Migration: DALL-E 3 → Gemini Image (March 2026)
 """
 import asyncio
+import base64
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-import httpx
-import openai
 import structlog
 
 from app.core.config import settings
@@ -191,14 +193,14 @@ NEGATIVE_INSTRUCTIONS = (
 
 
 class PhotoStudio:
-    """AI photo generation service using DALL-E 3.
+    """AI photo generation service using Gemini Image.
 
     Generates marketing-quality photos with customizable styles and
     niche-specific visual contexts for 20+ business types.
     """
 
     def __init__(self) -> None:
-        self._client: openai.AsyncOpenAI | None = None
+        self._model_cache: dict = {}
         self._storage = None
 
     def _get_storage(self):
@@ -208,51 +210,39 @@ class PhotoStudio:
                 from app.services.storage import get_storage_service
                 self._storage = get_storage_service()
             except Exception:
-                logger.warning("Storage service not available, DALL-E URLs will be ephemeral")
+                logger.warning("Storage service not available")
         return self._storage
 
-    async def _persist_image(self, dalle_url: str, niche: str, style: str) -> str:
-        """Download a DALL-E image and persist it to S3/MinIO.
+    def _get_model(self, model_id: str):
+        """Lazy init and cache genai model instances."""
+        if model_id not in self._model_cache:
+            import google.generativeai as genai
+            api_key = settings.google_api_key or settings.gemini_api_key
+            if not api_key:
+                raise RuntimeError(
+                    "Google API key not configured. "
+                    "Set GOOGLE_API_KEY or GEMINI_API_KEY."
+                )
+            genai.configure(api_key=api_key)
+            self._model_cache[model_id] = genai.GenerativeModel(model_id)
+        return self._model_cache[model_id]
 
-        Returns the permanent S3 URL, or the original DALL-E URL as fallback
-        if storage is unavailable.
-        """
+    async def _persist_image(self, image_bytes: bytes, niche: str, style: str) -> str:
+        """Persist image bytes to S3/MinIO. Returns permanent URL."""
         storage = self._get_storage()
         if not storage:
-            return dalle_url
+            raise RuntimeError("Storage service not available")
 
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.get(dalle_url)
-                resp.raise_for_status()
-                image_bytes = resp.content
-
-            key = storage.generate_key(
-                brand_id="ai-studio",
-                media_type="image",
-                original_filename=f"dalle_{niche}_{style}.png",
-            )
-            result = await storage.upload_bytes(
-                data=image_bytes,
-                key=key,
-                content_type="image/png",
-            )
-            logger.info("DALL-E image persisted", key=key, size=len(image_bytes))
-            return result["url"]
-        except Exception as exc:
-            logger.warning("Failed to persist DALL-E image, using ephemeral URL", error=str(exc))
-            return dalle_url
-
-    def _get_client(self) -> openai.AsyncOpenAI:
-        """Lazy initialization of the OpenAI client."""
-        if self._client is None:
-            if not settings.openai_api_key:
-                raise RuntimeError(
-                    "OpenAI API key is not configured. "
-                    "Set OPENAI_API_KEY in your environment."
-                )
-            self._client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
-        return self._client
+        key = storage.generate_key(
+            brand_id="ai-studio",
+            media_type="image",
+            original_filename=f"gemini_{niche}_{style}_{uuid.uuid4().hex[:8]}.png",
+        )
+        result = await storage.upload_bytes(
+            data=image_bytes, key=key, content_type="image/png",
+        )
+        logger.info("Image persisted to S3", key=key, size=len(image_bytes))
+        return result["url"]
 
     async def generate_photo(
         self,
@@ -262,21 +252,22 @@ class PhotoStudio:
         size: str = "1024x1024",
         brand_name: str | None = None,
     ) -> dict[str, Any]:
-        """Generate a single marketing photo using DALL-E 3.
+        """Generate a single marketing photo using Gemini Image.
 
         Args:
             prompt: Base description of the desired image.
             niche: Business niche key (restaurant, cafe, fitness, etc.).
-                   Falls back to DEFAULT_NICHE_CONTEXT for unknown niches.
             style: Visual style preset (natural, cinematic, vibrant, minimalist).
-            size: Image dimensions (1024x1024, 1792x1024, 1024x1792).
-            brand_name: Optional brand name for context (not rendered in image).
+            size: Image dimensions (ignored for Gemini — always square).
+            brand_name: Optional brand name for context.
 
         Returns:
-            Dict with image_url, revised_prompt, style, niche, size, generated_at.
+            Dict with image_url, style, niche, size, generated_at.
         """
-        client = self._get_client()
+        import google.generativeai as genai
+
         enhanced_prompt = self._enhance_prompt(prompt, niche, style, brand_name)
+        model_id = "gemini-2.0-flash-preview-image-generation"
 
         logger.info(
             "Generating photo",
@@ -287,22 +278,31 @@ class PhotoStudio:
         )
 
         try:
-            response = await client.images.generate(
-                model="dall-e-3",
-                prompt=enhanced_prompt,
-                size=size,  # type: ignore[arg-type]
-                quality="hd",
-                n=1,
+            model = self._get_model(model_id)
+            response = await asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: model.generate_content(
+                    contents=enhanced_prompt,
+                    generation_config=genai.GenerationConfig(
+                        response_modalities=["IMAGE"],
+                    ),
+                ),
             )
         except Exception as exc:
             logger.error("Photo generation failed", niche=niche, style=style, error=str(exc))
             raise
 
-        dalle_url = response.data[0].url
-        revised = response.data[0].revised_prompt
+        image_bytes = None
+        for part in response.candidates[0].content.parts:
+            if hasattr(part, "inline_data") and part.inline_data:
+                raw = part.inline_data.data
+                image_bytes = base64.b64decode(raw) if isinstance(raw, str) else raw
+                break
 
-        # Persist to S3 so the URL doesn't expire after 1 hour
-        permanent_url = await self._persist_image(dalle_url, niche, style)
+        if not image_bytes:
+            raise ValueError(f"Gemini returned no image for prompt: {prompt[:100]}")
+
+        permanent_url = await self._persist_image(image_bytes, niche, style)
 
         result: dict[str, Any] = {
             "image_url": permanent_url,

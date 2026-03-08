@@ -68,7 +68,10 @@ export default function VideoPlansScreen() {
     videoApi.credits(brandId).then((res) => {
       setCurrentPlan(res.data.plan);
       setCreditsRemaining(res.data.credits_remaining);
-    }).catch(() => {});
+    }).catch(() => {
+      setCurrentPlan("free");
+      setCreditsRemaining(0);
+    });
   }, [brandId]);
 
   return (

@@ -30,6 +30,7 @@ class ScanResponse(BaseModel):
     classified: int
     replies_generated: int
     stored: int = 0
+    mock: bool = False
 
 
 class ApproveRequest(BaseModel):
@@ -156,7 +157,29 @@ async def approve_reply(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Comment {comment_id} not found",
         )
-    return comment.to_dict()
+
+    # Post reply to Instagram via Graph API if token available
+    published = False
+    if comment.final_reply and not comment.id.startswith("mock_"):
+        try:
+            from app.services.meta_token_manager import MetaTokenManager
+            from app.services.engager.comment_fetcher import MetaCommentFetcher
+            token_mgr = MetaTokenManager()
+            meta_token = await token_mgr.get_token()
+            if meta_token:
+                fetcher = MetaCommentFetcher()
+                await fetcher.reply_to_comment(comment.id, comment.final_reply, meta_token)
+                published = True
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to publish reply to Instagram",
+                extra={"comment_id": comment_id, "error": str(exc)},
+            )
+
+    result = comment.to_dict()
+    result["published_to_instagram"] = published
+    return result
 
 
 @router.post(

@@ -114,8 +114,8 @@ export default function HomeScreen() {
       if (videoRes.status === "fulfilled") {
         setVideoCredits(videoRes.value.data.credits_remaining ?? 0);
       }
-    } catch {
-      // silent
+    } catch (err) {
+      if (__DEV__) console.warn("HomeScreen loadData failed:", err);
     }
   }, [brandId]);
 

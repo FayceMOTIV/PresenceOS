@@ -22,6 +22,7 @@ import IlyasChatScreen from "@/screens/chat/IlyasChatScreen";
 import SocialAccountsScreen from "@/screens/social/SocialAccountsScreen";
 import VideoStudioScreen from "@/screens/video/VideoStudioScreen";
 import VideoPlansScreen from "@/screens/video/VideoPlansScreen";
+import AIVideoScreen from "@/screens/video/AIVideoScreen";
 import BreakoutScreen from "@/screens/breakout/BreakoutScreen";
 import ValidationInboxScreen from "@/screens/validation/ValidationInboxScreen";
 import BrainDashboardScreen from "@/screens/brain/BrainDashboardScreen";
@@ -64,6 +65,7 @@ export type InboxStackParams = {
 export type VideoStackParams = {
   VideoStudio: undefined;
   VideoPlans: undefined;
+  AIVideo: undefined;
 };
 
 export type BreakoutStackParams = {
@@ -181,6 +183,7 @@ function VideoStackScreen() {
         component={VideoPlansScreen}
         options={{ presentation: "modal" }}
       />
+      <VideoStackNav.Screen name="AIVideo" component={AIVideoScreen} />
     </VideoStackNav.Navigator>
   );
 }

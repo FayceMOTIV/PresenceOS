@@ -81,6 +81,19 @@ class Settings(BaseSettings):
     token_encryption_key: str = ""
     token_encryption_salt: str = ""
 
+    @field_validator("token_encryption_key", mode="after")
+    @classmethod
+    def warn_missing_encryption_key(cls, v: str) -> str:
+        """Warn if token encryption key is missing in production."""
+        import os
+        if not v and os.getenv("APP_ENV", "development") == "production":
+            import logging
+            logging.getLogger(__name__).warning(
+                "TOKEN_ENCRYPTION_KEY is empty in production! "
+                "OAuth tokens will use a random key that changes on restart."
+            )
+        return v
+
     # AI Agents
     firecrawl_api_key: str = ""
     composio_api_key: str = ""
@@ -153,8 +166,9 @@ class Settings(BaseSettings):
     fal_key: str = ""
     fal_webhook_url: str = ""
 
-    # Google Gemini (dish recognition)
+    # Google Gemini (dish recognition + image generation)
     gemini_api_key: str = ""
+    google_api_key: str = ""  # GOOGLE_API_KEY for Gemini Image
 
     # Remotion render service (Breakout V3)
     remotion_service_url: str = "http://localhost:3001"

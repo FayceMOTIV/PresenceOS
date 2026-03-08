@@ -588,4 +588,34 @@ export const dishApi = {
     }),
 };
 
+// ── Image Generation v2 (Gemini Image) ──
+
+export const imageApi = {
+  generate: (brandId: string, prompt: string, niche = "restaurant", style = "natural", quality = "fast") =>
+    requestV2("POST", `/images/brands/${brandId}/generate`, {
+      body: { prompt, niche, style, quality },
+    }),
+  enhance: (brandId: string, sourceUrl: string, style = "restaurant") =>
+    requestV2("POST", `/images/brands/${brandId}/enhance`, {
+      body: { source_url: sourceUrl, style },
+    }),
+  niches: () =>
+    requestV2("GET", "/images/niches"),
+};
+
+// ── AI Video Generation v2 (Kling 2.6 / Wan 2.6) ──
+
+export const aiVideoApi = {
+  textToVideo: (brandId: string, prompt: string, duration = 5, aspectRatio = "9:16", model = "kling") =>
+    requestV2("POST", `/ai-video/brands/${brandId}/text-to-video`, {
+      body: { prompt, duration, aspect_ratio: aspectRatio, model },
+      timeout: 180_000, // 3min — video gen can take 60-120s
+    }),
+  imageToVideo: (brandId: string, imageUrl: string, prompt = "", duration = 5, aspectRatio = "9:16") =>
+    requestV2("POST", `/ai-video/brands/${brandId}/image-to-video`, {
+      body: { image_url: imageUrl, prompt, duration, aspect_ratio: aspectRatio },
+      timeout: 180_000,
+    }),
+};
+
 export default api;

@@ -114,7 +114,9 @@ export default function VideoStudioScreen() {
     videoApi
       .credits(brandId)
       .then((res) => setCredits(res.data))
-      .catch(() => {});
+      .catch(() => {
+        setCredits({ credits_remaining: 0, credits_total: 0, plan: "free" });
+      });
   }, [brandId]);
 
   const selectedDuration = DURATIONS.find((d) => d.value === duration)!;

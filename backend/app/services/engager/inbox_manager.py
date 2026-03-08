@@ -77,11 +77,13 @@ class InboxManager:
             if success:
                 stored += 1
 
+        is_mock = isinstance(self.fetcher, MockCommentFetcher)
         result = {
             "fetched": len(comments),
             "classified": len(classified),
             "replies_generated": len(with_replies),
             "stored": stored,
+            "mock": is_mock,
         }
         logger.info("Scan complete", extra={"brand_id": brand_id, **result})
         return result

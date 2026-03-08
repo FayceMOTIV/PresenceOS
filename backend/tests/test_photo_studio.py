@@ -1,9 +1,13 @@
 """
 PresenceOS - Tests for PhotoStudio (AI Photo Generation)
 
-Unit tests for the DALL-E 3 photo generation service with full mocking
-of external dependencies (OpenAI, S3/MinIO storage).
+Unit tests for the Gemini Image photo generation service with full mocking
+of external dependencies (Gemini, S3/MinIO storage).
+
+Migration: DALL-E 3 → Gemini Image (March 2026)
 """
+import base64
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -21,20 +25,23 @@ from app.ai.photo_studio import (
 
 @pytest.fixture
 def studio():
-    """Create a PhotoStudio instance with mocked OpenAI client."""
-    s = PhotoStudio()
-    return s
+    """Create a PhotoStudio instance."""
+    return PhotoStudio()
 
 
 @pytest.fixture
-def mock_openai_response():
-    """Build a realistic DALL-E 3 response object."""
-    image_data = MagicMock()
-    image_data.url = "https://oaidalleapiprodscus.blob.core.windows.net/fake-image.png"
-    image_data.revised_prompt = "A professional marketing photograph of a dish..."
+def mock_gemini_response():
+    """Build a realistic Gemini Image response object."""
+    fake_image = b"\x89PNG\r\n\x1a\n" + b"\x00" * 500
+    fake_b64 = base64.b64encode(fake_image).decode()
+
+    mock_part = MagicMock()
+    mock_part.inline_data = MagicMock()
+    mock_part.inline_data.data = fake_b64
 
     response = MagicMock()
-    response.data = [image_data]
+    response.candidates = [MagicMock()]
+    response.candidates[0].content.parts = [mock_part]
     return response
 
 
@@ -42,10 +49,10 @@ def mock_openai_response():
 def mock_storage():
     """Build a mocked StorageService."""
     storage = MagicMock()
-    storage.generate_key.return_value = "brands/ai-studio/media/2026/02/abc123_dalle_restaurant_natural.png"
+    storage.generate_key.return_value = "brands/ai-studio/media/2026/03/abc123_gemini_restaurant_natural.png"
     storage.upload_bytes = AsyncMock(return_value={
-        "key": "brands/ai-studio/media/2026/02/abc123_dalle_restaurant_natural.png",
-        "url": "http://minio:9000/presenceos-media/brands/ai-studio/media/2026/02/abc123_dalle_restaurant_natural.png",
+        "key": "brands/ai-studio/media/2026/03/abc123_gemini_restaurant_natural.png",
+        "url": "http://minio:9000/presenceos-media/brands/ai-studio/media/abc.png",
         "size": 1024000,
     })
     return storage
@@ -159,30 +166,26 @@ class TestConstants:
         assert "logo" in NEGATIVE_INSTRUCTIONS.lower()
 
 
-# ── Photo Generation Tests ───────────────────────────────────────────────────
+# ── Photo Generation Tests (Gemini Image) ────────────────────────────────────
 
 
 class TestGeneratePhoto:
-    """Tests for generate_photo with mocked OpenAI."""
+    """Tests for generate_photo with mocked Gemini."""
 
     @pytest.mark.asyncio
-    async def test_generate_photo_success(self, studio, mock_openai_response, mock_storage):
-        mock_client = MagicMock()
-        mock_client.images.generate = AsyncMock(return_value=mock_openai_response)
-        studio._client = mock_client
+    async def test_generate_photo_success(self, studio, mock_gemini_response, mock_storage):
+        mock_model = MagicMock()
+        mock_model.generate_content.return_value = mock_gemini_response
+
         studio._storage = mock_storage
 
-        # Mock httpx for image download
-        with patch("app.ai.photo_studio.httpx.AsyncClient") as mock_httpx:
-            mock_resp = MagicMock()
-            mock_resp.content = b"\x89PNG\r\n\x1a\n" + b"\x00" * 1000
-            mock_resp.raise_for_status = MagicMock()
-
-            mock_httpx_instance = AsyncMock()
-            mock_httpx_instance.get = AsyncMock(return_value=mock_resp)
-            mock_httpx_instance.__aenter__ = AsyncMock(return_value=mock_httpx_instance)
-            mock_httpx_instance.__aexit__ = AsyncMock(return_value=False)
-            mock_httpx.return_value = mock_httpx_instance
+        with (
+            patch.object(studio, "_get_model", return_value=mock_model),
+            patch("app.ai.photo_studio.asyncio") as mock_asyncio,
+        ):
+            mock_loop = MagicMock()
+            mock_loop.run_in_executor = AsyncMock(return_value=mock_gemini_response)
+            mock_asyncio.get_event_loop.return_value = mock_loop
 
             result = await studio.generate_photo(
                 prompt="a beautiful pizza",
@@ -198,24 +201,21 @@ class TestGeneratePhoto:
         assert result["original_prompt"] == "a beautiful pizza"
         assert "enhanced_prompt" in result
         assert "generated_at" in result
-        mock_client.images.generate.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_generate_photo_with_brand(self, studio, mock_openai_response, mock_storage):
-        mock_client = MagicMock()
-        mock_client.images.generate = AsyncMock(return_value=mock_openai_response)
-        studio._client = mock_client
+    async def test_generate_photo_with_brand(self, studio, mock_gemini_response, mock_storage):
+        mock_model = MagicMock()
+        mock_model.generate_content.return_value = mock_gemini_response
+
         studio._storage = mock_storage
 
-        with patch("app.ai.photo_studio.httpx.AsyncClient") as mock_httpx:
-            mock_resp = MagicMock()
-            mock_resp.content = b"\x89PNG" + b"\x00" * 100
-            mock_resp.raise_for_status = MagicMock()
-            mock_httpx_instance = AsyncMock()
-            mock_httpx_instance.get = AsyncMock(return_value=mock_resp)
-            mock_httpx_instance.__aenter__ = AsyncMock(return_value=mock_httpx_instance)
-            mock_httpx_instance.__aexit__ = AsyncMock(return_value=False)
-            mock_httpx.return_value = mock_httpx_instance
+        with (
+            patch.object(studio, "_get_model", return_value=mock_model),
+            patch("app.ai.photo_studio.asyncio") as mock_asyncio,
+        ):
+            mock_loop = MagicMock()
+            mock_loop.run_in_executor = AsyncMock(return_value=mock_gemini_response)
+            mock_asyncio.get_event_loop.return_value = mock_loop
 
             result = await studio.generate_photo(
                 prompt="latte art",
@@ -227,93 +227,47 @@ class TestGeneratePhoto:
         assert "CaféChic" in result["enhanced_prompt"]
 
     @pytest.mark.asyncio
-    async def test_generate_photo_uses_hd_quality(self, studio, mock_openai_response, mock_storage):
-        mock_client = MagicMock()
-        mock_client.images.generate = AsyncMock(return_value=mock_openai_response)
-        studio._client = mock_client
-        studio._storage = mock_storage
-
-        with patch("app.ai.photo_studio.httpx.AsyncClient") as mock_httpx:
-            mock_resp = MagicMock()
-            mock_resp.content = b"\x89PNG" + b"\x00" * 100
-            mock_resp.raise_for_status = MagicMock()
-            mock_httpx_instance = AsyncMock()
-            mock_httpx_instance.get = AsyncMock(return_value=mock_resp)
-            mock_httpx_instance.__aenter__ = AsyncMock(return_value=mock_httpx_instance)
-            mock_httpx_instance.__aexit__ = AsyncMock(return_value=False)
-            mock_httpx.return_value = mock_httpx_instance
-
-            await studio.generate_photo(prompt="test", niche="restaurant")
-
-        call_kwargs = mock_client.images.generate.call_args
-        assert call_kwargs.kwargs["quality"] == "hd"
-        assert call_kwargs.kwargs["model"] == "dall-e-3"
-
-    @pytest.mark.asyncio
     async def test_generate_photo_no_api_key_raises(self):
         studio = PhotoStudio()
         with patch("app.ai.photo_studio.settings") as mock_settings:
-            mock_settings.openai_api_key = ""
-            with pytest.raises(RuntimeError, match="OpenAI API key"):
+            mock_settings.google_api_key = ""
+            mock_settings.gemini_api_key = ""
+            with pytest.raises(RuntimeError, match="Google API key"):
                 await studio.generate_photo(prompt="test")
 
     @pytest.mark.asyncio
-    async def test_generate_photo_openai_error_propagates(self, studio):
-        mock_client = MagicMock()
-        mock_client.images.generate = AsyncMock(side_effect=Exception("API overloaded"))
-        studio._client = mock_client
+    async def test_generate_photo_gemini_error_propagates(self, studio, mock_storage):
+        studio._storage = mock_storage
 
-        with pytest.raises(Exception, match="API overloaded"):
-            await studio.generate_photo(prompt="test")
+        with (
+            patch.object(studio, "_get_model", side_effect=RuntimeError("Google API key not configured")),
+        ):
+            with pytest.raises(RuntimeError, match="Google API key"):
+                await studio.generate_photo(prompt="test")
 
 
 # ── Image Persistence Tests ──────────────────────────────────────────────────
 
 
 class TestImagePersistence:
-    """Tests for _persist_image S3 upload."""
+    """Tests for _persist_image S3 upload (now takes bytes directly)."""
 
     @pytest.mark.asyncio
     async def test_persist_image_success(self, studio, mock_storage):
         studio._storage = mock_storage
 
-        with patch("app.ai.photo_studio.httpx.AsyncClient") as mock_httpx:
-            mock_resp = MagicMock()
-            mock_resp.content = b"\x89PNG\r\n" + b"\x00" * 500
-            mock_resp.raise_for_status = MagicMock()
-
-            mock_httpx_instance = AsyncMock()
-            mock_httpx_instance.get = AsyncMock(return_value=mock_resp)
-            mock_httpx_instance.__aenter__ = AsyncMock(return_value=mock_httpx_instance)
-            mock_httpx_instance.__aexit__ = AsyncMock(return_value=False)
-            mock_httpx.return_value = mock_httpx_instance
-
-            url = await studio._persist_image("https://dalle.example.com/img.png", "restaurant", "natural")
+        fake_image = b"\x89PNG\r\n" + b"\x00" * 500
+        url = await studio._persist_image(fake_image, "restaurant", "natural")
 
         assert "minio" in url or "s3" in url or "presenceos" in url
         mock_storage.upload_bytes.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_persist_image_no_storage_returns_original(self, studio):
+    async def test_persist_image_no_storage_raises(self, studio):
         studio._storage = None
         with patch.object(studio, "_get_storage", return_value=None):
-            url = await studio._persist_image("https://dalle.example.com/img.png", "restaurant", "natural")
-        assert url == "https://dalle.example.com/img.png"
-
-    @pytest.mark.asyncio
-    async def test_persist_image_download_failure_returns_original(self, studio, mock_storage):
-        studio._storage = mock_storage
-
-        with patch("app.ai.photo_studio.httpx.AsyncClient") as mock_httpx:
-            mock_httpx_instance = AsyncMock()
-            mock_httpx_instance.get = AsyncMock(side_effect=Exception("Network error"))
-            mock_httpx_instance.__aenter__ = AsyncMock(return_value=mock_httpx_instance)
-            mock_httpx_instance.__aexit__ = AsyncMock(return_value=False)
-            mock_httpx.return_value = mock_httpx_instance
-
-            url = await studio._persist_image("https://dalle.example.com/img.png", "cafe", "vibrant")
-
-        assert url == "https://dalle.example.com/img.png"
+            with pytest.raises(RuntimeError, match="Storage service not available"):
+                await studio._persist_image(b"\x89PNG", "restaurant", "natural")
 
 
 # ── Variations Tests ─────────────────────────────────────────────────────────
@@ -323,22 +277,22 @@ class TestGenerateVariations:
     """Tests for generate_variations parallel generation."""
 
     @pytest.mark.asyncio
-    async def test_generate_variations_returns_4_styles(self, studio, mock_openai_response, mock_storage):
-        mock_client = MagicMock()
-        mock_client.images.generate = AsyncMock(return_value=mock_openai_response)
-        studio._client = mock_client
+    async def test_generate_variations_returns_4_styles(self, studio, mock_gemini_response, mock_storage):
         studio._storage = mock_storage
 
-        with patch("app.ai.photo_studio.httpx.AsyncClient") as mock_httpx:
-            mock_resp = MagicMock()
-            mock_resp.content = b"\x89PNG" + b"\x00" * 100
-            mock_resp.raise_for_status = MagicMock()
-            mock_httpx_instance = AsyncMock()
-            mock_httpx_instance.get = AsyncMock(return_value=mock_resp)
-            mock_httpx_instance.__aenter__ = AsyncMock(return_value=mock_httpx_instance)
-            mock_httpx_instance.__aexit__ = AsyncMock(return_value=False)
-            mock_httpx.return_value = mock_httpx_instance
+        results = []
+        for style in ["natural", "cinematic", "vibrant", "minimalist"]:
+            results.append({
+                "image_url": f"http://example.com/{style}.png",
+                "original_prompt": "a dish",
+                "enhanced_prompt": f"test prompt for {style}",
+                "style": style,
+                "niche": "restaurant",
+                "size": "1024x1024",
+                "generated_at": "2026-03-08T12:00:00Z",
+            })
 
+        with patch.object(studio, "generate_photo", new_callable=AsyncMock, side_effect=results):
             variations = await studio.generate_variations(base_prompt="a dish", niche="restaurant")
 
         assert len(variations) == 4
@@ -346,43 +300,38 @@ class TestGenerateVariations:
         assert styles_returned == {"natural", "cinematic", "vibrant", "minimalist"}
 
     @pytest.mark.asyncio
-    async def test_generate_variations_with_count_limit(self, studio, mock_openai_response, mock_storage):
-        mock_client = MagicMock()
-        mock_client.images.generate = AsyncMock(return_value=mock_openai_response)
-        studio._client = mock_client
+    async def test_generate_variations_with_count_limit(self, studio, mock_gemini_response, mock_storage):
         studio._storage = mock_storage
 
-        with patch("app.ai.photo_studio.httpx.AsyncClient") as mock_httpx:
-            mock_resp = MagicMock()
-            mock_resp.content = b"\x89PNG" + b"\x00" * 100
-            mock_resp.raise_for_status = MagicMock()
-            mock_httpx_instance = AsyncMock()
-            mock_httpx_instance.get = AsyncMock(return_value=mock_resp)
-            mock_httpx_instance.__aenter__ = AsyncMock(return_value=mock_httpx_instance)
-            mock_httpx_instance.__aexit__ = AsyncMock(return_value=False)
-            mock_httpx.return_value = mock_httpx_instance
+        results = [
+            {"image_url": "http://ex.com/1.png", "style": "natural", "niche": "cafe",
+             "original_prompt": "a dish", "enhanced_prompt": "p1", "size": "1024x1024", "generated_at": "2026"},
+            {"image_url": "http://ex.com/2.png", "style": "cinematic", "niche": "cafe",
+             "original_prompt": "a dish", "enhanced_prompt": "p2", "size": "1024x1024", "generated_at": "2026"},
+        ]
 
+        with patch.object(studio, "generate_photo", new_callable=AsyncMock, side_effect=results):
             variations = await studio.generate_variations(base_prompt="a dish", niche="cafe", count=2)
 
         assert len(variations) == 2
 
     @pytest.mark.asyncio
-    async def test_generate_variations_propagates_brand_name(self, studio, mock_openai_response, mock_storage):
-        mock_client = MagicMock()
-        mock_client.images.generate = AsyncMock(return_value=mock_openai_response)
-        studio._client = mock_client
+    async def test_generate_variations_propagates_brand_name(self, studio, mock_gemini_response, mock_storage):
         studio._storage = mock_storage
 
-        with patch("app.ai.photo_studio.httpx.AsyncClient") as mock_httpx:
-            mock_resp = MagicMock()
-            mock_resp.content = b"\x89PNG" + b"\x00" * 100
-            mock_resp.raise_for_status = MagicMock()
-            mock_httpx_instance = AsyncMock()
-            mock_httpx_instance.get = AsyncMock(return_value=mock_resp)
-            mock_httpx_instance.__aenter__ = AsyncMock(return_value=mock_httpx_instance)
-            mock_httpx_instance.__aexit__ = AsyncMock(return_value=False)
-            mock_httpx.return_value = mock_httpx_instance
+        results = []
+        for style in ["natural", "cinematic", "vibrant", "minimalist"]:
+            results.append({
+                "image_url": f"http://ex.com/{style}.png",
+                "original_prompt": "a dish",
+                "enhanced_prompt": f"test for Chez Marcel in {style}",
+                "style": style,
+                "niche": "restaurant",
+                "size": "1024x1024",
+                "generated_at": "2026",
+            })
 
+        with patch.object(studio, "generate_photo", new_callable=AsyncMock, side_effect=results):
             variations = await studio.generate_variations(
                 base_prompt="a dish",
                 niche="restaurant",
