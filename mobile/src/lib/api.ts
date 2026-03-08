@@ -413,6 +413,17 @@ export const videoApi = {
     api.get(`/video/credits/${brandId}`),
   history: (brandId: string) =>
     api.get(`/video/history/${brandId}`),
+  // v2 — Save + Publish
+  save: (brandId: string, falUrl: string, prompt: string, durationSeconds: number, aspectRatio: string, style: string) =>
+    requestV2("POST", `/video/brands/${brandId}/videos/save`, {
+      body: { fal_url: falUrl, prompt, duration_seconds: durationSeconds, aspect_ratio: aspectRatio, style },
+    }),
+  publish: (brandId: string, assetId: string, platform: string, caption: string, accountUsername: string) =>
+    requestV2("POST", `/video/brands/${brandId}/videos/publish`, {
+      body: { asset_id: assetId, platform, caption, account_username: accountUsername },
+    }),
+  listSaved: (brandId: string) =>
+    requestV2("GET", `/video/brands/${brandId}/videos`),
 };
 
 // ── CM Inbox ──
@@ -500,6 +511,10 @@ export const onboardingApi = {
     requestV2("POST", `/onboarding/brands/${brandId}/scrape`, {
       body: { url },
     }),
+  getState: (brandId: string) =>
+    requestV2("GET", `/onboarding/brands/${brandId}/onboarding/state`),
+  reset: (brandId: string) =>
+    requestV2("POST", `/onboarding/brands/${brandId}/onboarding/reset`),
 };
 
 // ── Voice v2 (Whisper transcription — Sprint 7) ──

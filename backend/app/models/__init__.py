@@ -20,6 +20,8 @@ from app.models.daily_brief import DailyBrief
 from app.models.compiled_kb import CompiledKB
 from app.models.video_credits import VideoCredits
 from app.models.cm_session import CmSession, CmMessage
+from app.models.onboarding_state import OnboardingState
+from app.models.video_asset import VideoAsset
 from app.models.brain import (
     BrainMemory,
     VisualMemory,
@@ -63,4 +65,6 @@ __all__ = [
     "OrchestratorJob",
     "InstagramStory",
     "UGCPost",
+    "OnboardingState",
+    "VideoAsset",
 ]
