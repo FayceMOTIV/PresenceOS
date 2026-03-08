@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import {
   useCurrentFrame,
   useVideoConfig,
@@ -6,6 +6,9 @@ import {
   interpolate,
   Img,
   AbsoluteFill,
+  delayRender,
+  continueRender,
+  cancelRender,
 } from "remotion";
 
 export interface BreakoutClipProps {
@@ -24,6 +27,28 @@ const UI_ZONE_H = CANVAS_H - VIDEO_ZONE_H;
 const SUBJECT_SCALE = 1.15;
 const OVERLAP_PX = 120;
 
+// ── Image loader with delayRender ─────────────────────────────────────
+const RemoteImg: React.FC<{
+  src: string;
+  style: React.CSSProperties;
+  label: string;
+}> = ({ src, style, label }) => {
+  const [handle] = useState(() =>
+    delayRender(`Loading ${label}`, { timeoutInMilliseconds: 30_000 })
+  );
+
+  const onLoad = useCallback(() => {
+    continueRender(handle);
+  }, [handle]);
+
+  const onError = useCallback(() => {
+    cancelRender(new Error(`Failed to load image: ${label} (${src})`));
+  }, [handle, src, label]);
+
+  return <Img src={src} style={style} onLoad={onLoad} onError={onError} />;
+};
+
+// ── Main composition ──────────────────────────────────────────────────
 export const BreakoutClip: React.FC<BreakoutClipProps> = ({
   originalPhotoUrl,
   cutoutUrl,
@@ -61,8 +86,9 @@ export const BreakoutClip: React.FC<BreakoutClipProps> = ({
           overflow: "hidden",
         }}
       >
-        <Img
+        <RemoteImg
           src={originalPhotoUrl}
+          label="original photo"
           style={{
             width: "100%",
             height: "100%",
@@ -257,8 +283,9 @@ export const BreakoutClip: React.FC<BreakoutClipProps> = ({
           zIndex: 20,
         }}
       >
-        <Img
+        <RemoteImg
           src={cutoutUrl}
+          label="cutout subject"
           style={{
             width: "100%",
             height: "100%",

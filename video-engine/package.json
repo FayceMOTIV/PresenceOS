@@ -6,7 +6,8 @@
   "scripts": {
     "start": "remotion studio",
     "serve": "ts-node server.ts",
-    "build": "remotion render src/Root.tsx",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build": "npm run build:server",
     "render": "remotion render",
     "upgrade": "remotion upgrade"
   },

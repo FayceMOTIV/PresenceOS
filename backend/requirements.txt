@@ -44,6 +44,7 @@ python-magic>=0.4.27
 
 # Media Processing
 Pillow>=11.0.0
+pillow-heif>=0.18.0
 pydub>=0.25.1
 
 # Messaging
@@ -90,6 +91,9 @@ playwright>=1.40.0
 praw>=7.8.0
 google-api-python-client>=2.130.0
 yt-dlp>=2024.1.0
+
+# Dish Recognition (Gemini Vision)
+google-generativeai>=0.8.0
 
 # Linting
 ruff>=0.8.0

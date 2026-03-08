@@ -105,6 +105,15 @@ class PromptBuilder:
                 f"PHOTOS DISPONIBLES : {media_section['total_assets']} images/vidéos de qualité"
             )
 
+        # ── Trending hashtags ──
+        trends = kb.get("trends", [])
+        if trends:
+            tags_str = ", ".join(h["tag"] for h in trends[:10])
+            sections.append(
+                f"HASHTAGS TENDANCE (cette semaine) : {tags_str}\n"
+                "Intègre 2-3 de ces hashtags s'ils sont pertinents pour le post."
+            )
+
         # ── Performance hints ──
         perf = kb.get("performance", {})
         if perf.get("avg_engagement_rate"):

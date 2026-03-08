@@ -51,7 +51,8 @@ class ProposalGenerator:
         kb = result.scalar_one_or_none()
         if not kb:
             return {}
-        return {
+
+        kb_dict = {
             "identity": kb.identity or {},
             "menu": kb.menu or {},
             "media": kb.media or {},
@@ -60,6 +61,20 @@ class ProposalGenerator:
             "performance": kb.performance or {},
             "kb_version": kb.kb_version,
         }
+
+        # Enrich with trending hashtags (fail-safe)
+        try:
+            from app.services.trending_service import TrendingService
+
+            trending_svc = TrendingService()
+            niche = kb_dict.get("identity", {}).get("type")
+            hashtags = await trending_svc.get_trending_hashtags(niche=niche)
+            kb_dict["trends"] = hashtags
+        except Exception as exc:
+            logger.warning("Trending hashtags fetch failed", error=str(exc))
+            kb_dict["trends"] = []
+
+        return kb_dict
 
     # ── Generation Methods ────────────────────────────────────────────────
 

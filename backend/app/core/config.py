@@ -153,6 +153,12 @@ class Settings(BaseSettings):
     fal_key: str = ""
     fal_webhook_url: str = ""
 
+    # Google Gemini (dish recognition)
+    gemini_api_key: str = ""
+
+    # Remotion render service (Breakout V3)
+    remotion_service_url: str = "http://localhost:3001"
+
     # Public API URL (for generating file URLs)
     api_base_url: str = "http://localhost:8000"
 

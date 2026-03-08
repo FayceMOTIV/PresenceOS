@@ -67,10 +67,11 @@ async def generate_breakout(
     await verify_brand_access(brand_id, user, db)
 
     content_type = photo.content_type or ""
-    if not content_type.startswith("image/"):
+    allowed_types = ("image/jpeg", "image/png", "image/heic", "image/heif", "image/webp")
+    if not any(content_type.startswith(t) for t in allowed_types):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Le fichier doit etre une image (JPEG, PNG)",
+            detail="Le fichier doit etre une image (JPEG, PNG, HEIC, WebP)",
         )
 
     contents = await photo.read()
@@ -80,6 +81,11 @@ async def generate_breakout(
             detail="Image trop volumineuse (max 20 Mo)",
         )
 
+    # Normalize HEIC/WebP/PNG → JPEG (handles iPhone photos)
+    from app.utils.normalize_image import normalize_image
+
+    contents = await asyncio.to_thread(normalize_image, contents)
+
     # Upload photo to fal.ai to get a public URL
     import fal_client
     from app.core.config import settings
@@ -88,7 +94,7 @@ async def generate_breakout(
     if fal_key:
         os.environ["FAL_KEY"] = fal_key
 
-    suffix = ".jpg" if "jpeg" in content_type else ".png"
+    suffix = ".jpg"
 
     def _upload_photo() -> str:
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:

@@ -27,9 +27,12 @@ const { width: SCREEN_W } = Dimensions.get("window");
 type Step = "input" | "generating" | "preview" | "error";
 
 const PROGRESS_STEPS = [
-  { label: "Detourage du sujet", range: [0, 20] },
-  { label: "Composition Breakout", range: [20, 80] },
-  { label: "Finalisation video", range: [80, 100] },
+  { label: "Upload de la photo...", range: [0, 8] },
+  { label: "Detourage du sujet...", range: [8, 25] },
+  { label: "Preparation de l'animation...", range: [25, 45] },
+  { label: "Rendu de la video...", range: [45, 75] },
+  { label: "Finalisation du clip...", range: [75, 90] },
+  { label: "Presque pret...", range: [90, 100] },
 ] as const;
 
 function getStepLabel(progress: number): string {
@@ -78,14 +81,14 @@ export default function BreakoutScreen() {
     setProgressLabel("Upload de la photo...");
     setErrorMsg(null);
 
-    // Simulated progress during the ~35-40s pipeline
+    // Simulated progress during the ~45-90s pipeline
     progressTimer.current = setInterval(() => {
       setProgress((prev) => {
-        const next = Math.min(prev + 2, 92);
+        const next = Math.min(prev + 1, 95);
         setProgressLabel(getStepLabel(next));
         return next;
       });
-    }, 800);
+    }, 1200);
 
     try {
       const formData = new FormData();
@@ -148,7 +151,7 @@ export default function BreakoutScreen() {
           </View>
           <Text style={styles.progressPercent}>{progress}%</Text>
           <Text style={styles.progressLabel}>{progressLabel}</Text>
-          <Text style={styles.progressEta}>~35 secondes</Text>
+          <Text style={styles.progressEta}>~1 minute</Text>
         </View>
       </SafeAreaView>
     );
@@ -296,7 +299,7 @@ export default function BreakoutScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        <Text style={styles.costHint}>Gratuit · ~35 secondes</Text>
+        <Text style={styles.costHint}>Gratuit · ~1 minute</Text>
       </ScrollView>
     </SafeAreaView>
   );

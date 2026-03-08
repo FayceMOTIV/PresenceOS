@@ -116,6 +116,17 @@ class CMChatService:
         except Exception as exc:
             logger.warning("Temporal context failed, skipping", error=str(exc))
 
+        # ── Weather context (Open-Meteo) ──
+        try:
+            from app.services.weather_service import WeatherService
+
+            weather_svc = WeatherService()
+            weather_ctx = await weather_svc.get_current_weather(brand.locations)
+            if weather_ctx:
+                sections.append(weather_ctx)
+        except Exception as exc:
+            logger.warning("Weather context failed, skipping", error=str(exc))
+
         # ── Superpowers: enrichissement contextuel ──
         superpower_fns = [
             self._social_accounts_section,

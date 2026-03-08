@@ -165,6 +165,7 @@ async function requestV2<T = any>(
     params?: Record<string, any>;
     headers?: Record<string, string>;
     isFormData?: boolean;
+    timeout?: number;
   }
 ): Promise<ApiResponse<T>> {
   const url = `${API_V2_BASE}${path}`;
@@ -198,12 +199,13 @@ async function requestV2<T = any>(
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeoutMs = options?.timeout ?? 30000;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   fetchOptions.signal = controller.signal;
 
   try {
     const res = await fetch(fullUrl, fetchOptions);
-    clearTimeout(timeout);
+    clearTimeout(timeoutId);
 
     let data: any;
     const contentType = res.headers.get("content-type") || "";
@@ -256,7 +258,7 @@ async function requestV2<T = any>(
 
     return { data, status: res.status };
   } catch (err: any) {
-    clearTimeout(timeout);
+    clearTimeout(timeoutId);
     if (err.name === "AbortError") {
       const error: any = new Error("Request timeout");
       error.code = "ECONNABORTED";
@@ -555,6 +557,17 @@ export const socialV2Api = {
 export const breakoutApi = {
   generate: (brandId: string, formData: FormData) =>
     requestV2("POST", `/breakout/${brandId}/generate`, {
+      body: formData,
+      isFormData: true,
+      timeout: 160_000, // 160s — Remotion render can take 45-90s
+    }),
+};
+
+// ── Dish Recognition (Gemini Vision) ──
+
+export const dishApi = {
+  recognize: (formData: FormData) =>
+    requestV2("POST", "/dish/recognize", {
       body: formData,
       isFormData: true,
     }),

@@ -11,7 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { BrandContext } from "@/contexts/BrandContext";
 import { Colors } from "@/constants/colors";
 import { FR } from "@/constants/i18n";
-import { assetsApi, contentApi } from "@/lib/api";
+import { assetsApi, contentApi, dishApi } from "@/lib/api";
 import { Dish } from "@/types";
 
 export default function AssetUploadScreen() {
@@ -24,6 +24,8 @@ export default function AssetUploadScreen() {
   const [linkedDishId, setLinkedDishId] = useState<string | null>(null);
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [recognizing, setRecognizing] = useState(false);
+  const [recognizedDish, setRecognizedDish] = useState<string | null>(null);
 
   useEffect(() => {
     if (!brandId) return;
@@ -32,15 +34,44 @@ export default function AssetUploadScreen() {
     }).catch(() => {});
   }, [brandId]);
 
+  const recognizeDish = useCallback(async (uri: string) => {
+    setRecognizing(true);
+    try {
+      const formData = new FormData();
+      const filename = uri.split("/").pop() || "photo.jpg";
+      formData.append("photo", { uri, name: filename, type: "image/jpeg" } as any);
+      const res = await dishApi.recognize(formData);
+      const data = res.data;
+      if (data?.dish_name && data.dish_name !== "inconnu" && data.confidence > 0.5) {
+        setRecognizedDish(data.dish_name);
+        if (!label) setLabel(data.dish_name);
+        // Auto-select matching dish if found
+        const match = dishes.find(
+          (d) => d.name.toLowerCase() === data.dish_name.toLowerCase()
+        );
+        if (match && !linkedDishId) setLinkedDishId(match.id);
+      }
+    } catch {
+      // Silent fail — recognition is optional
+    } finally {
+      setRecognizing(false);
+    }
+  }, [dishes, label, linkedDishId]);
+
+  const onImageSelected = useCallback((uri: string) => {
+    setImageUri(uri);
+    recognizeDish(uri);
+  }, [recognizeDish]);
+
   const pickImage = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images", "videos"],
       quality: 0.8,
     });
     if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
+      onImageSelected(result.assets[0].uri);
     }
-  }, []);
+  }, [onImageSelected]);
 
   const takePhoto = useCallback(async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -50,9 +81,9 @@ export default function AssetUploadScreen() {
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
     if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
+      onImageSelected(result.assets[0].uri);
     }
-  }, []);
+  }, [onImageSelected]);
 
   const handleUpload = useCallback(async () => {
     if (!brandId || !imageUri) return;
@@ -101,6 +132,19 @@ export default function AssetUploadScreen() {
               <Ionicons name="camera-outline" size={28} color={Colors.brand.primary} />
               <Text style={styles.pickerText}>{FR.upload_take_photo}</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {recognizing && (
+          <View style={styles.recognizingRow}>
+            <ActivityIndicator size="small" color={Colors.brand.amber} />
+            <Text style={styles.recognizingText}>Identification du plat...</Text>
+          </View>
+        )}
+        {recognizedDish && !recognizing && (
+          <View style={styles.recognizedRow}>
+            <Ionicons name="sparkles" size={16} color={Colors.brand.amber} />
+            <Text style={styles.recognizedText}>Plat detecte : {recognizedDish}</Text>
           </View>
         )}
 
@@ -162,4 +206,8 @@ const styles = StyleSheet.create({
   uploadBtn: { backgroundColor: Colors.brand.primary, borderRadius: 14, paddingVertical: 16, alignItems: "center", marginTop: 8 },
   uploadBtnDisabled: { opacity: 0.5 },
   uploadBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  recognizingRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+  recognizingText: { color: Colors.text.muted, fontSize: 13 },
+  recognizedRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: Colors.brand.glow, borderRadius: 10 },
+  recognizedText: { color: Colors.brand.amber, fontSize: 13, fontWeight: "600" },
 });
