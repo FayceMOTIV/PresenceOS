@@ -83,7 +83,7 @@ class ImageStudio:
         import google.generativeai as genai
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash-preview-image-generation")
+        model = genai.GenerativeModel("gemini-2.5-flash-image")
         try:
             response = await asyncio.get_event_loop().run_in_executor(
                 None,

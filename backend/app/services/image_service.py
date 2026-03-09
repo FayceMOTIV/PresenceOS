@@ -21,7 +21,7 @@ from app.services.storage import get_storage_service
 
 logger = structlog.get_logger()
 
-MODEL_FAST = "gemini-2.0-flash-preview-image-generation"
+MODEL_FAST = "gemini-2.5-flash-image"
 MODEL_PRO = "gemini-2.5-pro-preview-06-05"
 
 FOOD_PROMPT = """Professional restaurant food photography of {dish_name}.

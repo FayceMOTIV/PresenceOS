@@ -264,10 +264,10 @@ class PhotoStudio:
         Returns:
             Dict with image_url, style, niche, size, generated_at.
         """
-        import google.generativeai as genai
+        import httpx
 
         enhanced_prompt = self._enhance_prompt(prompt, niche, style, brand_name)
-        model_id = "gemini-2.0-flash-preview-image-generation"
+        model_id = "gemini-2.5-flash-image"
 
         logger.info(
             "Generating photo",
@@ -277,26 +277,33 @@ class PhotoStudio:
             prompt_length=len(enhanced_prompt),
         )
 
+        api_key = settings.google_api_key or settings.gemini_api_key
+        if not api_key:
+            raise RuntimeError("Google API key not configured. Set GOOGLE_API_KEY or GEMINI_API_KEY.")
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
+
         try:
-            model = self._get_model(model_id)
-            response = await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: model.generate_content(
-                    contents=enhanced_prompt,
-                    generation_config=genai.GenerationConfig(
-                        response_modalities=["IMAGE"],
-                    ),
-                ),
-            )
+            async with httpx.AsyncClient(timeout=90.0) as client:
+                resp = await client.post(
+                    url,
+                    params={"key": api_key},
+                    json={
+                        "contents": [{"parts": [{"text": enhanced_prompt}]}],
+                        "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]},
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
         except Exception as exc:
             logger.error("Photo generation failed", niche=niche, style=style, error=str(exc))
             raise
 
         image_bytes = None
-        for part in response.candidates[0].content.parts:
-            if hasattr(part, "inline_data") and part.inline_data:
-                raw = part.inline_data.data
-                image_bytes = base64.b64decode(raw) if isinstance(raw, str) else raw
+        for part in data.get("candidates", [{}])[0].get("content", {}).get("parts", []):
+            inline = part.get("inlineData", {})
+            if inline.get("data"):
+                image_bytes = base64.b64decode(inline["data"])
                 break
 
         if not image_bytes:

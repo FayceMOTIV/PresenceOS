@@ -129,13 +129,20 @@ async def generate_photo(
         )
         raise HTTPException(status_code=500, detail=str(exc))
     except Exception as exc:
+        error_msg = str(exc)
         logger.error(
             "Photo generation failed",
             user_id=str(current_user.id),
             niche=request.niche,
             style=request.style,
-            error=str(exc),
+            error=error_msg,
         )
+        # Surface quota errors clearly instead of generic 500
+        if "quota" in error_msg.lower() or "429" in error_msg:
+            raise HTTPException(
+                status_code=429,
+                detail="Quota Gemini Image epuisee. Reessayez dans quelques minutes.",
+            )
         raise HTTPException(
             status_code=500,
             detail="Photo generation failed. Please try again.",

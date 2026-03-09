@@ -113,6 +113,34 @@ async def get_credits(
     )
 
 
+class SetCreditsRequest(BaseModel):
+    credits: int = Field(ge=0, le=10000)
+    plan: str = "studio"
+
+
+@router.put("/credits/{brand_id}")
+async def set_credits(
+    brand_id: uuid.UUID,
+    body: SetCreditsRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> VideoCreditsResponse:
+    """Admin: set video credits for a brand."""
+    await get_brand(brand_id, current_user, db)
+    credits = await _ensure_credits(brand_id, db)
+    credits.credits_remaining = body.credits
+    credits.credits_total = body.credits
+    credits.plan = body.plan
+    await db.commit()
+    await db.refresh(credits)
+    return VideoCreditsResponse(
+        credits_remaining=credits.credits_remaining,
+        credits_total=credits.credits_total,
+        plan=credits.plan,
+        reset_date=credits.reset_date.isoformat() if credits.reset_date else None,
+    )
+
+
 @router.post("/generate")
 async def generate_video(
     body: GenerateVideoRequest,
@@ -176,11 +204,8 @@ async def generate_video(
         os.environ["FAL_KEY"] = fal_key
         import fal_client
 
-        # Model mapping: pro for 5s/10s, master for 15s
-        if body.duration >= 15:
-            model_id = "fal-ai/kling-video/v2.1/master/text-to-video"
-        else:
-            model_id = "fal-ai/kling-video/v2.1/pro/text-to-video"
+        # Kling 2.6 Pro for all durations
+        model_id = "fal-ai/kling-video/v2.6/pro/text-to-video"
 
         result = await fal_client.subscribe_async(
             model_id,

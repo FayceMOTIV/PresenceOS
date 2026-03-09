@@ -65,11 +65,8 @@ class VideoStudio:
             os.environ["FAL_KEY"] = fal_key
             import fal_client
 
-            # Model mapping: pro for 5s/10s, master for 15s
-            if duration >= 15:
-                model_id = "fal-ai/kling-video/v2.6/master/text-to-video"
-            else:
-                model_id = "fal-ai/kling-video/v2.6/pro/text-to-video"
+            # Kling 2.6 Pro for all durations (master variant removed by fal.ai)
+            model_id = "fal-ai/kling-video/v2.6/pro/text-to-video"
 
             result = await fal_client.subscribe_async(
                 model_id,
