@@ -23,6 +23,7 @@ import ConnectSocialsScreen from "@/screens/social/ConnectSocialsScreen";
 import VideoStudioScreen from "@/screens/video/VideoStudioScreen";
 import VideoPlansScreen from "@/screens/video/VideoPlansScreen";
 import AIVideoScreen from "@/screens/video/AIVideoScreen";
+import VideoTemplatesScreen from "@/screens/video/VideoTemplatesScreen";
 import BreakoutScreen from "@/screens/breakout/BreakoutScreen";
 import ValidationInboxScreen from "@/screens/validation/ValidationInboxScreen";
 import BrainDashboardScreen from "@/screens/brain/BrainDashboardScreen";
@@ -64,6 +65,7 @@ export type VideoStackParams = {
   VideoStudio: undefined;
   VideoPlans: undefined;
   AIVideo: undefined;
+  VideoTemplates: undefined;
 };
 
 export type BreakoutStackParams = {
@@ -181,6 +183,7 @@ function VideoStackScreen() {
         options={{ presentation: "modal" }}
       />
       <VideoStackNav.Screen name="AIVideo" component={AIVideoScreen} />
+      <VideoStackNav.Screen name="VideoTemplates" component={VideoTemplatesScreen} />
     </VideoStackNav.Navigator>
   );
 }

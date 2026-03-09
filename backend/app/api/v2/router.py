@@ -3,7 +3,7 @@ PresenceOS - API v2 Router
 """
 from fastapi import APIRouter
 
-from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout, dish_recognition, video, images, ai_video, social_publish
+from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout, dish_recognition, video, images, ai_video, social_publish, video_templates
 
 api_v2_router = APIRouter()
 
@@ -42,3 +42,6 @@ api_v2_router.include_router(ai_video.router, prefix="/ai-video", tags=["AI Vide
 
 # Social Publishing — Postiz self-hosted scheduler
 api_v2_router.include_router(social_publish.router, prefix="/publish", tags=["Social Publish"])
+
+# Video Templates — Breakout V4 + Cinematic Food
+api_v2_router.include_router(video_templates.router, prefix="/templates", tags=["Video Templates"])

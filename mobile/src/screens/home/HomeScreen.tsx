@@ -252,6 +252,22 @@ export default function HomeScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
+        {/* Templates Video card */}
+        <TouchableOpacity
+          style={styles.templateCard}
+          onPress={() => nav.getParent()?.navigate("Video", { screen: "VideoTemplates" } as never)}
+          activeOpacity={0.85}
+        >
+          <View style={styles.templateInner}>
+            <Ionicons name="layers-outline" size={22} color={Colors.brand.primary} />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.templateTitle}>Templates Video</Text>
+              <Text style={styles.templateSubtitle}>Breakout V4 + Cinematic Food</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.text.muted} />
+          </View>
+        </TouchableOpacity>
+
         {/* Brief du matin */}
         {!briefAnswered && (
           <TouchableOpacity
@@ -443,6 +459,34 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
+  },
+  templateCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: Colors.border.default,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  templateInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+  },
+  templateTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: Colors.text.primary,
+  },
+  templateSubtitle: {
+    fontSize: 12,
+    color: Colors.text.secondary,
+    marginTop: 1,
   },
   videoGradient: {
     flexDirection: "row",

@@ -649,4 +649,52 @@ export const postizApi = {
     requestV2("GET", "/publish/health"),
 };
 
+// ── Video Templates (Breakout V4 + Cinematic Food) ──
+
+export const videoTemplatesApi = {
+  // Breakout V4 — prepare (rembg cutout, ~5s)
+  prepareBreakoutV4: (brandId: string, formData: FormData) =>
+    requestV2("POST", `/templates/breakout-v4/brands/${brandId}/prepare`, {
+      body: formData,
+      isFormData: true,
+      timeout: 30_000,
+    }),
+  // Breakout V4 — render (Remotion, ~30-45s)
+  renderBreakoutV4: (brandId: string, body: {
+    original_url: string;
+    cutout_url: string;
+    business_name?: string;
+    instagram_handle?: string;
+    caption?: string;
+    accent_color?: string;
+  }) =>
+    requestV2("POST", `/templates/breakout-v4/brands/${brandId}/render`, {
+      body,
+      timeout: 90_000,
+    }),
+  // Breakout V4 — full pipeline (photo -> MP4, ~35-45s)
+  generateBreakoutV4: (brandId: string, formData: FormData) =>
+    requestV2("POST", `/templates/breakout-v4/brands/${brandId}/generate`, {
+      body: formData,
+      isFormData: true,
+      timeout: 160_000,
+    }),
+  // Cinematic Food — photo upload -> video (~60-90s)
+  generateCinematic: (brandId: string, formData: FormData) =>
+    requestV2("POST", `/templates/cinematic/brands/${brandId}/generate`, {
+      body: formData,
+      isFormData: true,
+      timeout: 180_000,
+    }),
+  // Cinematic Food — from existing URL
+  generateCinematicFromUrl: (brandId: string, imageUrl: string, foodType = "default", duration = 5, aspectRatio = "9:16") =>
+    requestV2("POST", `/templates/cinematic/brands/${brandId}/from-url`, {
+      body: { image_url: imageUrl, food_type: foodType, duration: String(duration), aspect_ratio: aspectRatio },
+      timeout: 180_000,
+    }),
+  // Pricing
+  cinematicPricing: () =>
+    requestV2("GET", "/templates/cinematic/pricing"),
+};
+
 export default api;
