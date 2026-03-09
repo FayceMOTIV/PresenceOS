@@ -13,13 +13,13 @@ import FileHubScreen from "@/screens/files/FileHubScreen";
 import AssetUploadScreen from "@/screens/files/AssetUploadScreen";
 import DishFormScreen from "@/screens/files/DishFormScreen";
 import ScanMenuScreen from "@/screens/files/ScanMenuScreen";
-import ProposalsListScreen from "@/screens/proposals/ProposalsListScreen";
 import ProposalDetailScreen from "@/screens/proposals/ProposalDetailScreen";
 import BriefDuJourScreen from "@/screens/brief/BriefDuJourScreen";
 import InboxScreen from "@/screens/inbox/InboxScreen";
 import CMChatScreen from "@/screens/cm/CMChatScreen";
 import IlyasChatScreen from "@/screens/chat/IlyasChatScreen";
 import SocialAccountsScreen from "@/screens/social/SocialAccountsScreen";
+import ConnectSocialsScreen from "@/screens/social/ConnectSocialsScreen";
 import VideoStudioScreen from "@/screens/video/VideoStudioScreen";
 import VideoPlansScreen from "@/screens/video/VideoPlansScreen";
 import AIVideoScreen from "@/screens/video/AIVideoScreen";
@@ -28,12 +28,15 @@ import ValidationInboxScreen from "@/screens/validation/ValidationInboxScreen";
 import BrainDashboardScreen from "@/screens/brain/BrainDashboardScreen";
 import AnalyticsScreen from "@/screens/analytics/AnalyticsScreen";
 import SettingsScreen from "@/screens/settings/SettingsScreen";
+import PublishScreen from "@/screens/social/PublishScreen";
 
 // ── Types ──
 export type HomeStackParams = {
   HomeMain: undefined;
   Brief: undefined;
   SocialAccounts: undefined;
+  ConnectSocials: undefined;
+  Publish: undefined;
   BrainDashboard: undefined;
   Analytics: undefined;
   ValidationInbox: undefined;
@@ -45,11 +48,6 @@ export type FilesStackParams = {
   AssetUpload: undefined;
   DishForm: { dishId?: string };
   ScanMenu: undefined;
-};
-
-export type ProposalsStackParams = {
-  ProposalsList: undefined;
-  ProposalDetail: { proposalId: string };
 };
 
 export type IlyasStackParams = {
@@ -88,6 +86,16 @@ function HomeStackScreen() {
       <HomeStackNav.Screen
         name="SocialAccounts"
         component={SocialAccountsScreen}
+        options={{ presentation: "modal" }}
+      />
+      <HomeStackNav.Screen
+        name="ConnectSocials"
+        component={ConnectSocialsScreen}
+        options={{ presentation: "modal" }}
+      />
+      <HomeStackNav.Screen
+        name="Publish"
+        component={PublishScreen}
         options={{ presentation: "modal" }}
       />
       <HomeStackNav.Screen
@@ -136,17 +144,6 @@ function FilesStackScreen() {
         options={{ presentation: "modal" }}
       />
     </FilesStackNav.Navigator>
-  );
-}
-
-// ── Proposals Stack ──
-const ProposalsStackNav = createNativeStackNavigator<ProposalsStackParams>();
-function ProposalsStackScreen() {
-  return (
-    <ProposalsStackNav.Navigator screenOptions={{ headerShown: false, headerBackVisible: false }}>
-      <ProposalsStackNav.Screen name="ProposalsList" component={ProposalsListScreen} />
-      <ProposalsStackNav.Screen name="ProposalDetail" component={ProposalDetailScreen} />
-    </ProposalsStackNav.Navigator>
   );
 }
 

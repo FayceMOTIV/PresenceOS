@@ -7,7 +7,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { BrandContext } from "@/contexts/BrandContext";
-import { ProposalsStackParams } from "@/navigation/TabNavigator";
+import { IlyasStackParams } from "@/navigation/TabNavigator";
 import { Colors } from "@/constants/colors";
 import { FR } from "@/constants/i18n";
 import { proposalsApi } from "@/lib/api";
@@ -15,7 +15,7 @@ import { AIProposal } from "@/types";
 import ProposalCard from "@/components/ProposalCard";
 import EmptyStateCard from "@/components/EmptyStateCard";
 
-type Nav = NativeStackNavigationProp<ProposalsStackParams>;
+type Nav = NativeStackNavigationProp<IlyasStackParams>;
 
 const FILTERS = [
   { key: "all", label: FR.proposals_filter_all },

@@ -8,13 +8,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { BrandContext } from "@/contexts/BrandContext";
-import { ProposalsStackParams } from "@/navigation/TabNavigator";
+import { IlyasStackParams } from "@/navigation/TabNavigator";
 import { Colors } from "@/constants/colors";
 import { FR } from "@/constants/i18n";
 import { proposalsApi } from "@/lib/api";
 import { AIProposal } from "@/types";
 
-type Route = RouteProp<ProposalsStackParams, "ProposalDetail">;
+type Route = RouteProp<IlyasStackParams, "ProposalDetail">;
 
 const STATUS_COLORS: Record<string, string> = {
   pending: Colors.status.warning,

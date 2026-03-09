@@ -1,7 +1,7 @@
 // PresenceOS Mobile — Breakout Screen V3
 // Photo upload -> rembg -> Remotion template -> MP4
 
-import React, { useContext, useState, useRef, useCallback } from "react";
+import React, { useContext, useState, useRef, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -55,6 +55,12 @@ export default function BreakoutScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (progressTimer.current) clearInterval(progressTimer.current);
+    };
+  }, []);
 
   const pickPhoto = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -211,7 +217,10 @@ export default function BreakoutScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionBtn, styles.btnAccept]}
-              onPress={handleReset}
+              onPress={() => {
+                Alert.alert("Video sauvegardee", "Ta video Breakout a ete enregistree dans ta mediatheque.");
+                handleReset();
+              }}
             >
               <Ionicons
                 name="checkmark"

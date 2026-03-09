@@ -214,6 +214,14 @@ export default function HomeScreen() {
             <Ionicons name="checkmark-circle-outline" size={22} color={Colors.status.success} />
             <Text style={styles.serviceBtnLabel}>{FR.validation_title}</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.serviceBtn}
+            onPress={() => nav.navigate("Publish")}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="paper-plane-outline" size={22} color={Colors.brand.amber} />
+            <Text style={styles.serviceBtnLabel}>Publier</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Video IA card */}
@@ -273,7 +281,7 @@ export default function HomeScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{FR.home_recent_title}</Text>
           {proposals.length > 0 && (
-            <TouchableOpacity onPress={() => nav.getParent()?.navigate("Proposals" as never)}>
+            <TouchableOpacity onPress={() => nav.getParent()?.navigate("Ilyas" as never)}>
               <Text style={styles.seeAll}>{FR.home_see_all}</Text>
             </TouchableOpacity>
           )}
@@ -292,7 +300,7 @@ export default function HomeScreen() {
         ) : (
           <View style={styles.proposalList}>
             {proposals.map((p) => (
-              <ProposalCard key={p.id} proposal={p} onPress={() => (nav.getParent()?.navigate as any)("Proposals", { screen: "ProposalDetail", params: { proposalId: p.id } })} />
+              <ProposalCard key={p.id} proposal={p} onPress={() => (nav.getParent()?.navigate as any)("Ilyas", { screen: "ProposalDetail", params: { proposalId: p.id } })} />
             ))}
           </View>
         )}
