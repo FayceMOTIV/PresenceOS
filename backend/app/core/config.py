@@ -170,6 +170,10 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     google_api_key: str = ""  # GOOGLE_API_KEY for Gemini Image
 
+    # Postiz self-hosted social scheduler
+    postiz_url: str = ""
+    postiz_api_key: str = ""
+
     # Remotion render service (Breakout V3)
     remotion_service_url: str = "http://localhost:3001"
 

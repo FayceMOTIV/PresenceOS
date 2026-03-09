@@ -618,4 +618,35 @@ export const aiVideoApi = {
     }),
 };
 
+// ── Social Publish v2 (Postiz self-hosted) ──
+
+export const postizApi = {
+  // OAuth connect (headless — user sees native platform popup, never Postiz)
+  getConnectUrl: (brandId: string, platform: string) =>
+    requestV2("GET", `/publish/brands/${brandId}/connect/${platform}`),
+  // Integrations
+  integrations: (brandId: string) =>
+    requestV2("GET", `/publish/brands/${brandId}/integrations`),
+  disconnect: (brandId: string, integrationId: string) =>
+    requestV2("DELETE", `/publish/brands/${brandId}/integrations/${integrationId}`),
+  // Publishing
+  publishNow: (brandId: string, integrationIds: string[], content: string, mediaUrls?: string[]) =>
+    requestV2("POST", `/publish/brands/${brandId}/publish`, {
+      body: { integration_ids: integrationIds, content, media_urls: mediaUrls ?? [] },
+    }),
+  schedule: (brandId: string, integrationIds: string[], content: string, publishAt: string, mediaUrls?: string[]) =>
+    requestV2("POST", `/publish/brands/${brandId}/schedule`, {
+      body: { integration_ids: integrationIds, content, publish_at: publishAt, media_urls: mediaUrls ?? [] },
+    }),
+  listPosts: (brandId: string) =>
+    requestV2("GET", `/publish/brands/${brandId}/posts`),
+  deletePost: (brandId: string, postId: string) =>
+    requestV2("DELETE", `/publish/brands/${brandId}/posts/${postId}`),
+  // Analytics
+  analytics: (brandId: string, integrationId: string, days?: number) =>
+    requestV2("GET", `/publish/brands/${brandId}/analytics/${integrationId}${days ? `?days=${days}` : ""}`),
+  health: () =>
+    requestV2("GET", "/publish/health"),
+};
+
 export default api;

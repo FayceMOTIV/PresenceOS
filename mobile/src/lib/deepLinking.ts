@@ -36,7 +36,8 @@ export const deepLinkingConfig: { prefixes: string[]; config: { screens: Record<
         screens: {
           HomeMain: "",
           Brief: "brief",
-          SocialAccounts: "social-callback",
+          SocialAccounts: "social-accounts",
+          ConnectSocials: "social-callback",
           BrainDashboard: "brain",
           Analytics: "analytics",
           ValidationInbox: "validation",
