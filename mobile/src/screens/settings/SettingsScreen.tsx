@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { AuthContext, BrandContext } from "@/contexts/BrandContext";
+import { useAuthStore } from "@/stores/authStore";
 import { Colors } from "@/constants/colors";
 import Constants from "expo-constants";
 
@@ -58,9 +59,12 @@ function SettingsRow({
 export default function SettingsScreen() {
   const auth = useContext(AuthContext);
   const brand = useContext(BrandContext);
+  const firebaseUser = useAuthStore((s) => s.user);
   const nav = useNavigation();
   const appVersion = Constants.expoConfig?.version ?? "1.0.0";
   const brandName = brand?.activeBrand?.name ?? "—";
+  const userEmail = firebaseUser?.email ?? "—";
+  const userName = firebaseUser?.displayName ?? "—";
 
   const handleLogout = () => {
     Alert.alert("Déconnexion", "Voulez-vous vous déconnecter ?", [
@@ -90,8 +94,9 @@ export default function SettingsScreen() {
         {/* Account section */}
         <Text style={styles.sectionTitle}>Compte</Text>
         <View style={styles.card}>
+          <SettingsRow icon="person" label="Nom" value={userName} />
+          <SettingsRow icon="mail" label="Email" value={userEmail} />
           <SettingsRow icon="business" label="Marque active" value={brandName} />
-          <SettingsRow icon="shield-checkmark" label="Sécurité" value="JWT" />
         </View>
 
         {/* App section */}

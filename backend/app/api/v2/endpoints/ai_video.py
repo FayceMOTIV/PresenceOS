@@ -2,14 +2,18 @@
 PresenceOS — AI Video Generation API v2
 
 Generate videos from text or images using fal.ai (Kling 2.6 Pro / Wan 2.6).
+Includes video credits management (Firebase auth).
 """
+import uuid
 import logging
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from app.api.v2.deps import FirebaseUser, DBSession, verify_brand_access
 from app.middleware.rate_limit import limiter
+from app.models.video_credits import VideoCredits, VideoPlan
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +46,95 @@ class AIVideoResponse(BaseModel):
     generated_at: str
 
 
-# ── Endpoints ────────────────────────────────────────────────────────
+class VideoCreditsResponse(BaseModel):
+    credits_remaining: int
+    credits_total: int
+    plan: str
+    reset_date: str | None = None
+
+
+class SetCreditsRequest(BaseModel):
+    credits: int = Field(ge=0, le=10000)
+    plan: str = "studio"
+
+
+# ── Helpers ──────────────────────────────────────────────────────────
+
+
+async def _ensure_credits(brand_id: str, db) -> VideoCredits:
+    """Get or create video credits for a brand."""
+    bid = uuid.UUID(brand_id) if isinstance(brand_id, str) else brand_id
+    result = await db.execute(
+        select(VideoCredits).where(VideoCredits.brand_id == bid)
+    )
+    credits = result.scalar_one_or_none()
+
+    if not credits:
+        credits = VideoCredits(
+            brand_id=bid,
+            plan=VideoPlan.TRIAL.value,
+            credits_remaining=10,
+            credits_total=10,
+        )
+        db.add(credits)
+        await db.commit()
+        await db.refresh(credits)
+
+    return credits
+
+
+# ── Credits Endpoints ────────────────────────────────────────────────
+
+
+@router.get(
+    "/brands/{brand_id}/credits",
+    response_model=VideoCreditsResponse,
+    summary="Get video credits for a brand",
+)
+async def get_credits(
+    brand_id: str,
+    user: FirebaseUser,
+    db: DBSession,
+):
+    """Get video credits balance."""
+    await verify_brand_access(brand_id, user, db)
+    credits = await _ensure_credits(brand_id, db)
+    return VideoCreditsResponse(
+        credits_remaining=credits.credits_remaining,
+        credits_total=credits.credits_total,
+        plan=credits.plan,
+        reset_date=credits.reset_date.isoformat() if credits.reset_date else None,
+    )
+
+
+@router.put(
+    "/brands/{brand_id}/credits",
+    response_model=VideoCreditsResponse,
+    summary="Set video credits for a brand",
+)
+async def set_credits(
+    brand_id: str,
+    body: SetCreditsRequest,
+    user: FirebaseUser,
+    db: DBSession,
+):
+    """Set video credits (admin)."""
+    await verify_brand_access(brand_id, user, db)
+    credits = await _ensure_credits(brand_id, db)
+    credits.credits_remaining = body.credits
+    credits.credits_total = body.credits
+    credits.plan = body.plan
+    await db.commit()
+    await db.refresh(credits)
+    return VideoCreditsResponse(
+        credits_remaining=credits.credits_remaining,
+        credits_total=credits.credits_total,
+        plan=credits.plan,
+        reset_date=credits.reset_date.isoformat() if credits.reset_date else None,
+    )
+
+
+# ── Video Generation Endpoints ───────────────────────────────────────
 
 
 @router.post(

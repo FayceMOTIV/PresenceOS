@@ -410,7 +410,11 @@ export const videoApi = {
   generate: (brandId: string, prompt: string, duration: number, style: string, aspect_ratio?: string) =>
     api.post("/video/generate", { brand_id: brandId, prompt, duration, style, aspect_ratio }),
   credits: (brandId: string) =>
-    api.get(`/video/credits/${brandId}`),
+    requestV2("GET", `/ai-video/brands/${brandId}/credits`),
+  setCredits: (brandId: string, credits: number, plan?: string) =>
+    requestV2("PUT", `/ai-video/brands/${brandId}/credits`, {
+      body: { credits, plan: plan ?? "studio" },
+    }),
   history: (brandId: string) =>
     api.get(`/video/history/${brandId}`),
   // v2 — Save + Publish
