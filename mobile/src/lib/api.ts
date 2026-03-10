@@ -408,7 +408,10 @@ export const brandsApi = {
 // ── Video Generation ──
 export const videoApi = {
   generate: (brandId: string, prompt: string, duration: number, style: string, aspect_ratio?: string) =>
-    api.post("/video/generate", { brand_id: brandId, prompt, duration, style, aspect_ratio }),
+    requestV2("POST", `/ai-video/brands/${brandId}/generate`, {
+      body: { prompt, duration, style, aspect_ratio: aspect_ratio ?? "9:16" },
+      timeout: 120_000,
+    }),
   credits: (brandId: string) =>
     requestV2("GET", `/ai-video/brands/${brandId}/credits`),
   setCredits: (brandId: string, credits: number, plan?: string) =>

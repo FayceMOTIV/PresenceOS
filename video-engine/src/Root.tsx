@@ -7,6 +7,7 @@ import {
 import { PromoFlash, PromoFlashProps } from "./templates/PromoFlash";
 import { DailyStory, DailyStoryProps } from "./templates/DailyStory";
 import { BreakoutClip, BreakoutClipProps } from "./templates/BreakoutClip";
+import { BreakoutV4, BreakoutV4Props } from "./templates/BreakoutV4";
 
 // Default data for Remotion Studio preview
 const defaultRestaurantProps: RestaurantShowcaseProps = {
@@ -75,6 +76,17 @@ const defaultBreakoutProps: BreakoutClipProps = {
   accentColor: "#F59E0B",
 };
 
+const defaultBreakoutV4Props: BreakoutV4Props = {
+  originalPhotoUrl:
+    "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1080",
+  cutoutUrl:
+    "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1080",
+  businessName: "Le Family's",
+  instagramHandle: "@lefamilys",
+  caption: "Notre burger signature, fait maison avec amour !",
+  accentColor: "#F59E0B",
+};
+
 export const RemotionRoot: React.FC = () => {
   return (
     <>
@@ -113,6 +125,15 @@ export const RemotionRoot: React.FC = () => {
         width={720}
         height={1280}
         defaultProps={defaultBreakoutProps}
+      />
+      <Composition
+        id="BreakoutV4"
+        component={BreakoutV4}
+        durationInFrames={90}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={defaultBreakoutV4Props}
       />
     </>
   );
