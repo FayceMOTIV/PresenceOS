@@ -174,6 +174,10 @@ class Settings(BaseSettings):
     postiz_url: str = ""
     postiz_api_key: str = ""
 
+    # Late (getlate.dev) — unified social media API
+    late_api_key: str = ""
+    late_profile_id: str = ""  # Default profile ID from Late dashboard
+
     # Remotion render service (Breakout V3)
     remotion_service_url: str = "http://localhost:3001"
 

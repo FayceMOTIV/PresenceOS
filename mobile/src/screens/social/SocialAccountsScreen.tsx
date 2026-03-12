@@ -1,4 +1,4 @@
-// PresenceOS Mobile — Social Accounts Screen (Upload-Post integration)
+// PresenceOS Mobile — Social Accounts Screen (Late / getlate.dev integration)
 
 import React, { useContext, useState, useEffect, useCallback, useRef } from "react";
 import {
@@ -11,6 +11,7 @@ import {
   AppState,
   ActivityIndicator,
   Alert,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -27,7 +28,7 @@ interface SocialAccount {
   display_name?: string;
   connected: boolean;
   avatar_url?: string;
-  reauth_required?: boolean;
+  account_id?: string;
 }
 
 const PLATFORMS = [
@@ -59,6 +60,20 @@ const PLATFORMS = [
     color: "#0A66C2",
     gradient: ["#0A66C2", "#0077B5"] as [string, string],
   },
+  {
+    key: "twitter",
+    label: "X (Twitter)",
+    icon: "logo-twitter" as const,
+    color: "#1DA1F2",
+    gradient: ["#1DA1F2", "#0D8BD9"] as [string, string],
+  },
+  {
+    key: "youtube",
+    label: "YouTube",
+    icon: "logo-youtube" as const,
+    color: "#FF0000",
+    gradient: ["#FF0000", "#CC0000"] as [string, string],
+  },
 ];
 
 export default function SocialAccountsScreen() {
@@ -77,13 +92,16 @@ export default function SocialAccountsScreen() {
     try {
       const res = await socialApi.accounts(brandId);
       const raw: SocialAccount[] = res.data?.accounts || [];
+      // Merge with platform list to show all platforms
       const merged = PLATFORMS.map((p) => {
         const match = raw.find((a) => a.platform?.toLowerCase() === p.key);
         if (match && match.connected) {
           return {
             platform: p.key,
             username: match.username || match.display_name || undefined,
+            display_name: match.display_name,
             avatar_url: match.avatar_url,
+            account_id: match.account_id,
             connected: true,
           };
         }
@@ -123,7 +141,7 @@ export default function SocialAccountsScreen() {
     setConnectingPlatform(platform);
     try {
       const redirectUrl = buildRedirectUrl("social-callback");
-      const res = await socialApi.linkUrl(brandId, platform, redirectUrl);
+      const res = await socialApi.connectUrl(brandId, platform, redirectUrl);
       const url = res.data?.url;
       if (!url) {
         Alert.alert("Erreur", "Impossible de generer le lien de connexion.");
@@ -133,10 +151,10 @@ export default function SocialAccountsScreen() {
       const result = await openOAuthSession(url, redirectUrl);
 
       if (result.success) {
-        // Give Upload-Post a moment to sync
+        // Give Late a moment to sync the account
         await new Promise((r) => setTimeout(r, 2000));
         await fetchAccounts();
-        // Retry after longer delay for slow sync
+        // Retry for slow sync
         await new Promise((r) => setTimeout(r, 3000));
         await fetchAccounts();
       }
@@ -148,6 +166,29 @@ export default function SocialAccountsScreen() {
     } finally {
       setConnectingPlatform(null);
     }
+  };
+
+  const handleDisconnect = async (platform: string, accountId?: string) => {
+    if (!brandId || !accountId) return;
+    Alert.alert(
+      "Deconnecter",
+      `Deconnecter ${platform} ?`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Deconnecter",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await socialApi.disconnect(brandId, accountId);
+              await fetchAccounts();
+            } catch {
+              Alert.alert("Erreur", "Impossible de deconnecter.");
+            }
+          },
+        },
+      ]
+    );
   };
 
   const connectedCount = accounts.filter((a) => a.connected).length;
@@ -166,7 +207,11 @@ export default function SocialAccountsScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.iconWrap}
         >
-          <Ionicons name={item.icon} size={26} color={isTikTok ? "#000" : "#FFF"} />
+          {connected && account?.avatar_url ? (
+            <Image source={{ uri: account.avatar_url }} style={styles.avatar} />
+          ) : (
+            <Ionicons name={item.icon} size={26} color={isTikTok ? "#000" : "#FFF"} />
+          )}
         </LinearGradient>
 
         <View style={styles.platformInfo}>
@@ -181,9 +226,13 @@ export default function SocialAccountsScreen() {
         </View>
 
         {connected ? (
-          <View style={styles.connectedBadge}>
+          <TouchableOpacity
+            style={styles.connectedBadge}
+            onPress={() => handleDisconnect(item.label, account?.account_id)}
+            activeOpacity={0.7}
+          >
             <Ionicons name="checkmark-circle" size={20} color={Colors.status.success} />
-          </View>
+          </TouchableOpacity>
         ) : (
           <TouchableOpacity
             style={[styles.connectBtn, { backgroundColor: item.color + "15", borderColor: item.color + "40" }]}
@@ -307,6 +356,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
   },
   platformInfo: { flex: 1, marginLeft: 14 },
   platformName: {
@@ -327,6 +382,7 @@ const styles = StyleSheet.create({
   connectedBadge: {
     flexDirection: "row",
     alignItems: "center",
+    padding: 8,
   },
   connectBtn: {
     paddingVertical: 8,

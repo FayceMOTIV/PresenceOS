@@ -210,18 +210,12 @@ describe("SocialAccountsScreen — Connexion globale", () => {
   });
 });
 
-describe("SocialAccountsScreen — Page Picker", () => {
-  test("affiche page picker quand Facebook renvoie >1 pages", async () => {
+describe("SocialAccountsScreen — Connect via Late", () => {
+  test("connecte Facebook via Late OAuth", async () => {
     const WebBrowser = require("expo-web-browser");
     (WebBrowser.openAuthSessionAsync as jest.Mock).mockResolvedValue({ type: "success" });
-    (socialApi.linkUrl as jest.Mock).mockResolvedValue({
-      data: { url: "https://auth.example.com/oauth" },
-    });
-    (socialApi.facebookPages as jest.Mock).mockResolvedValue({
-      data: { pages: [
-        { id: "p1", name: "Page 1", category: "Restaurant" },
-        { id: "p2", name: "Page 2", category: "Bar" },
-      ]},
+    (socialApi.connectUrl as jest.Mock).mockResolvedValue({
+      data: { url: "https://facebook.com/oauth/authorize" },
     });
     renderSocial();
     await waitFor(() => {
@@ -230,7 +224,7 @@ describe("SocialAccountsScreen — Page Picker", () => {
     const connectBtns = screen.getAllByText("Connecter");
     fireEvent.press(connectBtns[1]); // Facebook
     await waitFor(() => {
-      expect(socialApi.facebookPages).toHaveBeenCalledWith("brand-1");
+      expect(socialApi.connectUrl).toHaveBeenCalledWith("brand-1", "facebook", expect.any(String));
     }, { timeout: 5000 });
   });
 });

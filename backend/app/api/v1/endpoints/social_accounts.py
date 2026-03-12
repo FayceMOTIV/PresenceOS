@@ -1,87 +1,29 @@
 """
-PresenceOS - Social Accounts API (Upload-Post integration)
+PresenceOS - Social Accounts API (Late / getlate.dev integration)
 
-Single-call endpoints — auto-creates profile if needed.
+Endpoints for connecting, listing, and managing social media accounts
+via the Late unified social media API.
 """
-from typing import Optional
 from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query, status
+from pydantic import BaseModel
 
 from app.api.v1.deps import CurrentUser, DBSession, get_brand
 from app.core.config import settings
-
-VALID_PLATFORMS = {"instagram", "facebook", "tiktok"}
+from app.services.late_service import get_late_service
 
 logger = structlog.get_logger()
 router = APIRouter()
 
 
-def _get_upload_username(brand: object, brand_id: UUID) -> str:
-    """Get stable Upload-Post username from brand or fallback to brand_id."""
-    return getattr(brand, "upload_post_username", None) or str(brand_id)
-
-
-@router.get("/link-url/{brand_id}")
-async def get_social_link_url(
-    brand_id: UUID,
-    current_user: CurrentUser,
-    db: DBSession,
-    platform: Optional[str] = Query(None, description="Single platform: instagram, facebook, or tiktok"),
-    redirect_url: Optional[str] = Query(None, description="Deep link redirect URL for mobile"),
-) -> dict:
-    """
-    Generate Upload-Post OAuth URL in a single call.
-    Auto-creates profile if it doesn't exist yet.
-    Accepts optional `platform` to scope to a single network,
-    and optional `redirect_url` for mobile deep link callback.
-    """
-    brand = await get_brand(brand_id, current_user, db)
-
-    if not settings.upload_post_api_key:
+def _ensure_late_configured() -> None:
+    if not settings.late_api_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Upload-Post API non configuree (UPLOAD_POST_API_KEY manquante).",
+            detail="Late API non configuree (LATE_API_KEY manquante).",
         )
-
-    # Validate platform if provided
-    if platform and platform.lower() not in VALID_PLATFORMS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Plateforme invalide: {platform}. Valides: {', '.join(VALID_PLATFORMS)}",
-        )
-
-    platforms = [platform.lower()] if platform else list(VALID_PLATFORMS)
-
-    from app.services.social_publisher import SocialPublisher
-
-    publisher = SocialPublisher()
-    upload_username = _get_upload_username(brand, brand_id)
-
-    try:
-        # Auto-create profile (idempotent — skips if exists)
-        await publisher.create_brand_profile(upload_username)
-
-        # Save username on brand if model supports it and not saved yet
-        if hasattr(brand, "upload_post_username") and not brand.upload_post_username:  # type: ignore[union-attr]
-            brand.upload_post_username = upload_username  # type: ignore[attr-defined]
-            await db.commit()
-
-        # Generate JWT link — pass platform list and optional redirect URL
-        access_url = await publisher.get_social_link_url(
-            brand_id=upload_username,
-            platforms=platforms,
-            redirect_url=redirect_url,
-        )
-    except Exception as exc:
-        logger.error("Upload-Post link-url failed", error=str(exc))
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Erreur Upload-Post: {str(exc)[:200]}",
-        )
-
-    return {"url": access_url, "brand_id": str(brand_id)}
 
 
 @router.get("/accounts/{brand_id}")
@@ -90,27 +32,185 @@ async def list_connected_accounts(
     current_user: CurrentUser,
     db: DBSession,
 ) -> dict:
-    """List social accounts connected via Upload-Post for this brand."""
-    brand = await get_brand(brand_id, current_user, db)
+    """List social accounts connected via Late for this brand."""
+    _ensure_late_configured()
+    await get_brand(brand_id, current_user, db)
 
-    if not settings.upload_post_api_key:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Upload-Post API non configuree.",
-        )
-
-    from app.services.social_publisher import SocialPublisher
-
-    publisher = SocialPublisher()
-    upload_username = _get_upload_username(brand, brand_id)
-
+    late = get_late_service()
     try:
-        accounts = await publisher.get_connected_accounts(upload_username)
+        raw_accounts = await late.list_accounts()
     except Exception as exc:
-        logger.error("Upload-Post accounts fetch failed", error=str(exc))
+        logger.error("late.accounts_fetch_failed", error=str(exc))
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Erreur Upload-Post: {str(exc)[:200]}",
+            detail=f"Erreur Late: {str(exc)[:200]}",
         )
 
+    # Normalize to the format the mobile app expects
+    accounts = [
+        {
+            "platform": a.get("platform", ""),
+            "username": a.get("username", ""),
+            "display_name": a.get("displayName", ""),
+            "connected": a.get("isActive", False),
+            "avatar_url": a.get("profilePicture", ""),
+            "account_id": a.get("_id", ""),
+        }
+        for a in raw_accounts
+    ]
+
     return {"accounts": accounts, "brand_id": str(brand_id)}
+
+
+@router.get("/connect-url/{brand_id}")
+async def get_connect_url(
+    brand_id: UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+    platform: str = Query(..., description="Platform: instagram, facebook, tiktok, linkedin, twitter, youtube"),
+    redirect_url: str = Query("", description="Deep link redirect URL for mobile"),
+) -> dict:
+    """Generate Late OAuth URL to connect a social account."""
+    _ensure_late_configured()
+    await get_brand(brand_id, current_user, db)
+
+    late = get_late_service()
+    try:
+        auth_url = await late.get_connect_url(
+            platform=platform.lower(),
+            redirect_url=redirect_url or "https://presenceos.dev/callback",
+        )
+    except Exception as exc:
+        logger.error("late.connect_url_failed", platform=platform, error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erreur Late: {str(exc)[:200]}",
+        )
+
+    return {"url": auth_url, "brand_id": str(brand_id)}
+
+
+# Keep legacy endpoint for backward compat — redirects to connect-url
+@router.get("/link-url/{brand_id}")
+async def get_social_link_url_legacy(
+    brand_id: UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+    platform: str = Query(None, description="Platform"),
+    redirect_url: str = Query(None, description="Redirect URL"),
+) -> dict:
+    """Legacy Upload-Post endpoint — now proxied to Late."""
+    _ensure_late_configured()
+    await get_brand(brand_id, current_user, db)
+
+    if not platform:
+        platform = "instagram"
+
+    late = get_late_service()
+    try:
+        auth_url = await late.get_connect_url(
+            platform=platform.lower(),
+            redirect_url=redirect_url or "https://presenceos.dev/callback",
+        )
+    except Exception as exc:
+        logger.error("late.link_url_failed", error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erreur Late: {str(exc)[:200]}",
+        )
+
+    return {"url": auth_url, "brand_id": str(brand_id)}
+
+
+class PublishRequest(BaseModel):
+    content: str
+    platforms: list[dict]  # [{"platform": "instagram", "accountId": "..."}]
+    media_urls: list[str] = []
+
+
+@router.post("/publish/{brand_id}")
+async def publish_now(
+    brand_id: UUID,
+    body: PublishRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> dict:
+    """Publish a post immediately via Late."""
+    _ensure_late_configured()
+    await get_brand(brand_id, current_user, db)
+
+    late = get_late_service()
+    try:
+        result = await late.publish_now(
+            content=body.content,
+            account_ids=body.platforms,
+            media_urls=body.media_urls or None,
+        )
+    except Exception as exc:
+        logger.error("late.publish_failed", error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erreur publication: {str(exc)[:200]}",
+        )
+
+    return {"success": True, "post": result.get("post", {})}
+
+
+class ScheduleRequest(BaseModel):
+    content: str
+    platforms: list[dict]
+    scheduled_for: str  # ISO 8601
+    timezone: str = "Europe/Paris"
+    media_urls: list[str] = []
+
+
+@router.post("/schedule/{brand_id}")
+async def schedule_post(
+    brand_id: UUID,
+    body: ScheduleRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> dict:
+    """Schedule a post for later via Late."""
+    _ensure_late_configured()
+    await get_brand(brand_id, current_user, db)
+
+    late = get_late_service()
+    try:
+        result = await late.schedule_post(
+            content=body.content,
+            account_ids=body.platforms,
+            scheduled_for=body.scheduled_for,
+            timezone=body.timezone,
+            media_urls=body.media_urls or None,
+        )
+    except Exception as exc:
+        logger.error("late.schedule_failed", error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erreur planification: {str(exc)[:200]}",
+        )
+
+    return {"success": True, "post": result.get("post", {})}
+
+
+@router.delete("/disconnect/{brand_id}/{account_id}")
+async def disconnect_account(
+    brand_id: UUID,
+    account_id: str,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> dict:
+    """Disconnect a social account via Late."""
+    _ensure_late_configured()
+    await get_brand(brand_id, current_user, db)
+
+    late = get_late_service()
+    ok = await late.disconnect_account(account_id)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Impossible de deconnecter ce compte.",
+        )
+
+    return {"success": True}

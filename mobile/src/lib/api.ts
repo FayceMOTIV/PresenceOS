@@ -384,8 +384,15 @@ export const assetsApi = {
     api.post(`/content/${brandId}/asset-proposal`, { asset_id: assetId }),
 };
 
-// ── Social Accounts (Upload-Post) ──
+// ── Social Accounts (Late / getlate.dev) ──
 export const socialApi = {
+  accounts: (brandId: string) => api.get(`/social/accounts/${brandId}`),
+  connectUrl: (brandId: string, platform: string, redirectUrl?: string) => {
+    const params = new URLSearchParams({ platform });
+    if (redirectUrl) params.append("redirect_url", redirectUrl);
+    return api.get(`/social/connect-url/${brandId}?${params.toString()}`);
+  },
+  // Legacy alias
   linkUrl: (brandId: string, platform?: string, redirectUrl?: string) => {
     const params = new URLSearchParams();
     if (platform) params.append("platform", platform);
@@ -393,11 +400,12 @@ export const socialApi = {
     const qs = params.toString();
     return api.get(`/social/link-url/${brandId}${qs ? `?${qs}` : ""}`);
   },
-  accounts: (brandId: string) => api.get(`/social/accounts/${brandId}`),
-  facebookPages: (brandId: string) =>
-    api.get(`/social-auth/facebook-pages/${brandId}`),
-  selectPage: (brandId: string, pageId: string) =>
-    api.post(`/social-auth/select-page/${brandId}`, { page_id: pageId }),
+  publish: (brandId: string, content: string, platforms: Array<{ platform: string; accountId: string }>, mediaUrls?: string[]) =>
+    api.post(`/social/publish/${brandId}`, { content, platforms, media_urls: mediaUrls ?? [] }),
+  schedule: (brandId: string, content: string, platforms: Array<{ platform: string; accountId: string }>, scheduledFor: string, mediaUrls?: string[]) =>
+    api.post(`/social/schedule/${brandId}`, { content, platforms, scheduled_for: scheduledFor, timezone: "Europe/Paris", media_urls: mediaUrls ?? [] }),
+  disconnect: (brandId: string, accountId: string) =>
+    api.delete(`/social/disconnect/${brandId}/${accountId}`),
 };
 
 // ── Brands ──

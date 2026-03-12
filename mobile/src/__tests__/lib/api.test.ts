@@ -420,17 +420,17 @@ describe("API Client — Assets Module (complet)", () => {
 });
 
 describe("API Client — Social Module (complet)", () => {
-  test("facebookPages", async () => {
-    mockFetch.mockReturnValue(mockJsonResponse({ pages: [] }));
-    await socialApi.facebookPages("b1");
-    expect(mockFetch.mock.calls[0][0]).toContain("/social-auth/facebook-pages/b1");
+  test("connectUrl", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ url: "https://oauth.test" }));
+    await socialApi.connectUrl("b1", "instagram", "rs3://callback");
+    expect(mockFetch.mock.calls[0][0]).toContain("/social/connect-url/b1");
+    expect(mockFetch.mock.calls[0][0]).toContain("platform=instagram");
   });
 
-  test("selectPage", async () => {
-    mockFetch.mockReturnValue(mockJsonResponse({ ok: true }));
-    await socialApi.selectPage("b1", "page123");
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.page_id).toBe("page123");
+  test("disconnect", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ success: true }));
+    await socialApi.disconnect("b1", "acc123");
+    expect(mockFetch.mock.calls[0][0]).toContain("/social/disconnect/b1/acc123");
   });
 
   test("linkUrl sans params", async () => {
