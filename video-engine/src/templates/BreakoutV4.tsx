@@ -20,11 +20,11 @@ export interface BreakoutV4Props {
   accentColor: string;
 }
 
-const CANVAS_W = 1080;
-const CANVAS_H = 1920;
+const CANVAS_W = 720;
+const CANVAS_H = 1280;
 const VIDEO_ZONE_H = Math.floor(CANVAS_H * 0.58);
 const UI_ZONE_H = CANVAS_H - VIDEO_ZONE_H;
-const OVERLAP_PX = 120;
+const OVERLAP_PX = 80;
 
 // ── Remote image loader ─────────────────────────────────────────────
 const RemoteImg: React.FC<{
@@ -143,7 +143,7 @@ export const BreakoutV4: React.FC<BreakoutV4Props> = ({
             bottom: 0,
             left: 0,
             width: "100%",
-            height: 100,
+            height: 70,
             background:
               "linear-gradient(transparent, rgba(255,255,255,0.6))",
           }}
@@ -172,32 +172,32 @@ export const BreakoutV4: React.FC<BreakoutV4Props> = ({
           width: CANVAS_W,
           height: UI_ZONE_H,
           backgroundColor: "#FFFFFF",
-          padding: "28px 36px",
+          padding: "18px 24px",
           opacity: uiFade,
         }}
       >
         {/* Account header */}
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 14 }}>
           <div
             style={{
-              width: 72,
-              height: 72,
+              width: 52,
+              height: 52,
               borderRadius: "50%",
               background: `linear-gradient(135deg, ${accentColor}, #EC4899)`,
-              border: "3px solid #E5E7EB",
+              border: "2px solid #E5E7EB",
               flexShrink: 0,
             }}
           />
           <div
             style={{
-              marginLeft: 18,
+              marginLeft: 12,
               opacity: handleOpacity,
               transform: `translateY(${handleTranslateY}px)`,
             }}
           >
             <div
               style={{
-                fontSize: 28,
+                fontSize: 20,
                 fontWeight: 700,
                 color: "#111827",
                 fontFamily: "sans-serif",
@@ -207,10 +207,10 @@ export const BreakoutV4: React.FC<BreakoutV4Props> = ({
             </div>
             <div
               style={{
-                fontSize: 22,
+                fontSize: 16,
                 color: "#6B7280",
                 fontFamily: "sans-serif",
-                marginTop: 4,
+                marginTop: 3,
               }}
             >
               {businessName}
@@ -223,28 +223,28 @@ export const BreakoutV4: React.FC<BreakoutV4Props> = ({
             width: "100%",
             height: 1,
             backgroundColor: "#F3F4F6",
-            marginBottom: 20,
+            marginBottom: 14,
           }}
         />
 
         {/* Action bar (Like / Comment / Share) */}
-        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: 6,
               transform: `scale(${likeScale})`,
             }}
           >
-            <svg width="40" height="40" viewBox="0 0 24 24" fill={accentColor}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill={accentColor}>
               <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
             </svg>
           </div>
 
           <svg
-            width="36"
-            height="36"
+            width="28"
+            height="28"
             viewBox="0 0 24 24"
             fill="none"
             stroke="#9CA3AF"
@@ -254,8 +254,8 @@ export const BreakoutV4: React.FC<BreakoutV4Props> = ({
           </svg>
 
           <svg
-            width="36"
-            height="36"
+            width="28"
+            height="28"
             viewBox="0 0 24 24"
             fill="none"
             stroke="#9CA3AF"
@@ -267,8 +267,8 @@ export const BreakoutV4: React.FC<BreakoutV4Props> = ({
 
           <div style={{ marginLeft: "auto" }}>
             <svg
-              width="34"
-              height="34"
+              width="26"
+              height="26"
               viewBox="0 0 24 24"
               fill="none"
               stroke="#9CA3AF"
@@ -283,8 +283,8 @@ export const BreakoutV4: React.FC<BreakoutV4Props> = ({
         {caption ? (
           <div
             style={{
-              marginTop: 20,
-              fontSize: 22,
+              marginTop: 14,
+              fontSize: 16,
               color: "#374151",
               fontFamily: "sans-serif",
               lineHeight: 1.5,
@@ -298,8 +298,8 @@ export const BreakoutV4: React.FC<BreakoutV4Props> = ({
         ) : (
           <div
             style={{
-              marginTop: 20,
-              fontSize: 22,
+              marginTop: 14,
+              fontSize: 16,
               color: "#374151",
               fontFamily: "sans-serif",
               lineHeight: 1.5,

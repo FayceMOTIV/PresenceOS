@@ -116,6 +116,83 @@ app.post("/render/breakout", async (req, res) => {
   }
 });
 
+// ── Render endpoint V4 (1080x1920, new animations) ──────────────────
+app.post("/render/breakout-v4", async (req, res) => {
+  if (isWarming) {
+    return res.status(503).json({ error: "Service warming up, retry in 30s" });
+  }
+  if (!bundleLocation || bundleError) {
+    return res.status(500).json({ error: `Bundle unavailable: ${bundleError}` });
+  }
+
+  const {
+    originalPhotoUrl,
+    cutoutUrl,
+    businessName = "Mon Restaurant",
+    instagramHandle = "@monrestaurant",
+    caption = "",
+    accentColor = "#F59E0B",
+  } = req.body;
+
+  if (!originalPhotoUrl || !cutoutUrl) {
+    return res.status(400).json({ error: "originalPhotoUrl and cutoutUrl required" });
+  }
+
+  const outputPath = path.join(os.tmpdir(), `breakout-v4-${Date.now()}.mp4`);
+
+  try {
+    const inputProps = {
+      originalPhotoUrl,
+      cutoutUrl,
+      businessName,
+      instagramHandle,
+      caption,
+      accentColor,
+    };
+
+    const chromiumOptions = {
+      disableWebSecurity: true,
+      ignoreCertificateErrors: true,
+      enableMultiProcessOnLinux: true,
+      gl: "swangle" as const,
+    };
+
+    const composition = await selectComposition({
+      serveUrl: bundleLocation,
+      id: "BreakoutV4",
+      inputProps,
+      chromiumOptions,
+    });
+
+    await renderMedia({
+      composition,
+      serveUrl: bundleLocation,
+      codec: "h264",
+      outputLocation: outputPath,
+      inputProps,
+      timeoutInMilliseconds: 120_000,
+      concurrency: 1,
+      chromiumOptions,
+      x264Preset: "superfast",
+      offthreadVideoCacheSizeInBytes: 256 * 1024 * 1024,
+    });
+
+    const videoBuffer = fs.readFileSync(outputPath);
+    const base64 = videoBuffer.toString("base64");
+
+    res.json({
+      success: true,
+      video_base64: base64,
+      size_bytes: videoBuffer.length,
+    });
+  } catch (err: any) {
+    console.error("[Remotion] V4 Render error:", err.message);
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+  }
+});
+
 // ── Start server + non-blocking warmup ────────────────────────────────
 app.listen(PORT, () => {
   console.log(`[Remotion] Server listening on port ${PORT}`);
