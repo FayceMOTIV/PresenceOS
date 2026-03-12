@@ -4,6 +4,9 @@ PresenceOS — Video Templates API v2
 Templates:
   - Breakout V4: Photo -> rembg -> Remotion 3-layer -> MP4 ($0.00)
   - Cinematic Food: Photo -> Kling 2.6 Pro image-to-video ($0.35/5s)
+  - Promo Flash: Photo + text -> Remotion animated promo ($0.00)
+  - Restaurant Showcase: 3 dish photos -> Remotion showcase video ($0.00)
+  - Daily Story: 3 photos + captions -> Remotion IG story video ($0.00)
 """
 
 import asyncio
@@ -65,6 +68,14 @@ class CinematicPricingResponse(BaseModel):
     provider: str = "fal.ai"
     pricing: dict
     recommended: str = "5s_no_audio"
+
+
+class TemplateVideoResponse(BaseModel):
+    status: str = "done"
+    video_url: str
+    duration_seconds: int
+    template: str
+    cost_usd: float = 0.0
 
 
 # ── BREAKOUT V4 ──────────────────────────────────────────────────────────
@@ -454,4 +465,247 @@ async def get_cinematic_pricing():
             "10s_no_audio": 0.70,
             "10s_with_audio": 1.40,
         },
+    )
+
+
+# ── PROMO FLASH ──────────────────────────────────────────────────────────
+
+
+async def _upload_photo_to_fal(contents: bytes) -> str:
+    """Upload image bytes to fal.ai storage and return a public URL."""
+    from app.core.config import settings as _settings
+    import fal_client
+
+    fal_key = _settings.fal_key
+    if fal_key:
+        os.environ["FAL_KEY"] = fal_key
+
+    def _upload():
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+            f.write(contents)
+            tmp = f.name
+        try:
+            return fal_client.upload_file(tmp)
+        finally:
+            os.unlink(tmp)
+
+    return await asyncio.to_thread(_upload)
+
+
+async def _read_and_validate_photo(photo: UploadFile) -> bytes:
+    """Read and validate an uploaded photo file."""
+    content_type = photo.content_type or ""
+    allowed_types = ("image/jpeg", "image/png", "image/heic", "image/heif", "image/webp")
+    if not any(content_type.startswith(t) for t in allowed_types):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le fichier doit etre une image (JPEG, PNG, HEIC, WebP)",
+        )
+    contents = await photo.read()
+    if len(contents) > 20 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Image trop volumineuse (max 20 Mo)",
+        )
+    from app.utils.normalize_image import normalize_image
+    return await asyncio.to_thread(normalize_image, contents)
+
+
+@router.post(
+    "/promo-flash/brands/{brand_id}/generate",
+    response_model=TemplateVideoResponse,
+    summary="Photo + text -> animated promo video (Remotion, ~40s)",
+)
+@limiter.limit("5/minute")
+async def generate_promo_flash(
+    request: Request,
+    brand_id: str,
+    user: FirebaseUser,
+    db: DBSession,
+    photo: UploadFile = File(...),
+    headline: str = Form(default="OFFRE SPECIALE"),
+    discount: str = Form(default="-20%"),
+    subheadline: str = Form(default=""),
+    promo_code: str = Form(default=""),
+    cta_text: str = Form(default="Reservez maintenant!"),
+    primary_color: str = Form(default="#E63946"),
+    brand_name: str = Form(default=""),
+    valid_until: str = Form(default=""),
+):
+    """Upload a background photo + promo text -> animated Remotion video."""
+    await verify_brand_access(brand_id, user, db)
+
+    contents = await _read_and_validate_photo(photo)
+    image_url = await _upload_photo_to_fal(contents)
+
+    from app.services.remotion_template_engine import RemotionTemplateEngine
+
+    engine = RemotionTemplateEngine()
+    try:
+        result = await engine.render_promo_flash(
+            background_image_url=image_url,
+            brand_id=brand_id,
+            headline=headline,
+            subheadline=subheadline,
+            discount=discount,
+            promo_code=promo_code,
+            cta_text=cta_text,
+            primary_color=primary_color,
+            brand_name=brand_name,
+            valid_until=valid_until,
+        )
+    except Exception as exc:
+        logger.error("Promo flash failed", extra={"brand_id": brand_id, "error": str(exc)})
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Generation echouee: {str(exc)[:200]}",
+        )
+
+    return TemplateVideoResponse(
+        video_url=result["video_url"],
+        duration_seconds=result["duration_seconds"],
+        template=result["template"],
+    )
+
+
+# ── RESTAURANT SHOWCASE ──────────────────────────────────────────────────
+
+
+@router.post(
+    "/showcase/brands/{brand_id}/generate",
+    response_model=TemplateVideoResponse,
+    summary="3 dish photos -> restaurant showcase video (Remotion, ~50s)",
+)
+@limiter.limit("5/minute")
+async def generate_restaurant_showcase(
+    request: Request,
+    brand_id: str,
+    user: FirebaseUser,
+    db: DBSession,
+    photo1: UploadFile = File(...),
+    photo2: UploadFile = File(...),
+    photo3: UploadFile = File(...),
+    dish_name_1: str = Form(default="Specialite 1"),
+    dish_name_2: str = Form(default="Specialite 2"),
+    dish_name_3: str = Form(default="Specialite 3"),
+    dish_desc_1: str = Form(default=""),
+    dish_desc_2: str = Form(default=""),
+    dish_desc_3: str = Form(default=""),
+    brand_name: str = Form(default="Mon Restaurant"),
+    tagline: str = Form(default="Nos specialites"),
+    primary_color: str = Form(default="#FF6B35"),
+):
+    """Upload 3 dish photos -> Remotion restaurant showcase video."""
+    await verify_brand_access(brand_id, user, db)
+
+    # Read and validate all 3 photos
+    photos_data = []
+    for p in [photo1, photo2, photo3]:
+        contents = await _read_and_validate_photo(p)
+        photos_data.append(contents)
+
+    # Upload all 3 to fal.ai in parallel
+    import asyncio as aio
+    urls = await aio.gather(
+        _upload_photo_to_fal(photos_data[0]),
+        _upload_photo_to_fal(photos_data[1]),
+        _upload_photo_to_fal(photos_data[2]),
+    )
+
+    dishes = [
+        {"name": dish_name_1, "image": urls[0], "description": dish_desc_1},
+        {"name": dish_name_2, "image": urls[1], "description": dish_desc_2},
+        {"name": dish_name_3, "image": urls[2], "description": dish_desc_3},
+    ]
+
+    from app.services.remotion_template_engine import RemotionTemplateEngine
+
+    engine = RemotionTemplateEngine()
+    try:
+        result = await engine.render_restaurant_showcase(
+            dishes=dishes,
+            brand_id=brand_id,
+            brand_name=brand_name,
+            tagline=tagline,
+            primary_color=primary_color,
+        )
+    except Exception as exc:
+        logger.error("Showcase failed", extra={"brand_id": brand_id, "error": str(exc)})
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Generation echouee: {str(exc)[:200]}",
+        )
+
+    return TemplateVideoResponse(
+        video_url=result["video_url"],
+        duration_seconds=result["duration_seconds"],
+        template=result["template"],
+    )
+
+
+# ── DAILY STORY ──────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/story/brands/{brand_id}/generate",
+    response_model=TemplateVideoResponse,
+    summary="3 photos + captions -> IG story video (Remotion, ~50s)",
+)
+@limiter.limit("5/minute")
+async def generate_daily_story(
+    request: Request,
+    brand_id: str,
+    user: FirebaseUser,
+    db: DBSession,
+    photo1: UploadFile = File(...),
+    photo2: UploadFile = File(...),
+    photo3: UploadFile = File(...),
+    text_1: str = Form(default="Decouvrez notre carte!"),
+    text_2: str = Form(default="Prepare avec amour"),
+    text_3: str = Form(default="Reservez votre table!"),
+    brand_name: str = Form(default="Mon Restaurant"),
+    primary_color: str = Form(default="#6C63FF"),
+):
+    """Upload 3 photos + captions -> Remotion Instagram story video."""
+    await verify_brand_access(brand_id, user, db)
+
+    photos_data = []
+    for p in [photo1, photo2, photo3]:
+        contents = await _read_and_validate_photo(p)
+        photos_data.append(contents)
+
+    import asyncio as aio
+    urls = await aio.gather(
+        _upload_photo_to_fal(photos_data[0]),
+        _upload_photo_to_fal(photos_data[1]),
+        _upload_photo_to_fal(photos_data[2]),
+    )
+
+    slides = [
+        {"text": text_1, "image": urls[0]},
+        {"text": text_2, "image": urls[1]},
+        {"text": text_3, "image": urls[2]},
+    ]
+
+    from app.services.remotion_template_engine import RemotionTemplateEngine
+
+    engine = RemotionTemplateEngine()
+    try:
+        result = await engine.render_daily_story(
+            slides=slides,
+            brand_id=brand_id,
+            brand_name=brand_name,
+            primary_color=primary_color,
+        )
+    except Exception as exc:
+        logger.error("Daily story failed", extra={"brand_id": brand_id, "error": str(exc)})
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Generation echouee: {str(exc)[:200]}",
+        )
+
+    return TemplateVideoResponse(
+        video_url=result["video_url"],
+        duration_seconds=result["duration_seconds"],
+        template=result["template"],
     )

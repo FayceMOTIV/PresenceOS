@@ -92,7 +92,7 @@ export const RemotionRoot: React.FC = () => {
     <>
       <Composition
         id="RestaurantShowcase"
-        component={RestaurantShowcase}
+        component={RestaurantShowcase as any}
         durationInFrames={300}
         fps={30}
         width={1080}
@@ -101,7 +101,7 @@ export const RemotionRoot: React.FC = () => {
       />
       <Composition
         id="PromoFlash"
-        component={PromoFlash}
+        component={PromoFlash as any}
         durationInFrames={240}
         fps={30}
         width={1080}
@@ -110,7 +110,7 @@ export const RemotionRoot: React.FC = () => {
       />
       <Composition
         id="DailyStory"
-        component={DailyStory}
+        component={DailyStory as any}
         durationInFrames={270}
         fps={30}
         width={1080}
@@ -119,7 +119,7 @@ export const RemotionRoot: React.FC = () => {
       />
       <Composition
         id="BreakoutClip"
-        component={BreakoutClip}
+        component={BreakoutClip as any}
         durationInFrames={90}
         fps={30}
         width={720}
@@ -128,12 +128,39 @@ export const RemotionRoot: React.FC = () => {
       />
       <Composition
         id="BreakoutV4"
-        component={BreakoutV4}
+        component={BreakoutV4 as any}
         durationInFrames={90}
         fps={30}
         width={720}
         height={1280}
         defaultProps={defaultBreakoutV4Props}
+      />
+      <Composition
+        id="PromoFlash720"
+        component={PromoFlash as any}
+        durationInFrames={240}
+        fps={30}
+        width={720}
+        height={1280}
+        defaultProps={defaultPromoProps}
+      />
+      <Composition
+        id="RestaurantShowcase720"
+        component={RestaurantShowcase as any}
+        durationInFrames={240}
+        fps={30}
+        width={720}
+        height={1280}
+        defaultProps={defaultRestaurantProps}
+      />
+      <Composition
+        id="DailyStory720"
+        component={DailyStory as any}
+        durationInFrames={210}
+        fps={30}
+        width={720}
+        height={1280}
+        defaultProps={defaultDailyStoryProps}
       />
     </>
   );

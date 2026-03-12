@@ -702,6 +702,27 @@ export const videoTemplatesApi = {
   // Pricing
   cinematicPricing: () =>
     requestV2("GET", "/templates/cinematic/pricing"),
+  // Promo Flash — photo + text -> animated promo video (~40s)
+  generatePromoFlash: (brandId: string, formData: FormData) =>
+    requestV2("POST", `/templates/promo-flash/brands/${brandId}/generate`, {
+      body: formData,
+      isFormData: true,
+      timeout: 160_000,
+    }),
+  // Restaurant Showcase — 3 dish photos -> showcase video (~50s)
+  generateShowcase: (brandId: string, formData: FormData) =>
+    requestV2("POST", `/templates/showcase/brands/${brandId}/generate`, {
+      body: formData,
+      isFormData: true,
+      timeout: 180_000,
+    }),
+  // Daily Story — 3 photos + captions -> IG story video (~50s)
+  generateStory: (brandId: string, formData: FormData) =>
+    requestV2("POST", `/templates/story/brands/${brandId}/generate`, {
+      body: formData,
+      isFormData: true,
+      timeout: 180_000,
+    }),
 };
 
 export default api;
