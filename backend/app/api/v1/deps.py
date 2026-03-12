@@ -115,31 +115,90 @@ async def get_current_user(
             detail="Database unavailable",
         )
 
+    # ── 1. Try JWT first (v1 native) ──
     user_id = verify_token(token)
 
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    if user_id:
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if user and user.is_active:
+            return user
 
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    # ── 2. Fallback: try Firebase ID token (mobile app sends these) ──
+    try:
+        from app.core.firebase_auth import verify_firebase_token, TokenExpiredError
 
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-        )
+        try:
+            decoded = verify_firebase_token(token)
+        except TokenExpiredError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Firebase token expired",
+                headers={"WWW-Authenticate": "Bearer", "X-Token-Expired": "true"},
+            )
 
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is disabled",
-        )
+        if decoded:
+            firebase_uid: str = decoded["uid"]
+            firebase_email: str | None = decoded.get("email")
 
-    return user
+            # Lookup by Firebase UID
+            result = await db.execute(
+                select(User).where(
+                    User.oauth_provider == "firebase",
+                    User.oauth_provider_id == firebase_uid,
+                )
+            )
+            user = result.scalar_one_or_none()
+            if user and user.is_active:
+                return user
+
+            # Fallback: lookup by email and link Firebase UID
+            if firebase_email:
+                result = await db.execute(
+                    select(User).where(User.email == firebase_email)
+                )
+                user = result.scalar_one_or_none()
+                if user and user.is_active:
+                    user.oauth_provider = "firebase"
+                    user.oauth_provider_id = firebase_uid
+                    await db.commit()
+                    await db.refresh(user)
+                    logger.info(
+                        "V1 fallback: linked user to Firebase",
+                        extra={"user_id": str(user.id), "firebase_uid": firebase_uid},
+                    )
+                    return user
+
+            # Auto-create new user from Firebase
+            if decoded:
+                display_name = decoded.get("name") or firebase_email or "Utilisateur"
+                new_user = User(
+                    email=firebase_email or f"{firebase_uid}@firebase.local",
+                    full_name=display_name,
+                    hashed_password="",
+                    is_active=True,
+                    is_verified=True,
+                    oauth_provider="firebase",
+                    oauth_provider_id=firebase_uid,
+                )
+                db.add(new_user)
+                await db.commit()
+                await db.refresh(new_user)
+                logger.info(
+                    "V1 fallback: created user from Firebase",
+                    extra={"user_id": str(new_user.id), "firebase_uid": firebase_uid},
+                )
+                return new_user
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.debug("Firebase fallback failed: %s", e)
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 async def get_current_workspace(

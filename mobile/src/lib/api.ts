@@ -419,7 +419,7 @@ export const videoApi = {
       body: { credits, plan: plan ?? "studio" },
     }),
   history: (brandId: string) =>
-    api.get(`/video/history/${brandId}`),
+    requestV2("GET", `/video/brands/${brandId}/videos`),
   // v2 — Save + Publish
   save: (brandId: string, falUrl: string, prompt: string, durationSeconds: number, aspectRatio: string, style: string) =>
     requestV2("POST", `/video/brands/${brandId}/videos/save`, {
