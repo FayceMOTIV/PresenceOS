@@ -71,6 +71,17 @@ export default function VideoStudioScreen() {
   const progressAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const progressAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  // Clean up progress animation on unmount
+  useEffect(() => {
+    return () => {
+      if (progressAnimRef.current) {
+        progressAnimRef.current.stop();
+        progressAnimRef.current = null;
+      }
+    };
+  }, []);
 
   // Fade in on mount
   useEffect(() => {
@@ -131,16 +142,27 @@ export default function VideoStudioScreen() {
     setResult(null);
 
     progressAnim.setValue(0);
-    Animated.timing(progressAnim, {
+    if (progressAnimRef.current) {
+      progressAnimRef.current.stop();
+    }
+    const anim = Animated.timing(progressAnim, {
       toValue: 0.9,
       duration: 45000,
       useNativeDriver: false,
-    }).start();
+    });
+    progressAnimRef.current = anim;
+    anim.start(() => {
+      progressAnimRef.current = null;
+    });
 
     try {
       const res = await videoApi.generate(brandId, prompt.trim(), duration, style, ratio);
       const data: VideoGenerationResult = res.data;
 
+      if (progressAnimRef.current) {
+        progressAnimRef.current.stop();
+        progressAnimRef.current = null;
+      }
       progressAnim.setValue(1);
       setResult(data);
 

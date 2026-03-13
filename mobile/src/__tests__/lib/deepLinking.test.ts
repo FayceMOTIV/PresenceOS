@@ -77,7 +77,7 @@ describe("deepLinkingConfig", () => {
     const home = deepLinkingConfig.config.screens.Home.screens;
     expect(home.HomeMain).toBe("");
     expect(home.Brief).toBe("brief");
-    expect(home.SocialAccounts).toBe("social-callback");
+    expect(home.SocialAccounts).toBe("social-accounts");
   });
 
   test("Inbox contient CMChat", () => {

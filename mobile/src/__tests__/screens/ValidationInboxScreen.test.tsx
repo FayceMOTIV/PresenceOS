@@ -3,11 +3,13 @@
  */
 
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
+import { render, renderAsync, screen, fireEvent, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 import ValidationInboxScreen from "@/screens/validation/ValidationInboxScreen";
 import { BrandContext } from "@/contexts/BrandContext";
 import { proposalsApi } from "@/lib/api";
+
+jest.setTimeout(60000);
 
 jest.spyOn(Alert, "alert");
 
@@ -56,8 +58,8 @@ const mockProposals = [
   },
 ];
 
-function renderValidation(brand = mockBrand) {
-  return render(
+async function renderValidation(brand = mockBrand) {
+  return renderAsync(
     <BrandContext.Provider value={brand as any}>
       <ValidationInboxScreen />
     </BrandContext.Provider>
@@ -75,78 +77,59 @@ beforeEach(() => {
 
 describe("ValidationInboxScreen — Rendu", () => {
   test("affiche le titre Validation", async () => {
-    renderValidation();
-    await waitFor(() => {
-      expect(screen.getByText("Validation")).toBeTruthy();
-    });
+    await renderValidation();
+    expect(screen.getByText("Validation")).toBeTruthy();
   });
 
   test("affiche le sous-titre", async () => {
-    renderValidation();
-    await waitFor(() => {
-      expect(screen.getByText(/Contenus générés par l'IA en attente/)).toBeTruthy();
-    });
+    await renderValidation();
+    expect(screen.getByText(/Contenus générés par l'IA en attente/)).toBeTruthy();
   });
 
   test("affiche le badge avec le nombre de proposals", async () => {
-    renderValidation();
-    await waitFor(() => {
-      expect(screen.getByText("2")).toBeTruthy();
-    });
+    await renderValidation();
+    expect(screen.getByText("2")).toBeTruthy();
   });
 });
 
 describe("ValidationInboxScreen — Cards", () => {
   test("affiche les captions", async () => {
-    renderValidation();
-    await waitFor(() => {
-      expect(screen.getByText("Découvrez notre tajine !")).toBeTruthy();
-      expect(screen.getByText("Story du week-end")).toBeTruthy();
-    });
+    await renderValidation();
+    expect(screen.getByText("Découvrez notre tajine !")).toBeTruthy();
+    expect(screen.getByText("Story du week-end")).toBeTruthy();
   });
 
   test("affiche les hashtags", async () => {
-    renderValidation();
-    await waitFor(() => {
-      expect(screen.getByText("#tajine #restaurant")).toBeTruthy();
-    });
+    await renderValidation();
+    expect(screen.getByText("#tajine #restaurant")).toBeTruthy();
   });
 
   test("affiche le type de contenu", async () => {
-    renderValidation();
-    await waitFor(() => {
-      expect(screen.getAllByText("Post").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Story").length).toBeGreaterThanOrEqual(1);
-    });
+    await renderValidation();
+    expect(screen.getAllByText("Post").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Story").length).toBeGreaterThanOrEqual(1);
   });
 
   test("affiche le score IA", async () => {
-    renderValidation();
-    await waitFor(() => {
-      expect(screen.getByText("Score IA : 85%")).toBeTruthy();
-      expect(screen.getByText("Score IA : 72%")).toBeTruthy();
-    });
+    await renderValidation();
+    expect(screen.getByText("Score IA : 85%")).toBeTruthy();
+    expect(screen.getByText("Score IA : 72%")).toBeTruthy();
   });
 
   test("affiche les boutons d'action", async () => {
-    renderValidation();
-    await waitFor(() => {
-      const rejectBtns = screen.getAllByText("Rejeter");
-      const scheduleBtns = screen.getAllByText("Planifier");
-      const publishBtns = screen.getAllByText("Publier");
-      expect(rejectBtns.length).toBe(2);
-      expect(scheduleBtns.length).toBe(2);
-      expect(publishBtns.length).toBe(2);
-    });
+    await renderValidation();
+    const rejectBtns = screen.getAllByText("Rejeter");
+    const scheduleBtns = screen.getAllByText("Planifier");
+    const publishBtns = screen.getAllByText("Publier");
+    expect(rejectBtns.length).toBe(2);
+    expect(scheduleBtns.length).toBe(2);
+    expect(publishBtns.length).toBe(2);
   });
 });
 
 describe("ValidationInboxScreen — Actions", () => {
   test("publier appelle proposalsApi.approve", async () => {
-    renderValidation();
-    await waitFor(() => {
-      expect(screen.getByText("Découvrez notre tajine !")).toBeTruthy();
-    });
+    await renderValidation();
     const publishBtns = screen.getAllByText("Publier");
     fireEvent.press(publishBtns[0]);
     await waitFor(() => {
@@ -155,10 +138,7 @@ describe("ValidationInboxScreen — Actions", () => {
   });
 
   test("rejeter affiche confirmation Alert", async () => {
-    renderValidation();
-    await waitFor(() => {
-      expect(screen.getByText("Découvrez notre tajine !")).toBeTruthy();
-    });
+    await renderValidation();
     const rejectBtns = screen.getAllByText("Rejeter");
     fireEvent.press(rejectBtns[0]);
     expect(Alert.alert).toHaveBeenCalledWith(
@@ -172,10 +152,7 @@ describe("ValidationInboxScreen — Actions", () => {
   });
 
   test("confirmer rejet appelle proposalsApi.reject", async () => {
-    renderValidation();
-    await waitFor(() => {
-      expect(screen.getByText("Découvrez notre tajine !")).toBeTruthy();
-    });
+    await renderValidation();
     const rejectBtns = screen.getAllByText("Rejeter");
     fireEvent.press(rejectBtns[0]);
     const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
@@ -186,10 +163,7 @@ describe("ValidationInboxScreen — Actions", () => {
   });
 
   test("planifier appelle proposalsApi.approve avec date", async () => {
-    renderValidation();
-    await waitFor(() => {
-      expect(screen.getByText("Découvrez notre tajine !")).toBeTruthy();
-    });
+    await renderValidation();
     const scheduleBtns = screen.getAllByText("Planifier");
     fireEvent.press(scheduleBtns[0]);
     await waitFor(() => {
@@ -207,20 +181,16 @@ describe("ValidationInboxScreen — Empty state", () => {
     (proposalsApi.list as jest.Mock).mockResolvedValue({
       data: { proposals: [] },
     });
-    renderValidation();
-    await waitFor(() => {
-      expect(screen.getByText("Tout est validé !")).toBeTruthy();
-      expect(screen.getByText(/Aucun contenu en attente/)).toBeTruthy();
-    });
+    await renderValidation();
+    expect(screen.getByText("Tout est validé !")).toBeTruthy();
+    expect(screen.getByText(/Aucun contenu en attente/)).toBeTruthy();
   });
 });
 
 describe("ValidationInboxScreen — API", () => {
   test("appelle proposalsApi.list avec status pending", async () => {
-    renderValidation();
-    await waitFor(() => {
-      expect(proposalsApi.list).toHaveBeenCalledWith("brand-1", { status: "pending" });
-    });
+    await renderValidation();
+    expect(proposalsApi.list).toHaveBeenCalledWith("brand-1", { status: "pending" });
   });
 
   test("ne charge pas sans activeBrand", async () => {

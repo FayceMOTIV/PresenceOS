@@ -80,6 +80,18 @@ export default function MenuTab() {
     ]);
   }, [brandId]);
 
+  const renderSectionHeader = useCallback(({ section: { title } }: { section: { title: string } }) => (
+    <Text style={styles.sectionTitle}>{title}</Text>
+  ), []);
+
+  const renderItem = useCallback(({ item }: { item: Dish }) => (
+    <DishCard
+      dish={item}
+      onPress={() => nav.navigate("DishForm", { dishId: item.id })}
+      onDelete={() => handleDelete(item.id)}
+    />
+  ), [nav, handleDelete]);
+
   const sections = Object.entries(
     dishes.reduce((acc, dish) => {
       const cat = dish.category || "autres";
@@ -121,16 +133,8 @@ export default function MenuTab() {
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
-        renderSectionHeader={({ section: { title } }) => (
-          <Text style={styles.sectionTitle}>{title}</Text>
-        )}
-        renderItem={({ item }) => (
-          <DishCard
-            dish={item}
-            onPress={() => nav.navigate("DishForm", { dishId: item.id })}
-            onDelete={() => handleDelete(item.id)}
-          />
-        )}
+        renderSectionHeader={renderSectionHeader}
+        renderItem={renderItem}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand.primary} />
         }

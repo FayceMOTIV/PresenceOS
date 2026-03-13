@@ -16,8 +16,9 @@ jest.mock("firebase/app", () => ({
   getApp: () => mockGetApp(),
 }));
 
-jest.mock("firebase/auth", () => ({
+jest.mock("@firebase/auth", () => ({
   initializeAuth: (...args: any[]) => mockInitializeAuth(...args),
+  getAuth: jest.fn(),
   getReactNativePersistence: (...args: any[]) => mockGetReactNativePersistence(...args),
 }));
 

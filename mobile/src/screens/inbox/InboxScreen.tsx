@@ -231,7 +231,7 @@ export default function InboxScreen() {
   const urgentCount = items.filter((i) => i.urgency_score >= 7).length;
 
   // Render
-  const renderItem = ({ item }: { item: InboxItem }) => {
+  const renderItem = useCallback(({ item }: { item: InboxItem }) => {
     const expanded = expandedId === item.id;
     const isPending = item.reply_status === "pending" || item.reply_status === "classified";
     const isDone = ["approved", "published"].includes(item.reply_status);
@@ -331,7 +331,7 @@ export default function InboxScreen() {
         )}
       </TouchableOpacity>
     );
-  };
+  }, [expandedId, editingReply, handleApprove, handleReject]);
 
   const renderFilterTab = (tab: FilterTab, label: string, count?: number) => (
     <TouchableOpacity

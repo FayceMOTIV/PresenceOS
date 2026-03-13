@@ -13,7 +13,7 @@ interface Props {
   onPress: () => void;
 }
 
-export default function AssetCard({ asset, onPress }: Props) {
+export default React.memo(function AssetCard({ asset, onPress }: Props) {
   const url = asset.thumbnail_url || asset.public_url;
 
   return (
@@ -42,7 +42,7 @@ export default function AssetCard({ asset, onPress }: Props) {
       )}
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: { width: ITEM_SIZE, height: ITEM_SIZE, padding: 1 },

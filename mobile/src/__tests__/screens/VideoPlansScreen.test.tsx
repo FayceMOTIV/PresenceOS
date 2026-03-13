@@ -39,9 +39,12 @@ beforeEach(() => {
 });
 
 describe("VideoPlansScreen — Rendu", () => {
-  test("affiche le titre Crédits Vidéo", () => {
+  test("affiche le titre Crédits Vidéo", async () => {
     renderPlans();
-    expect(screen.getByText("Crédits Vidéo")).toBeTruthy();
+    // waitFor flushes pending async state updates from videoApi.credits()
+    await waitFor(() => {
+      expect(screen.getByText("Crédits Vidéo")).toBeTruthy();
+    });
   });
 
   test("affiche les crédits restants", async () => {

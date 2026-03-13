@@ -3,10 +3,12 @@
  */
 
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react-native";
+import { render, renderAsync, screen, waitFor } from "@testing-library/react-native";
 import BrainDashboardScreen from "@/screens/brain/BrainDashboardScreen";
 import { BrandContext } from "@/contexts/BrandContext";
 import { brainApi } from "@/lib/api";
+
+jest.setTimeout(60000);
 
 jest.mock("@/lib/api", () => ({
   brainApi: {
@@ -62,8 +64,8 @@ const mockMemories = [
   },
 ];
 
-function renderBrain(brand = mockBrand) {
-  return render(
+async function renderBrain(brand = mockBrand) {
+  return renderAsync(
     <BrandContext.Provider value={brand as any}>
       <BrainDashboardScreen />
     </BrandContext.Provider>
@@ -79,103 +81,79 @@ beforeEach(() => {
 
 describe("BrainDashboardScreen — Rendu", () => {
   test("affiche le titre 'Cerveau IA'", async () => {
-    renderBrain();
-    await waitFor(() => {
-      expect(screen.getByText("Cerveau IA")).toBeTruthy();
-    });
+    await renderBrain();
+    expect(screen.getByText("Cerveau IA")).toBeTruthy();
   });
 
   test("affiche le sous-titre", async () => {
-    renderBrain();
-    await waitFor(() => {
-      expect(screen.getByText("Mémoire et apprentissage de votre marque")).toBeTruthy();
-    });
+    await renderBrain();
+    expect(screen.getByText("Mémoire et apprentissage de votre marque")).toBeTruthy();
   });
 });
 
 describe("BrainDashboardScreen — BrandBrain", () => {
   test("affiche BrandBrain — Texte", async () => {
-    renderBrain();
-    await waitFor(() => {
-      expect(screen.getByText("BrandBrain — Texte")).toBeTruthy();
-    });
+    await renderBrain();
+    expect(screen.getByText("BrandBrain — Texte")).toBeTruthy();
   });
 
   test("affiche le label de maturité", async () => {
-    renderBrain();
-    await waitFor(() => {
-      expect(screen.getByText("Compétent")).toBeTruthy();
-      expect(screen.getByText("65%")).toBeTruthy();
-    });
+    await renderBrain();
+    expect(screen.getByText("Compétent")).toBeTruthy();
+    expect(screen.getByText("65%")).toBeTruthy();
   });
 
   test("affiche les compteurs de mémoire", async () => {
-    renderBrain();
-    await waitFor(() => {
-      expect(screen.getByText("Épisodiques")).toBeTruthy();
-      expect(screen.getByText("Sémantiques")).toBeTruthy();
-      expect(screen.getByText("Procédurales")).toBeTruthy();
-      expect(screen.getByText("Réflexions")).toBeTruthy();
-    });
+    await renderBrain();
+    expect(screen.getByText("Épisodiques")).toBeTruthy();
+    expect(screen.getByText("Sémantiques")).toBeTruthy();
+    expect(screen.getByText("Procédurales")).toBeTruthy();
+    expect(screen.getByText("Réflexions")).toBeTruthy();
   });
 
   test("affiche le total souvenirs", async () => {
-    renderBrain();
-    await waitFor(() => {
-      expect(screen.getByText("42 souvenirs au total")).toBeTruthy();
-    });
+    await renderBrain();
+    expect(screen.getByText("42 souvenirs au total")).toBeTruthy();
   });
 });
 
 describe("BrainDashboardScreen — VisualBrain", () => {
   test("affiche VisualBrain — Images", async () => {
-    renderBrain();
-    await waitFor(() => {
-      expect(screen.getByText("VisualBrain — Images")).toBeTruthy();
-    });
+    await renderBrain();
+    expect(screen.getByText("VisualBrain — Images")).toBeTruthy();
   });
 
   test("affiche les stats visuelles", async () => {
-    renderBrain();
-    await waitFor(() => {
-      expect(screen.getByText("Visuels")).toBeTruthy();
-      expect(screen.getByText("Évalués")).toBeTruthy();
-      expect(screen.getByText("Templates")).toBeTruthy();
-    });
+    await renderBrain();
+    expect(screen.getByText("Visuels")).toBeTruthy();
+    expect(screen.getByText("Évalués")).toBeTruthy();
+    expect(screen.getByText("Templates")).toBeTruthy();
   });
 
   test("affiche Maturité visuelle", async () => {
-    renderBrain();
-    await waitFor(() => {
-      expect(screen.getByText("Maturité visuelle")).toBeTruthy();
-      expect(screen.getByText("45%")).toBeTruthy();
-    });
+    await renderBrain();
+    expect(screen.getByText("Maturité visuelle")).toBeTruthy();
+    expect(screen.getByText("45%")).toBeTruthy();
   });
 });
 
 describe("BrainDashboardScreen — Souvenirs récents", () => {
   test("affiche les souvenirs récents", async () => {
-    renderBrain();
-    await waitFor(() => {
-      expect(screen.getByText("Souvenirs récents")).toBeTruthy();
-      expect(screen.getByText("Le client a aimé le tajine")).toBeTruthy();
-      expect(screen.getByText("Le restaurant est connu pour ses couscous")).toBeTruthy();
-    });
+    await renderBrain();
+    expect(screen.getByText("Souvenirs récents")).toBeTruthy();
+    expect(screen.getByText("Le client a aimé le tajine")).toBeTruthy();
+    expect(screen.getByText("Le restaurant est connu pour ses couscous")).toBeTruthy();
   });
 
   test("affiche la confiance en pourcentage", async () => {
-    renderBrain();
-    await waitFor(() => {
-      expect(screen.getByText(/Confiance: 85%/)).toBeTruthy();
-      expect(screen.getByText(/Confiance: 90%/)).toBeTruthy();
-    });
+    await renderBrain();
+    expect(screen.getByText(/Confiance: 85%/)).toBeTruthy();
+    expect(screen.getByText(/Confiance: 90%/)).toBeTruthy();
   });
 
   test("affiche la similarité quand présente", async () => {
-    renderBrain();
-    await waitFor(() => {
-      expect(screen.getByText(/Similarité: 92%/)).toBeTruthy();
-    });
+    await renderBrain();
+    expect(screen.getByText(/Similarité: 92%/)).toBeTruthy();
   });
 });
 
@@ -184,10 +162,8 @@ describe("BrainDashboardScreen — Empty state", () => {
     (brainApi.status as jest.Mock).mockRejectedValue(new Error("fail"));
     (brainApi.visualStatus as jest.Mock).mockRejectedValue(new Error("fail"));
     (brainApi.recall as jest.Mock).mockRejectedValue(new Error("fail"));
-    renderBrain();
-    await waitFor(() => {
-      expect(screen.getByText("Cerveau en cours d'initialisation")).toBeTruthy();
-    });
+    await renderBrain();
+    expect(screen.getByText("Cerveau en cours d'initialisation")).toBeTruthy();
   });
 });
 

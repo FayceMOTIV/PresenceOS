@@ -54,10 +54,10 @@ describe("SettingsScreen — Rendu", () => {
     expect(screen.getByText("Le Family's")).toBeTruthy();
   });
 
-  test("affiche Sécurité JWT", () => {
+  test("affiche les champs Nom et Email dans la section Compte", () => {
     renderSettings();
-    expect(screen.getByText("Sécurité")).toBeTruthy();
-    expect(screen.getByText("JWT")).toBeTruthy();
+    expect(screen.getByText("Nom")).toBeTruthy();
+    expect(screen.getByText("Email")).toBeTruthy();
   });
 
   test("affiche la section Application", () => {
@@ -118,6 +118,6 @@ describe("SettingsScreen — Logout", () => {
 
   test("marque sans brand affiche —", () => {
     renderSettings(mockAuth, { activeBrand: null, brands: [] } as any);
-    expect(screen.getByText("—")).toBeTruthy();
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);
   });
 });

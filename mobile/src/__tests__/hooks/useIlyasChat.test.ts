@@ -4,8 +4,8 @@
 
 import { renderHook, act } from "@testing-library/react-native";
 
-jest.mock("@/stores/brandStore", () => ({
-  useBrandStore: jest.fn((selector: any) =>
+jest.mock("@/stores/businessStore", () => ({
+  useBusinessStore: jest.fn((selector: any) =>
     selector({ activeBrand: { id: "brand-ilyas-123", name: "Test Ilyas" } })
   ),
 }));

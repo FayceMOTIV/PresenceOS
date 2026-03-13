@@ -3,7 +3,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { ilyasApi } from "@/lib/api";
-import { useBrandStore } from "@/stores/brandStore";
+import { useBusinessStore } from "@/stores/businessStore";
 import type { CMChatSession, CMChatMessage } from "@/types";
 
 interface UseIlyasChatReturn {
@@ -22,7 +22,7 @@ interface UseIlyasChatReturn {
 }
 
 export function useIlyasChat(): UseIlyasChatReturn {
-  const activeBrand = useBrandStore((s) => s.activeBrand);
+  const activeBrand = useBusinessStore((s) => s.activeBrand);
 
   const [sessions, setSessions] = useState<CMChatSession[]>([]);
   const [activeSession, setActiveSession] = useState<CMChatSession | null>(null);

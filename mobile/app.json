@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "fr.appysolution.rs3",
-      "buildNumber": "30",
+      "buildNumber": "33",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "RS3 a besoin d'accéder à vos photos pour uploader du contenu visuel.",

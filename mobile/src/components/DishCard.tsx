@@ -13,7 +13,7 @@ interface Props {
   onDelete?: () => void;
 }
 
-export default function DishCard({ dish, onPress, onDelete }: Props) {
+export default React.memo(function DishCard({ dish, onPress, onDelete }: Props) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
       {dish.cover_asset_id && dish.cover_asset_id.startsWith("http") ? (
@@ -40,7 +40,7 @@ export default function DishCard({ dish, onPress, onDelete }: Props) {
       )}
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.bg.secondary, borderRadius: 12, padding: 12, marginHorizontal: 16, marginBottom: 8, borderWidth: 1, borderColor: Colors.border.default },

@@ -55,14 +55,12 @@ describe("OnboardingChatScreen — URL step", () => {
   });
 
   test("scrape avec URL appelle onboardingApi.scrape", async () => {
-    jest.useFakeTimers();
     render(<OnboardingChatScreen brandId="b1" onComplete={jest.fn()} />);
     fireEvent.changeText(screen.getByPlaceholderText("https://votre-restaurant.fr"), "https://mon-resto.fr");
     fireEvent.press(screen.getByText("Analyser mon site"));
     await waitFor(() => {
       expect(onboardingApi.scrape).toHaveBeenCalledWith("b1", "https://mon-resto.fr");
     });
-    jest.useRealTimers();
   });
 });
 

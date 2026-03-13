@@ -56,6 +56,13 @@ export default function ProposalsListScreen() {
     setRefreshing(false);
   }, [fetchProposals]);
 
+  const renderItem = useCallback(({ item }: { item: AIProposal }) => (
+    <ProposalCard
+      proposal={item}
+      onPress={() => nav.navigate("ProposalDetail", { proposalId: item.id })}
+    />
+  ), [nav]);
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <Text style={styles.title}>{FR.proposals_title}</Text>
@@ -104,12 +111,7 @@ export default function ProposalsListScreen() {
         <FlatList
           data={proposals}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <ProposalCard
-              proposal={item}
-              onPress={() => nav.navigate("ProposalDetail", { proposalId: item.id })}
-            />
-          )}
+          renderItem={renderItem}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand.primary} />
           }

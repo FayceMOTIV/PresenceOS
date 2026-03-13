@@ -75,17 +75,17 @@ describe("CMChatScreen — Empty state", () => {
 
   test("affiche les quick prompts", () => {
     render(<CMChatScreen />);
-    expect(screen.getByText("Reel pour ce weekend")).toBeTruthy();
-    expect(screen.getByText("Post plat du jour")).toBeTruthy();
-    expect(screen.getByText("Story promo")).toBeTruthy();
-    expect(screen.getByText("Idée de contenu")).toBeTruthy();
+    expect(screen.getByText("Analyse mes performances")).toBeTruthy();
+    expect(screen.getByText("Que poster cette semaine ?")).toBeTruthy();
+    expect(screen.getByText("Story promo du jour")).toBeTruthy();
+    expect(screen.getByText("Idée de vidéo")).toBeTruthy();
   });
 
   test("quick prompt remplit le champ de texte", () => {
     render(<CMChatScreen />);
-    fireEvent.press(screen.getByText("Post plat du jour"));
+    fireEvent.press(screen.getByText("Analyse mes performances"));
     const input = screen.getByPlaceholderText("Écrivez votre message...");
-    expect(input.props.value).toBe("Post plat du jour");
+    expect(input.props.value).toBe("Analyse mes performances");
   });
 });
 

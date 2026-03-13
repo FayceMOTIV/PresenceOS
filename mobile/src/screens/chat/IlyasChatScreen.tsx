@@ -139,7 +139,13 @@ export default function IlyasChatScreen() {
   useEffect(() => { loadSessions(); }, [loadSessions]);
 
   useEffect(() => {
-    if (messages.length > 0) setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    if (messages.length > 0) {
+      timer = setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [messages.length]);
 
   const handlePickImage = useCallback(async () => {

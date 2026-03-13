@@ -3,7 +3,7 @@
 // Polyfill URL before anything else (fixes Hermes URL.protocol read-only issue)
 import "react-native-url-polyfill/auto";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { ActivityIndicator, View, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -128,12 +128,16 @@ export default function App() {
     resetPassword: handleResetPassword,
   };
 
-  const brandCtx = {
+  const handleSwitchBrand = useCallback((id: string) => {
+    businessStore.switchBusiness(id);
+  }, []);
+
+  const brandCtx = useMemo(() => ({
     activeBrand,
     brands,
-    switchBrand: (id: string) => businessStore.switchBusiness(id),
+    switchBrand: handleSwitchBrand,
     isLoading: bizLoading,
-  };
+  }), [activeBrand, brands, handleSwitchBrand, bizLoading]);
 
   // ── Loading screen (Firebase restoring session from AsyncStorage) ──
   if (isInitializing) {

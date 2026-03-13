@@ -9,7 +9,7 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   onAuthStateChanged,
-} from "firebase/auth";
+} from "@firebase/auth";
 
 jest.mock("@/lib/firebase", () => ({
   auth: {},

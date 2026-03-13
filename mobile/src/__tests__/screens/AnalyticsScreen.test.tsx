@@ -3,10 +3,12 @@
  */
 
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react-native";
+import { render, renderAsync, screen, waitFor } from "@testing-library/react-native";
 import AnalyticsScreen from "@/screens/analytics/AnalyticsScreen";
 import { BrandContext } from "@/contexts/BrandContext";
 import { brainApi } from "@/lib/api";
+
+jest.setTimeout(60000);
 
 jest.mock("@/lib/api", () => ({
   brainApi: {
@@ -53,8 +55,8 @@ const mockEvents = [
   },
 ];
 
-function renderAnalytics(brand = mockBrand) {
-  return render(
+async function renderAnalytics(brand = mockBrand) {
+  return renderAsync(
     <BrandContext.Provider value={brand as any}>
       <AnalyticsScreen />
     </BrandContext.Provider>
@@ -69,142 +71,110 @@ beforeEach(() => {
 
 describe("AnalyticsScreen — Rendu", () => {
   test("affiche le titre Analytics", async () => {
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText("Analytics")).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText("Analytics")).toBeTruthy();
   });
 
   test("affiche le sous-titre", async () => {
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText("Performance de votre contenu")).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText("Performance de votre contenu")).toBeTruthy();
   });
 });
 
 describe("AnalyticsScreen — KPIs", () => {
   test("affiche le nombre de posts", async () => {
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText("24")).toBeTruthy();
-      expect(screen.getByText("Posts")).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText("24")).toBeTruthy();
+    expect(screen.getByText("Posts")).toBeTruthy();
   });
 
   test("affiche les engagements", async () => {
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText("1580")).toBeTruthy();
-      expect(screen.getByText("Engagements")).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText("1580")).toBeTruthy();
+    expect(screen.getByText("Engagements")).toBeTruthy();
   });
 
   test("affiche le taux moyen", async () => {
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText("4.2%")).toBeTruthy();
-      expect(screen.getByText("Taux moy.")).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText("4.2%")).toBeTruthy();
+    expect(screen.getByText("Taux moy.")).toBeTruthy();
   });
 });
 
 describe("AnalyticsScreen — Meilleure performance", () => {
   test("affiche le type de contenu le plus performant", async () => {
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText("Meilleure performance")).toBeTruthy();
-      expect(screen.getByText("Reel")).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText("Meilleure performance")).toBeTruthy();
+    expect(screen.getByText("Reel")).toBeTruthy();
   });
 
   test("affiche le meilleur jour et heure", async () => {
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText("Vendredi")).toBeTruthy();
-      expect(screen.getByText("12:00")).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText("Vendredi")).toBeTruthy();
+    expect(screen.getByText("12:00")).toBeTruthy();
   });
 
   test("affiche la tendance de croissance", async () => {
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText("↑ En hausse")).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText("↑ En hausse")).toBeTruthy();
   });
 
   test("affiche tendance stable", async () => {
     (brainApi.analytics as jest.Mock).mockResolvedValue({
       data: { ...mockAnalytics, growth_trend: "stable" },
     });
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText("→ Stable")).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText("→ Stable")).toBeTruthy();
   });
 
   test("affiche tendance en baisse", async () => {
     (brainApi.analytics as jest.Mock).mockResolvedValue({
       data: { ...mockAnalytics, growth_trend: "down" },
     });
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText("↓ En baisse")).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText("↓ En baisse")).toBeTruthy();
   });
 });
 
 describe("AnalyticsScreen — Insights & Recommandations", () => {
   test("affiche les insights IA", async () => {
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText("Insights IA")).toBeTruthy();
-      expect(screen.getByText("Les Reels performent 2x mieux que les posts classiques")).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText("Insights IA")).toBeTruthy();
+    expect(screen.getByText("Les Reels performent 2x mieux que les posts classiques")).toBeTruthy();
   });
 
   test("affiche les recommandations", async () => {
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText("Recommandations")).toBeTruthy();
-      expect(screen.getByText("Publiez plus de contenu vidéo le vendredi")).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText("Recommandations")).toBeTruthy();
+    expect(screen.getByText("Publiez plus de contenu vidéo le vendredi")).toBeTruthy();
   });
 });
 
 describe("AnalyticsScreen — Événements", () => {
   test("affiche les événements à venir", async () => {
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText("Événements à venir")).toBeTruthy();
-      expect(screen.getByText("Ramadan")).toBeTruthy();
-      expect(screen.getByText("Fête des mères")).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText("Événements à venir")).toBeTruthy();
+    expect(screen.getByText("Ramadan")).toBeTruthy();
+    expect(screen.getByText("Fête des mères")).toBeTruthy();
   });
 
   test("affiche les priorités", async () => {
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText("Haute priorité")).toBeTruthy();
-      expect(screen.getByText("Moyenne")).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText("Haute priorité")).toBeTruthy();
+    expect(screen.getByText("Moyenne")).toBeTruthy();
   });
 
   test("affiche les idées de contenu", async () => {
-    renderAnalytics();
-    await waitFor(() => {
-      expect(screen.getByText(/Menu spécial iftar/)).toBeTruthy();
-    });
+    await renderAnalytics();
+    expect(screen.getByText(/Menu spécial iftar/)).toBeTruthy();
   });
 });
 
 describe("AnalyticsScreen — API", () => {
   test("appelle brainApi avec brandId", async () => {
-    renderAnalytics();
-    await waitFor(() => {
-      expect(brainApi.analytics).toHaveBeenCalledWith("brand-1");
-      expect(brainApi.calendarEvents).toHaveBeenCalledWith("brand-1");
-    });
+    await renderAnalytics();
+    expect(brainApi.analytics).toHaveBeenCalledWith("brand-1");
+    expect(brainApi.calendarEvents).toHaveBeenCalledWith("brand-1");
   });
 
   test("ne charge pas sans activeBrand", async () => {

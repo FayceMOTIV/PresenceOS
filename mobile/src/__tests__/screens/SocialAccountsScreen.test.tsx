@@ -11,9 +11,8 @@ import { socialApi } from "@/lib/api";
 jest.mock("@/lib/api", () => ({
   socialApi: {
     accounts: jest.fn(),
-    linkUrl: jest.fn(),
-    facebookPages: jest.fn(),
-    selectPage: jest.fn(),
+    connectUrl: jest.fn(),
+    disconnect: jest.fn(),
   },
 }));
 
@@ -52,47 +51,43 @@ beforeEach(() => {
 });
 
 describe("SocialAccountsScreen — Rendu", () => {
-  test("affiche le header 'Mes réseaux sociaux'", async () => {
+  test("affiche le header 'Connecter mes reseaux'", async () => {
     renderSocial();
     await waitFor(() => {
-      expect(screen.getByText("Mes réseaux sociaux")).toBeTruthy();
+      expect(screen.getByText("Connecter mes reseaux")).toBeTruthy();
     });
   });
 
-  test("affiche les 3 plateformes", async () => {
+  test("affiche les 6 plateformes", async () => {
     renderSocial();
     await waitFor(() => {
       expect(screen.getByText("Instagram")).toBeTruthy();
       expect(screen.getByText("Facebook")).toBeTruthy();
       expect(screen.getByText("TikTok")).toBeTruthy();
-    });
-  });
-
-  test("affiche le bouton 'Connecter mes réseaux'", async () => {
-    renderSocial();
-    await waitFor(() => {
-      expect(screen.getByText("Connecter mes réseaux")).toBeTruthy();
+      expect(screen.getByText("LinkedIn")).toBeTruthy();
+      expect(screen.getByText("X (Twitter)")).toBeTruthy();
+      expect(screen.getByText("YouTube")).toBeTruthy();
     });
   });
 
   test("affiche le hint de connexion", async () => {
     renderSocial();
     await waitFor(() => {
-      expect(screen.getByText(/Ouvre une page sécurisée/)).toBeTruthy();
+      expect(screen.getByText(/Appuie sur "Connecter"/)).toBeTruthy();
     });
   });
 });
 
 describe("SocialAccountsScreen — States", () => {
-  test("affiche 'Non connecté' pour chaque plateforme déconnectée", async () => {
+  test("affiche 'Non connecte' pour chaque plateforme deconnectee", async () => {
     renderSocial();
     await waitFor(() => {
-      const disconnected = screen.getAllByText("Non connecté");
-      expect(disconnected.length).toBe(3);
+      const disconnected = screen.getAllByText("Non connecte");
+      expect(disconnected.length).toBe(6);
     });
   });
 
-  test("affiche 'Connecté' pour une plateforme connectée", async () => {
+  test("affiche le username pour une plateforme connectee", async () => {
     (socialApi.accounts as jest.Mock).mockResolvedValue({
       data: {
         accounts: [{ platform: "instagram", username: "testinsta", connected: true }],
@@ -100,23 +95,22 @@ describe("SocialAccountsScreen — States", () => {
     });
     renderSocial();
     await waitFor(() => {
-      expect(screen.getByText("Connecté")).toBeTruthy();
       expect(screen.getByText("@testinsta")).toBeTruthy();
     });
   });
 
-  test("affiche 'Connecter' boutons pour plateformes déconnectées", async () => {
+  test("affiche 'Connecter' boutons pour plateformes deconnectees", async () => {
     renderSocial();
     await waitFor(() => {
       const btns = screen.getAllByText("Connecter");
-      expect(btns.length).toBe(3);
+      expect(btns.length).toBe(6);
     });
   });
 
-  test("affiche le footer info quand aucun réseau connecté", async () => {
+  test("affiche le footer info quand aucun reseau connecte", async () => {
     renderSocial();
     await waitFor(() => {
-      expect(screen.getByText(/Aucun réseau connecté/)).toBeTruthy();
+      expect(screen.getByText(/Aucun reseau connecte/)).toBeTruthy();
     });
   });
 });
@@ -125,9 +119,12 @@ describe("SocialAccountsScreen — Navigation", () => {
   test("back button appelle goBack", async () => {
     renderSocial();
     await waitFor(() => {
-      expect(screen.getByText("Mes réseaux sociaux")).toBeTruthy();
+      expect(screen.getByText("Connecter mes reseaux")).toBeTruthy();
     });
-    fireEvent.press(screen.getByText("arrow-back"));
+    // The back button is the first TouchableOpacity in the header row
+    const { TouchableOpacity } = require("react-native");
+    const touchables = screen.UNSAFE_getAllByType(TouchableOpacity);
+    fireEvent.press(touchables[0]); // first touchable = back button
     expect(mockGoBack).toHaveBeenCalled();
   });
 });
@@ -149,21 +146,21 @@ describe("SocialAccountsScreen — API", () => {
     expect(socialApi.accounts).not.toHaveBeenCalled();
   });
 
-  test("gère erreur API gracieusement", async () => {
+  test("gere erreur API gracieusement", async () => {
     (socialApi.accounts as jest.Mock).mockRejectedValue(new Error("Network error"));
     renderSocial();
     await waitFor(() => {
       // Falls back to all disconnected
-      const disconnected = screen.getAllByText("Non connecté");
-      expect(disconnected.length).toBe(3);
+      const disconnected = screen.getAllByText("Non connecte");
+      expect(disconnected.length).toBe(6);
     });
   });
 });
 
 describe("SocialAccountsScreen — Connexion individuelle", () => {
-  test("press Connecter lance OAuth", async () => {
+  test("press Connecter lance OAuth via connectUrl", async () => {
     const WebBrowser = require("expo-web-browser");
-    (socialApi.linkUrl as jest.Mock).mockResolvedValue({
+    (socialApi.connectUrl as jest.Mock).mockResolvedValue({
       data: { url: "https://auth.example.com/oauth" },
     });
     renderSocial();
@@ -173,13 +170,13 @@ describe("SocialAccountsScreen — Connexion individuelle", () => {
     const connectBtns = screen.getAllByText("Connecter");
     fireEvent.press(connectBtns[0]); // Instagram
     await waitFor(() => {
-      expect(socialApi.linkUrl).toHaveBeenCalledWith("brand-1", "instagram", expect.any(String));
+      expect(socialApi.connectUrl).toHaveBeenCalledWith("brand-1", "instagram", expect.any(String));
       expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalled();
     });
   });
 
-  test("erreur linkUrl affiche alerte", async () => {
-    (socialApi.linkUrl as jest.Mock).mockResolvedValue({ data: {} });
+  test("erreur connectUrl sans url affiche pas de crash", async () => {
+    (socialApi.connectUrl as jest.Mock).mockResolvedValue({ data: {} });
     renderSocial();
     await waitFor(() => {
       expect(screen.getByText("Instagram")).toBeTruthy();
@@ -187,25 +184,7 @@ describe("SocialAccountsScreen — Connexion individuelle", () => {
     const connectBtns = screen.getAllByText("Connecter");
     fireEvent.press(connectBtns[0]);
     await waitFor(() => {
-      expect(socialApi.linkUrl).toHaveBeenCalled();
-    });
-  });
-});
-
-describe("SocialAccountsScreen — Connexion globale", () => {
-  test("press 'Connecter mes réseaux' lance OAuth sans platform", async () => {
-    const WebBrowser = require("expo-web-browser");
-    (socialApi.linkUrl as jest.Mock).mockResolvedValue({
-      data: { url: "https://auth.example.com/oauth-all" },
-    });
-    renderSocial();
-    await waitFor(() => {
-      expect(screen.getByText("Connecter mes réseaux")).toBeTruthy();
-    });
-    fireEvent.press(screen.getByText("Connecter mes réseaux"));
-    await waitFor(() => {
-      expect(socialApi.linkUrl).toHaveBeenCalledWith("brand-1", undefined, expect.any(String));
-      expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalled();
+      expect(socialApi.connectUrl).toHaveBeenCalled();
     });
   });
 });

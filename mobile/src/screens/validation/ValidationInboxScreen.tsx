@@ -43,7 +43,7 @@ export default function ValidationInboxScreen() {
     fetchPending();
   }, [fetchPending]);
 
-  const handleApprove = async (proposal: AIProposal) => {
+  const handleApprove = useCallback(async (proposal: AIProposal) => {
     if (!activeBrand) return;
     try {
       await proposalsApi.approve(activeBrand.id, proposal.id);
@@ -51,9 +51,9 @@ export default function ValidationInboxScreen() {
     } catch (err) {
       Alert.alert("Erreur", "Impossible d'approuver ce post");
     }
-  };
+  }, [activeBrand]);
 
-  const handleReject = (proposal: AIProposal) => {
+  const handleReject = useCallback((proposal: AIProposal) => {
     if (!activeBrand) return;
     Alert.alert("Rejeter ce post ?", "Cette action est irréversible.", [
       { text: "Annuler", style: "cancel" },
@@ -70,9 +70,9 @@ export default function ValidationInboxScreen() {
         },
       },
     ]);
-  };
+  }, [activeBrand]);
 
-  const handleSchedule = async (proposal: AIProposal) => {
+  const handleSchedule = useCallback(async (proposal: AIProposal) => {
     if (!activeBrand) return;
     // Schedule for next optimal slot (default: tomorrow 12:00)
     const tomorrow = new Date();
@@ -86,9 +86,9 @@ export default function ValidationInboxScreen() {
     } catch {
       Alert.alert("Erreur", "Impossible de planifier ce post");
     }
-  };
+  }, [activeBrand]);
 
-  const renderItem = ({ item }: { item: AIProposal }) => (
+  const renderItem = useCallback(({ item }: { item: AIProposal }) => (
     <View style={styles.card}>
       {/* Image preview */}
       {item.image_url && (
@@ -148,7 +148,12 @@ export default function ValidationInboxScreen() {
         </TouchableOpacity>
       </View>
     </View>
-  );
+  ), [handleApprove, handleReject, handleSchedule]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchPending();
+  }, [fetchPending]);
 
   if (loading) {
     return (
@@ -185,10 +190,7 @@ export default function ValidationInboxScreen() {
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           refreshing={refreshing}
-          onRefresh={() => {
-            setRefreshing(true);
-            fetchPending();
-          }}
+          onRefresh={onRefresh}
         />
       )}
     </SafeAreaView>

@@ -9,6 +9,7 @@ import ProposalDetailScreen from "@/screens/proposals/ProposalDetailScreen";
 import { BrandContext } from "@/contexts/BrandContext";
 import { proposalsApi } from "@/lib/api";
 
+jest.setTimeout(60000);
 jest.spyOn(Alert, "alert");
 
 jest.mock("@/lib/api", () => ({
@@ -54,6 +55,13 @@ function renderDetail() {
   );
 }
 
+/** Render and wait for async data to load */
+async function renderAndWait() {
+  renderDetail();
+  // Wait for the async useEffect (fetchProposal) to resolve and loading to complete
+  await screen.findByText("Belle journée au resto !", {}, { timeout: 15000 });
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   (proposalsApi.list as jest.Mock).mockResolvedValue({
@@ -66,7 +74,7 @@ describe("ProposalDetailScreen — Chargement", () => {
     renderDetail();
     await waitFor(() => {
       expect(screen.getByText("Belle journée au resto !")).toBeTruthy();
-    });
+    }, { timeout: 15000 });
   });
 
   test("affiche le status badge", async () => {

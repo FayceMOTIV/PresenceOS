@@ -39,7 +39,7 @@ interface Props {
   onPress: () => void;
 }
 
-export default function ProposalCard({ proposal, onPress }: Props) {
+export default React.memo(function ProposalCard({ proposal, onPress }: Props) {
   const statusColor = STATUS_COLORS[proposal.status] || Colors.text.secondary;
   const imageUrl = proposal.improved_image_url || proposal.image_url;
   const platformKey = proposal.platform.toLowerCase();
@@ -108,7 +108,7 @@ export default function ProposalCard({ proposal, onPress }: Props) {
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

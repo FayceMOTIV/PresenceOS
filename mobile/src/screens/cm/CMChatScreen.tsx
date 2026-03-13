@@ -38,6 +38,43 @@ function SessionDrawer({
   onDelete: (id: string) => void;
   onClose: () => void;
 }) {
+  const renderSessionItem = useCallback(({ item }: { item: CMChatSession }) => {
+    const isActive = item.id === activeId;
+    return (
+      <TouchableOpacity
+        style={[drawerStyles.sessionItem, isActive && drawerStyles.sessionActive]}
+        onPress={() => { onSelect(item.id); onClose(); }}
+        onLongPress={() => {
+          Alert.alert(
+            FR.confirm_delete,
+            FR.confirm_delete_body,
+            [
+              { text: FR.no_cancel, style: "cancel" },
+              { text: FR.yes_delete, style: "destructive", onPress: () => onDelete(item.id) },
+            ]
+          );
+        }}
+      >
+        <Ionicons
+          name="chatbubble-outline"
+          size={16}
+          color={isActive ? Colors.brand.primary : Colors.text.muted}
+        />
+        <View style={drawerStyles.sessionInfo}>
+          <Text
+            style={[drawerStyles.sessionTitle, isActive && drawerStyles.sessionTitleActive]}
+            numberOfLines={1}
+          >
+            {item.title || "Sans titre"}
+          </Text>
+          <Text style={drawerStyles.sessionMeta}>
+            {item.message_count} msg
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }, [activeId, onSelect, onClose, onDelete]);
+
   return (
     <View style={drawerStyles.overlay}>
       <TouchableOpacity style={drawerStyles.backdrop} onPress={onClose} activeOpacity={1} />
@@ -58,42 +95,7 @@ function SessionDrawer({
           data={sessions}
           keyExtractor={(s) => s.id}
           contentContainerStyle={{ paddingBottom: 40 }}
-          renderItem={({ item }) => {
-            const isActive = item.id === activeId;
-            return (
-              <TouchableOpacity
-                style={[drawerStyles.sessionItem, isActive && drawerStyles.sessionActive]}
-                onPress={() => { onSelect(item.id); onClose(); }}
-                onLongPress={() => {
-                  Alert.alert(
-                    FR.confirm_delete,
-                    FR.confirm_delete_body,
-                    [
-                      { text: FR.no_cancel, style: "cancel" },
-                      { text: FR.yes_delete, style: "destructive", onPress: () => onDelete(item.id) },
-                    ]
-                  );
-                }}
-              >
-                <Ionicons
-                  name="chatbubble-outline"
-                  size={16}
-                  color={isActive ? Colors.brand.primary : Colors.text.muted}
-                />
-                <View style={drawerStyles.sessionInfo}>
-                  <Text
-                    style={[drawerStyles.sessionTitle, isActive && drawerStyles.sessionTitleActive]}
-                    numberOfLines={1}
-                  >
-                    {item.title || "Sans titre"}
-                  </Text>
-                  <Text style={drawerStyles.sessionMeta}>
-                    {item.message_count} msg
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          }}
+          renderItem={renderSessionItem}
           ListEmptyComponent={
             <Text style={drawerStyles.emptyText}>Aucune conversation</Text>
           }
@@ -209,11 +211,15 @@ export default function CMChatScreen() {
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
     if (messages.length > 0) {
-      setTimeout(() => {
+      timer = setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [messages.length]);
 
   const handleSend = useCallback(() => {
@@ -223,6 +229,10 @@ export default function CMChatScreen() {
     Keyboard.dismiss();
     sendMessage(msg);
   }, [text, isSending, sendMessage]);
+
+  const renderMessage = useCallback(({ item }: { item: CMChatMessage }) => (
+    <MessageBubble message={item} />
+  ), []);
 
   const quickPrompts = [
     "Analyse mes performances",
@@ -316,7 +326,7 @@ export default function CMChatScreen() {
             ref={flatListRef}
             data={messages}
             keyExtractor={(m) => m.id}
-            renderItem={({ item }) => <MessageBubble message={item} />}
+            renderItem={renderMessage}
             contentContainerStyle={styles.messageList}
             keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={false}

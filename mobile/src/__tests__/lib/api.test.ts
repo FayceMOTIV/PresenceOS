@@ -22,11 +22,20 @@ const mockGetState = jest.fn(() => ({
 }));
 
 jest.mock("@/stores/authStore", () => ({
-  useAuthStore: { getState: () => mockGetState() },
+  useAuthStore: {
+    getState: () => mockGetState(),
+    setState: jest.fn(), // used by requestV2 to store refreshed token
+  },
 }));
 
 jest.mock("expo-constants", () => ({
   expoConfig: { version: "2.0.0" },
+}));
+
+// Mock Firebase auth — currentUser is mutable so tests can override it
+const mockFirebaseAuth = { currentUser: null as any };
+jest.mock("@/lib/firebase", () => ({
+  get auth() { return mockFirebaseAuth; },
 }));
 
 import api, {
@@ -49,6 +58,12 @@ import api, {
   abTestApi,
   engageApi,
   socialV2Api,
+  breakoutApi,
+  dishApi,
+  imageApi,
+  aiVideoApi,
+  postizApi,
+  videoTemplatesApi,
 } from "@/lib/api";
 
 function mockJsonResponse(data: any, status = 200) {
@@ -239,8 +254,9 @@ describe("API Client — Video Module", () => {
       mockJsonResponse({ video_url: "https://example.com/video.mp4" })
     );
     await videoApi.generate("b1", "Un restaurant au coucher de soleil", 10, "cinematic", "9:16");
+    const url = mockFetch.mock.calls[0][0];
+    expect(url).toContain("/ai-video/brands/b1/generate");
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.brand_id).toBe("b1");
     expect(body.prompt).toBe("Un restaurant au coucher de soleil");
     expect(body.duration).toBe(10);
     expect(body.style).toBe("cinematic");
@@ -453,7 +469,7 @@ describe("API Client — Video history", () => {
   test("history récupère l'historique", async () => {
     mockFetch.mockReturnValue(mockJsonResponse({ videos: [] }));
     await videoApi.history("b1");
-    expect(mockFetch.mock.calls[0][0]).toContain("/video/history/b1");
+    expect(mockFetch.mock.calls[0][0]).toContain("/video/brands/b1/videos");
   });
 });
 
@@ -703,5 +719,595 @@ describe("API Client — Social v2", () => {
     expect(body.account_id).toBe("acc1");
     expect(body.platform).toBe("instagram");
     expect(body.text).toBe("Hello!");
+  });
+});
+
+// ── Coverage: uncovered branches and paths ──
+
+describe("API Client — Core: __DEV__ bypass (no token, no user)", () => {
+  test("envoie dev-token quand pas de token et pas d'utilisateur en mode DEV", async () => {
+    // Simulate __DEV__ = true (already set in test env), no token, no user
+    mockGetState.mockReturnValue({ token: null, user: null, refreshToken: jest.fn() } as any);
+    mockFetch.mockReturnValue(mockJsonResponse({ ok: true }));
+    await contentApi.listDishes("b1");
+    const headers = mockFetch.mock.calls[0][1].headers;
+    expect(headers["Authorization"]).toBe("Bearer dev-token-presenceos");
+  });
+});
+
+describe("API Client — Core: 401 retry success path", () => {
+  test("retire la requête avec le nouveau token après un 401", async () => {
+    const freshToken = "refreshed-token-xyz";
+    const mockRefresh = jest.fn().mockResolvedValue(freshToken);
+    mockGetState.mockReturnValue({ token: "old-token", user: null, refreshToken: mockRefresh });
+
+    // First call returns 401, second (retry) returns 200
+    mockFetch
+      .mockReturnValueOnce(mockJsonResponse({ detail: "Unauthorized" }, 401))
+      .mockReturnValueOnce(mockJsonResponse({ data: "ok" }, 200));
+
+    const res = await contentApi.listDishes("b1");
+    expect(res.data).toEqual({ data: "ok" });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    const retryHeaders = mockFetch.mock.calls[1][1].headers;
+    expect(retryHeaders["Authorization"]).toBe(`Bearer ${freshToken}`);
+  });
+
+  test("propage l'erreur quand le token refresh échoue sur 401", async () => {
+    const mockRefresh = jest.fn().mockResolvedValue(null);
+    mockGetState.mockReturnValue({ token: "old-token", user: null, refreshToken: mockRefresh });
+
+    mockFetch.mockReturnValue(mockJsonResponse({ detail: "Unauthorized" }, 401));
+
+    await expect(contentApi.listDishes("b1")).rejects.toThrow();
+  });
+
+  test("propage l'erreur quand refreshToken lance une exception sur 401", async () => {
+    const mockRefresh = jest.fn().mockRejectedValue(new Error("Firebase session dead"));
+    mockGetState.mockReturnValue({ token: "bad-token", user: null, refreshToken: mockRefresh });
+
+    mockFetch.mockReturnValue(mockJsonResponse({ detail: "Unauthorized" }, 401));
+
+    await expect(contentApi.listDishes("b1")).rejects.toThrow();
+  });
+
+  test("ne force pas la déconnexion après un 401", async () => {
+    const mockRefresh = jest.fn().mockResolvedValue(null);
+    mockGetState.mockReturnValue({ token: "t", user: null, refreshToken: mockRefresh });
+    mockFetch.mockReturnValue(mockJsonResponse({ detail: "Unauthorized" }, 401));
+
+    // Should reject but NOT call logout
+    await expect(contentApi.listDishes("b1")).rejects.toThrow();
+    // No logout call means no store setState with isAuthenticated: false from here
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("API Client — Core: réponse non-JSON (request)", () => {
+  test("retourne du texte brut quand content-type est text/plain", async () => {
+    mockFetch.mockReturnValue(
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: { get: () => "text/plain" },
+        text: () => Promise.resolve("plain text response"),
+        json: () => Promise.reject(new Error("not json")),
+      })
+    );
+    const res = await contentApi.listDishes("b1");
+    expect(res.data).toBe("plain text response");
+  });
+});
+
+describe("API Client — Core: erreur 403", () => {
+  test("lance une erreur avec le message detail sur 403", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ detail: "Access forbidden" }, 403));
+    await expect(contentApi.listDishes("b1")).rejects.toThrow("Access forbidden");
+  });
+});
+
+describe("API Client — requestV2: timeout (AbortError)", () => {
+  test("gère le timeout sur requestV2 (AbortError)", async () => {
+    mockFetch.mockImplementation(() => {
+      const error: any = new Error("Aborted");
+      error.name = "AbortError";
+      return Promise.reject(error);
+    });
+    await expect(videoApi.credits("b1")).rejects.toThrow("Request timeout");
+  });
+});
+
+describe("API Client — requestV2: réponse non-JSON", () => {
+  test("retourne du texte brut dans requestV2 quand content-type est text/plain", async () => {
+    mockFetch.mockReturnValue(
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: { get: () => "text/plain" },
+        text: () => Promise.resolve("v2 text response"),
+        json: () => Promise.reject(new Error("not json")),
+      })
+    );
+    const res = await videoApi.credits("b1");
+    expect(res.data).toBe("v2 text response");
+  });
+});
+
+describe("API Client — requestV2: 401 retry success", () => {
+  afterEach(() => {
+    mockFirebaseAuth.currentUser = null;
+  });
+
+  test("retire avec le nouveau token Firebase après 401 sur requestV2", async () => {
+    const freshToken = "firebase-refreshed-token";
+    mockFirebaseAuth.currentUser = {
+      getIdToken: jest.fn().mockResolvedValue(freshToken),
+    };
+
+    mockFetch
+      .mockReturnValueOnce(mockJsonResponse({ detail: "Unauthorized" }, 401))
+      .mockReturnValueOnce(mockJsonResponse({ credits_remaining: 10 }, 200));
+
+    const res = await videoApi.credits("b1");
+    expect(res.data.credits_remaining).toBe(10);
+    // Original request + retry
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    // Retry must use the fresh token
+    const retryHeaders = mockFetch.mock.calls[1][1].headers;
+    expect(retryHeaders["Authorization"]).toBe(`Bearer ${freshToken}`);
+  });
+
+  test("requestV2 401: retourne l'erreur quand le retry échoue aussi", async () => {
+    const freshToken = "firebase-fresh-but-retry-fails";
+    mockFirebaseAuth.currentUser = {
+      getIdToken: jest.fn().mockResolvedValue(freshToken),
+    };
+
+    // Both calls fail
+    mockFetch.mockReturnValue(mockJsonResponse({ detail: "Unauthorized" }, 401));
+    await expect(videoApi.credits("b1")).rejects.toThrow();
+  });
+
+  test("requestV2 401: pas de currentUser — ne peut pas rafraichir le token", async () => {
+    mockFirebaseAuth.currentUser = null;
+    mockFetch.mockReturnValue(mockJsonResponse({ detail: "Unauthorized" }, 401));
+    await expect(videoApi.credits("b1")).rejects.toThrow();
+    // Should only call fetch once (no retry without currentUser)
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  test("requestV2 401 retry avec corps FormData (branche isFormData)", async () => {
+    const freshToken = "firebase-fresh-formdata";
+    mockFirebaseAuth.currentUser = {
+      getIdToken: jest.fn().mockResolvedValue(freshToken),
+    };
+
+    mockFetch
+      .mockReturnValueOnce(mockJsonResponse({ detail: "Unauthorized" }, 401))
+      .mockReturnValueOnce(mockJsonResponse({ text: "transcription" }, 200));
+
+    const fd = new FormData();
+    fd.append("audio", "mock-audio-data");
+    // voiceApi.transcribe uses requestV2 with isFormData: true + body
+    const res = await voiceApi.transcribe("b1", fd);
+    expect(res.data.text).toBe("transcription");
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    // Retry must have the fresh token
+    const retryHeaders = mockFetch.mock.calls[1][1].headers;
+    expect(retryHeaders["Authorization"]).toBe(`Bearer ${freshToken}`);
+  });
+
+  test("requestV2: propage l'erreur quand le retry échoue aussi sur 401", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ detail: "Unauthorized" }, 401));
+    await expect(videoApi.credits("b1")).rejects.toThrow();
+  });
+});
+
+describe("API Client — requestV2: params avec valeurs null/undefined filtrées", () => {
+  test("filtre les params null et undefined dans l'URL v2", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ tests: [] }));
+    await engageApi.inbox("b1", undefined, 50);
+    const url = mockFetch.mock.calls[0][0];
+    // undefined status_filter should not appear in URL
+    expect(url).not.toContain("status_filter=undefined");
+    expect(url).toContain("limit=50");
+  });
+});
+
+describe("API Client — buildUrl: filtre null/undefined", () => {
+  test("ne met pas les params null dans l'URL", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ proposals: [] }));
+    await proposalsApi.list("b1", { status: "pending", page: null, limit: undefined });
+    const url = mockFetch.mock.calls[0][0];
+    expect(url).toContain("status=pending");
+    expect(url).not.toContain("page=null");
+    expect(url).not.toContain("limit=undefined");
+  });
+});
+
+describe("API Client — Content createDish", () => {
+  test("createDish appelle POST avec les données du plat", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ id: "dish-1", name: "Couscous" }));
+    const res = await contentApi.createDish("b1", { name: "Couscous", price: 12.5 });
+    expect(mockFetch.mock.calls[0][0]).toContain("/content/b1/dishes");
+    expect(mockFetch.mock.calls[0][1].method).toBe("POST");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.name).toBe("Couscous");
+    expect(body.price).toBe(12.5);
+    expect(res.data.id).toBe("dish-1");
+  });
+});
+
+describe("API Client — KB Module (complet)", () => {
+  test("kbApi.get", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ kb: {} }));
+    await kbApi.get("b1");
+    expect(mockFetch.mock.calls[0][0]).toContain("/kb/b1");
+    expect(mockFetch.mock.calls[0][1].method).toBe("GET");
+  });
+});
+
+describe("API Client — Social publish et schedule", () => {
+  test("socialApi.publish envoie content + platforms + media_urls", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ ok: true }));
+    await socialApi.publish("b1", "Hello!", [{ platform: "instagram", accountId: "acc1" }], ["https://img.jpg"]);
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.content).toBe("Hello!");
+    expect(body.platforms).toEqual([{ platform: "instagram", accountId: "acc1" }]);
+    expect(body.media_urls).toEqual(["https://img.jpg"]);
+  });
+
+  test("socialApi.publish sans mediaUrls envoie tableau vide", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ ok: true }));
+    await socialApi.publish("b1", "Post", [{ platform: "facebook", accountId: "acc2" }]);
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.media_urls).toEqual([]);
+  });
+
+  test("socialApi.schedule envoie scheduled_for + timezone", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ ok: true }));
+    await socialApi.schedule("b1", "Scheduled post", [{ platform: "instagram", accountId: "acc1" }], "2026-04-01T10:00:00Z");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.content).toBe("Scheduled post");
+    expect(body.scheduled_for).toBe("2026-04-01T10:00:00Z");
+    expect(body.timezone).toBe("Europe/Paris");
+    expect(body.media_urls).toEqual([]);
+  });
+});
+
+describe("API Client — Video Module (complet)", () => {
+  test("videoApi.setCredits envoie credits + plan", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ ok: true }));
+    await videoApi.setCredits("b1", 10, "pro");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.credits).toBe(10);
+    expect(body.plan).toBe("pro");
+  });
+
+  test("videoApi.setCredits utilise plan 'studio' par défaut", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ ok: true }));
+    await videoApi.setCredits("b1", 5);
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.plan).toBe("studio");
+  });
+
+  test("videoApi.save envoie les métadonnées vidéo", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ asset_id: "v1" }));
+    await videoApi.save("b1", "https://fal.ai/video.mp4", "Restaurant sunset", 10, "9:16", "cinematic");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.fal_url).toBe("https://fal.ai/video.mp4");
+    expect(body.prompt).toBe("Restaurant sunset");
+    expect(body.duration_seconds).toBe(10);
+    expect(body.aspect_ratio).toBe("9:16");
+    expect(body.style).toBe("cinematic");
+  });
+
+  test("videoApi.publish envoie asset_id + platform + caption", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ ok: true }));
+    await videoApi.publish("b1", "asset-123", "instagram", "Check this out!", "@restaurant");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.asset_id).toBe("asset-123");
+    expect(body.platform).toBe("instagram");
+    expect(body.caption).toBe("Check this out!");
+    expect(body.account_username).toBe("@restaurant");
+  });
+
+  test("videoApi.listSaved appelle GET sur /video/brands/:id/videos", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ videos: [] }));
+    await videoApi.listSaved("b1");
+    expect(mockFetch.mock.calls[0][0]).toContain("/video/brands/b1/videos");
+    expect(mockFetch.mock.calls[0][1].method).toBe("GET");
+  });
+});
+
+describe("API Client — Onboarding v2 (complet)", () => {
+  test("onboardingApi.getState", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ state: {} }));
+    await onboardingApi.getState("b1");
+    expect(mockFetch.mock.calls[0][0]).toContain("/onboarding/brands/b1/onboarding/state");
+  });
+
+  test("onboardingApi.reset appelle POST", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ ok: true }));
+    await onboardingApi.reset("b1");
+    expect(mockFetch.mock.calls[0][0]).toContain("/onboarding/brands/b1/onboarding/reset");
+    expect(mockFetch.mock.calls[0][1].method).toBe("POST");
+  });
+});
+
+describe("API Client — Breakout v2", () => {
+  test("generate envoie FormData", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ video_url: "https://example.com/breakout.mp4" }));
+    const fd = new FormData();
+    fd.append("file", "mock-file");
+    await breakoutApi.generate("b1", fd);
+    expect(mockFetch.mock.calls[0][0]).toContain("/breakout/b1/generate");
+    // FormData — Content-Type doit être absent
+    const headers = mockFetch.mock.calls[0][1].headers;
+    expect(headers["Content-Type"]).toBeUndefined();
+  });
+});
+
+describe("API Client — Dish Recognition v2", () => {
+  test("recognize envoie FormData", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ dish: { name: "Pizza" } }));
+    const fd = new FormData();
+    fd.append("image", "mock-image");
+    await dishApi.recognize(fd);
+    expect(mockFetch.mock.calls[0][0]).toContain("/dish/recognize");
+    const headers = mockFetch.mock.calls[0][1].headers;
+    expect(headers["Content-Type"]).toBeUndefined();
+  });
+});
+
+describe("API Client — Image Generation v2", () => {
+  test("imageApi.generate avec valeurs par défaut", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ image_url: "https://example.com/img.jpg" }));
+    await imageApi.generate("b1", "Assiette gastronomique");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.prompt).toBe("Assiette gastronomique");
+    expect(body.niche).toBe("restaurant");
+    expect(body.style).toBe("natural");
+    expect(body.quality).toBe("fast");
+  });
+
+  test("imageApi.generate avec paramètres personnalisés", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ image_url: "https://example.com/img2.jpg" }));
+    await imageApi.generate("b1", "Plat du jour", "bakery", "artistic", "hd");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.niche).toBe("bakery");
+    expect(body.style).toBe("artistic");
+    expect(body.quality).toBe("hd");
+  });
+
+  test("imageApi.enhance envoie source_url + style", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ enhanced_url: "https://example.com/enhanced.jpg" }));
+    await imageApi.enhance("b1", "https://example.com/orig.jpg", "fine-dining");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.source_url).toBe("https://example.com/orig.jpg");
+    expect(body.style).toBe("fine-dining");
+  });
+
+  test("imageApi.enhance utilise 'restaurant' comme style par défaut", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ enhanced_url: "https://example.com/enhanced2.jpg" }));
+    await imageApi.enhance("b1", "https://example.com/orig.jpg");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.style).toBe("restaurant");
+  });
+
+  test("imageApi.niches retourne la liste des niches", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ niches: ["restaurant", "bakery", "cafe"] }));
+    const res = await imageApi.niches();
+    expect(mockFetch.mock.calls[0][0]).toContain("/images/niches");
+    expect(res.data.niches).toContain("restaurant");
+  });
+});
+
+describe("API Client — AI Video v2 (Kling/Wan)", () => {
+  test("aiVideoApi.textToVideo avec valeurs par défaut", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ video_url: "https://example.com/vid.mp4" }));
+    await aiVideoApi.textToVideo("b1", "Un restaurant animé");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.prompt).toBe("Un restaurant animé");
+    expect(body.duration).toBe(5);
+    expect(body.aspect_ratio).toBe("9:16");
+    expect(body.model).toBe("kling");
+  });
+
+  test("aiVideoApi.textToVideo avec paramètres personnalisés", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ video_url: "https://example.com/vid2.mp4" }));
+    await aiVideoApi.textToVideo("b1", "Sunset terrace", 10, "16:9", "wan");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.duration).toBe(10);
+    expect(body.aspect_ratio).toBe("16:9");
+    expect(body.model).toBe("wan");
+  });
+
+  test("aiVideoApi.imageToVideo envoie image_url + prompt", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ video_url: "https://example.com/i2v.mp4" }));
+    await aiVideoApi.imageToVideo("b1", "https://example.com/dish.jpg", "Add motion effects", 10, "9:16");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.image_url).toBe("https://example.com/dish.jpg");
+    expect(body.prompt).toBe("Add motion effects");
+    expect(body.duration).toBe(10);
+    expect(body.aspect_ratio).toBe("9:16");
+  });
+
+  test("aiVideoApi.imageToVideo avec valeurs par défaut", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ video_url: "https://example.com/i2v2.mp4" }));
+    await aiVideoApi.imageToVideo("b1", "https://example.com/food.jpg");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.prompt).toBe("");
+    expect(body.duration).toBe(5);
+    expect(body.aspect_ratio).toBe("9:16");
+  });
+});
+
+describe("API Client — Postiz v2", () => {
+  test("getConnectUrl", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ url: "https://oauth.postiz.com/instagram" }));
+    await postizApi.getConnectUrl("b1", "instagram");
+    expect(mockFetch.mock.calls[0][0]).toContain("/publish/brands/b1/connect/instagram");
+  });
+
+  test("integrations", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ integrations: [] }));
+    await postizApi.integrations("b1");
+    expect(mockFetch.mock.calls[0][0]).toContain("/publish/brands/b1/integrations");
+  });
+
+  test("disconnect", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ ok: true }));
+    await postizApi.disconnect("b1", "int-123");
+    expect(mockFetch.mock.calls[0][0]).toContain("/publish/brands/b1/integrations/int-123");
+    expect(mockFetch.mock.calls[0][1].method).toBe("DELETE");
+  });
+
+  test("publishNow envoie integration_ids + content + media_urls", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ post_id: "p1" }));
+    await postizApi.publishNow("b1", ["int-1", "int-2"], "Beau post!", ["https://img.jpg"]);
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.integration_ids).toEqual(["int-1", "int-2"]);
+    expect(body.content).toBe("Beau post!");
+    expect(body.media_urls).toEqual(["https://img.jpg"]);
+  });
+
+  test("publishNow sans media envoie tableau vide", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ post_id: "p2" }));
+    await postizApi.publishNow("b1", ["int-1"], "Post sans media");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.media_urls).toEqual([]);
+  });
+
+  test("schedule envoie publish_at", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ post_id: "p3" }));
+    await postizApi.schedule("b1", ["int-1"], "Post planifié", "2026-04-01T09:00:00Z");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.publish_at).toBe("2026-04-01T09:00:00Z");
+    expect(body.media_urls).toEqual([]);
+  });
+
+  test("listPosts", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ posts: [] }));
+    await postizApi.listPosts("b1");
+    expect(mockFetch.mock.calls[0][0]).toContain("/publish/brands/b1/posts");
+  });
+
+  test("deletePost", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ ok: true }));
+    await postizApi.deletePost("b1", "post-999");
+    expect(mockFetch.mock.calls[0][0]).toContain("/publish/brands/b1/posts/post-999");
+    expect(mockFetch.mock.calls[0][1].method).toBe("DELETE");
+  });
+
+  test("analytics avec days", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ analytics: {} }));
+    await postizApi.analytics("b1", "int-1", 30);
+    expect(mockFetch.mock.calls[0][0]).toContain("/publish/brands/b1/analytics/int-1");
+    expect(mockFetch.mock.calls[0][0]).toContain("days=30");
+  });
+
+  test("analytics sans days", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ analytics: {} }));
+    await postizApi.analytics("b1", "int-1");
+    const url = mockFetch.mock.calls[0][0];
+    expect(url).toContain("/publish/brands/b1/analytics/int-1");
+    expect(url).not.toContain("days=");
+  });
+
+  test("health", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ status: "ok" }));
+    await postizApi.health();
+    expect(mockFetch.mock.calls[0][0]).toContain("/publish/health");
+  });
+});
+
+describe("API Client — Video Templates v2", () => {
+  test("prepareBreakoutV4 envoie FormData", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ cutout_url: "https://example.com/cutout.png" }));
+    const fd = new FormData();
+    fd.append("image", "mock-image");
+    await videoTemplatesApi.prepareBreakoutV4("b1", fd);
+    expect(mockFetch.mock.calls[0][0]).toContain("/templates/breakout-v4/brands/b1/prepare");
+    const headers = mockFetch.mock.calls[0][1].headers;
+    expect(headers["Content-Type"]).toBeUndefined();
+  });
+
+  test("renderBreakoutV4 envoie les données de rendu", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ video_url: "https://example.com/breakout-v4.mp4" }));
+    await videoTemplatesApi.renderBreakoutV4("b1", {
+      original_url: "https://example.com/original.jpg",
+      cutout_url: "https://example.com/cutout.png",
+      business_name: "Le Restaurant",
+      instagram_handle: "@lerestaurant",
+      caption: "Découvrez notre spécialité",
+      accent_color: "#7C5CBF",
+    });
+    expect(mockFetch.mock.calls[0][0]).toContain("/templates/breakout-v4/brands/b1/render");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.business_name).toBe("Le Restaurant");
+    expect(body.accent_color).toBe("#7C5CBF");
+  });
+
+  test("generateBreakoutV4 envoie FormData", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ video_url: "https://example.com/gen-breakout.mp4" }));
+    const fd = new FormData();
+    await videoTemplatesApi.generateBreakoutV4("b1", fd);
+    expect(mockFetch.mock.calls[0][0]).toContain("/templates/breakout-v4/brands/b1/generate");
+    const headers = mockFetch.mock.calls[0][1].headers;
+    expect(headers["Content-Type"]).toBeUndefined();
+  });
+
+  test("generateCinematic envoie FormData", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ video_url: "https://example.com/cinematic.mp4" }));
+    const fd = new FormData();
+    await videoTemplatesApi.generateCinematic("b1", fd);
+    expect(mockFetch.mock.calls[0][0]).toContain("/templates/cinematic/brands/b1/generate");
+  });
+
+  test("generateCinematicFromUrl envoie image_url + food_type + duration + aspect_ratio", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ video_url: "https://example.com/cin-url.mp4" }));
+    await videoTemplatesApi.generateCinematicFromUrl("b1", "https://example.com/dish.jpg", "pizza", 10, "16:9");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.image_url).toBe("https://example.com/dish.jpg");
+    expect(body.food_type).toBe("pizza");
+    expect(body.duration).toBe("10");
+    expect(body.aspect_ratio).toBe("16:9");
+  });
+
+  test("generateCinematicFromUrl avec valeurs par défaut", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ video_url: "https://example.com/cin-default.mp4" }));
+    await videoTemplatesApi.generateCinematicFromUrl("b1", "https://example.com/food.jpg");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.food_type).toBe("default");
+    expect(body.duration).toBe("5");
+    expect(body.aspect_ratio).toBe("9:16");
+  });
+
+  test("cinematicPricing", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ plans: [] }));
+    await videoTemplatesApi.cinematicPricing();
+    expect(mockFetch.mock.calls[0][0]).toContain("/templates/cinematic/pricing");
+  });
+
+  test("generatePromoFlash envoie FormData", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ video_url: "https://example.com/promo.mp4" }));
+    const fd = new FormData();
+    await videoTemplatesApi.generatePromoFlash("b1", fd);
+    expect(mockFetch.mock.calls[0][0]).toContain("/templates/promo-flash/brands/b1/generate");
+  });
+
+  test("generateShowcase envoie FormData", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ video_url: "https://example.com/showcase.mp4" }));
+    const fd = new FormData();
+    await videoTemplatesApi.generateShowcase("b1", fd);
+    expect(mockFetch.mock.calls[0][0]).toContain("/templates/showcase/brands/b1/generate");
+  });
+
+  test("generateStory envoie FormData", async () => {
+    mockFetch.mockReturnValue(mockJsonResponse({ video_url: "https://example.com/story.mp4" }));
+    const fd = new FormData();
+    await videoTemplatesApi.generateStory("b1", fd);
+    expect(mockFetch.mock.calls[0][0]).toContain("/templates/story/brands/b1/generate");
   });
 });

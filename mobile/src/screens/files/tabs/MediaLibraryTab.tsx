@@ -1,7 +1,7 @@
 // PresenceOS Mobile — Media Library Tab (dark theme, French)
 
-import React, { useContext, useState, useEffect, useCallback } from "react";
-import { View, FlatList, StyleSheet, RefreshControl, ActivityIndicator } from "react-native";
+import React, { useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { View, FlatList, StyleSheet, RefreshControl, ActivityIndicator, Dimensions } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { BrandContext } from "@/contexts/BrandContext";
@@ -47,6 +47,18 @@ export default function MediaLibraryTab() {
     setRefreshing(false);
   }, [fetchAssets]);
 
+  const renderItem = useCallback(({ item }: { item: MediaAsset }) => (
+    <AssetCard asset={item} onPress={() => setSelectedAsset(item)} />
+  ), []);
+
+  const ITEM_SIZE = useMemo(() => (Dimensions.get("window").width - 8) / 3, []);
+
+  const getItemLayout = useCallback((_data: ArrayLike<MediaAsset> | null | undefined, index: number) => ({
+    length: ITEM_SIZE,
+    offset: ITEM_SIZE * Math.floor(index / 3),
+    index,
+  }), [ITEM_SIZE]);
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -70,9 +82,8 @@ export default function MediaLibraryTab() {
           data={assets}
           keyExtractor={(item) => item.id}
           numColumns={3}
-          renderItem={({ item }) => (
-            <AssetCard asset={item} onPress={() => setSelectedAsset(item)} />
-          )}
+          renderItem={renderItem}
+          getItemLayout={getItemLayout}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand.primary} />
           }
