@@ -1,4 +1,4 @@
-// PresenceOS Mobile — Root Entry Point (Sprint 2: Firebase Auth)
+// PresenceOS Mobile — Root Entry Point
 
 // Polyfill URL before anything else (fixes Hermes URL.protocol read-only issue)
 import "react-native-url-polyfill/auto";
@@ -27,7 +27,6 @@ import { useAuthStore } from "@/stores/authStore";
 import { useBusinessStore } from "@/stores/businessStore";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 import { addNotificationResponseListener, removeNotificationSubscriptions } from "@/lib/pushNotifications";
-import { createBusiness, FirestoreBusiness } from "@/services/businessService";
 
 // Navigation ref for programmatic navigation (e.g. from push notification taps)
 export const navigationRef = createNavigationContainerRef<any>();
@@ -43,7 +42,7 @@ export default function App() {
   const authStore = useAuthStore();
   const { isAuthenticated, isLoading: authLoading, isInitializing, user } = authStore;
 
-  // Business store (Firestore)
+  // Business store (PostgreSQL via backend API)
   const businessStore = useBusinessStore();
   const { brands, activeBrand, isLoading: bizLoading } = businessStore;
 
@@ -58,36 +57,17 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  // ── Start Firestore business listener when authenticated ──
+  // ── Fetch brands from backend when authenticated ──
   useEffect(() => {
     if (isAuthenticated && user) {
-      businessStore.startListening(user.uid);
+      businessStore.fetchBrands();
       onboardingStore.checkCompleted().then(() => setOnboardingChecked(true));
     } else {
-      businessStore.stopListening();
+      businessStore.reset();
       setOnboardingChecked(false);
       setOnboardingStep(0);
     }
   }, [isAuthenticated, user?.uid]);
-
-  // ── Auto-create default business for new users (no businesses in Firestore) ──
-  useEffect(() => {
-    if (!isAuthenticated || !user || bizLoading) return;
-    if (brands.length > 0) return;
-
-    const uid = user.uid;
-    const displayName = user.displayName || "Mon Restaurant";
-    const defaultBiz: FirestoreBusiness = {
-      id: uid,
-      name: displayName,
-      slug: displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-      businessType: "restaurant",
-      ownerId: uid,
-      memberIds: [uid],
-      isActive: true,
-    };
-    createBusiness(defaultBiz).catch(() => {});
-  }, [isAuthenticated, user?.uid, bizLoading, brands.length]);
 
   // ── Push notification tap → navigate to CMChat ──
   useEffect(() => {
@@ -171,7 +151,7 @@ export default function App() {
     );
   }
 
-  // ── Loading businesses from Firestore ──
+  // ── Loading brands from backend ──
   if (bizLoading) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -183,7 +163,7 @@ export default function App() {
     );
   }
 
-  // ── Onboarding flow (no businesses yet or onboarding not completed) ──
+  // ── Onboarding flow (onboarding not completed) ──
   if (onboardingChecked && !onboardingStore.completed) {
     const currentBrandId = activeBrand?.id ?? "";
     const screens = [

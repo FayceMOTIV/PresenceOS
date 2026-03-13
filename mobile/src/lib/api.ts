@@ -413,6 +413,11 @@ export const brandsApi = {
   mine: () => api.get("/brands/mine"),
 };
 
+// ── Brands v2 (PostgreSQL — source of truth for brand IDs) ──
+export const brandsV2Api = {
+  mine: () => requestV2("GET", "/me/brands"),
+};
+
 // ── Video Generation ──
 export const videoApi = {
   generate: (brandId: string, prompt: string, duration: number, style: string, aspect_ratio?: string) =>

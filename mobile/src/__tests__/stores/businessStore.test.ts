@@ -1,144 +1,149 @@
 /**
- * Tests du businessStore
+ * Tests for businessStore (backend API version)
  */
-
 import { useBusinessStore } from "@/stores/businessStore";
-import * as businessService from "@/services/businessService";
+import { brandsV2Api } from "@/lib/api";
 
-jest.mock("@/services/businessService", () => ({
-  subscribeToMyBusinesses: jest.fn(),
+jest.mock("@/lib/api", () => ({
+  brandsV2Api: {
+    mine: jest.fn(),
+  },
 }));
 
-jest.mock("@/lib/firebase", () => ({
-  db: {},
-  auth: {},
-  storage: {},
+jest.mock("expo-secure-store", () => ({
+  getItemAsync: jest.fn().mockResolvedValue(null),
+  setItemAsync: jest.fn().mockResolvedValue(undefined),
+  deleteItemAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
-const mockUnsubscribe = jest.fn();
-let capturedCallback: ((businesses: any[]) => void) | null = null;
-
-beforeEach(() => {
-  jest.clearAllMocks();
-  capturedCallback = null;
-  (businessService.subscribeToMyBusinesses as jest.Mock).mockImplementation(
-    (_uid: string, callback: (businesses: any[]) => void) => {
-      capturedCallback = callback;
-      return mockUnsubscribe;
-    }
-  );
-  // Reset store
-  useBusinessStore.getState().reset();
-});
-
-const mockBusinesses = [
-  {
-    id: "biz-1",
-    name: "Le Family's",
-    slug: "familys",
-    businessType: "restaurant",
-    ownerId: "user-1",
-    memberIds: ["user-1"],
-    isActive: true,
-  },
-  {
-    id: "biz-2",
-    name: "Pizza Roma",
-    slug: "pizza-roma",
-    businessType: "restaurant",
-    ownerId: "user-1",
-    memberIds: ["user-1"],
-    isActive: true,
-  },
+const mockBrands = [
+  { id: "brand-1", name: "Restaurant A", slug: "restaurant-a", brand_type: "restaurant", description: null, logo_url: null },
+  { id: "brand-2", name: "Restaurant B", slug: "restaurant-b", brand_type: "restaurant", description: null, logo_url: null },
 ];
 
-describe("businessStore — Initial state", () => {
-  test("état initial correct", () => {
+beforeEach(() => {
+  useBusinessStore.getState().reset();
+  jest.clearAllMocks();
+});
+
+describe("businessStore — initial state", () => {
+  test("has correct defaults", () => {
     const state = useBusinessStore.getState();
-    expect(state.businesses).toEqual([]);
-    expect(state.activeBusiness).toBeNull();
-    expect(state.isLoading).toBe(true);
     expect(state.brands).toEqual([]);
     expect(state.activeBrand).toBeNull();
+    expect(state.isLoading).toBe(true);
+    expect(state.error).toBeNull();
   });
 });
 
-describe("businessStore — startListening", () => {
-  test("appelle subscribeToMyBusinesses", () => {
-    useBusinessStore.getState().startListening("user-1");
-    expect(businessService.subscribeToMyBusinesses).toHaveBeenCalledWith("user-1", expect.any(Function));
+describe("businessStore — fetchBrands", () => {
+  test("fetches brands from backend API", async () => {
+    (brandsV2Api.mine as jest.Mock).mockResolvedValue({
+      data: { brands: mockBrands },
+    });
+
+    await useBusinessStore.getState().fetchBrands();
+
+    const state = useBusinessStore.getState();
+    expect(state.brands).toHaveLength(2);
+    expect(state.activeBrand?.id).toBe("brand-1");
+    expect(state.isLoading).toBe(false);
+    expect(state.error).toBeNull();
   });
 
-  test("met à jour le state quand callback reçoit des businesses", async () => {
-    useBusinessStore.getState().startListening("user-1");
-    expect(capturedCallback).not.toBeNull();
-    capturedCallback!(mockBusinesses);
-    // Wait for async SecureStore operations
-    await new Promise((r) => setTimeout(r, 50));
+  test("sets first brand as active when no saved preference", async () => {
+    (brandsV2Api.mine as jest.Mock).mockResolvedValue({
+      data: { brands: mockBrands },
+    });
+
+    await useBusinessStore.getState().fetchBrands();
+
+    expect(useBusinessStore.getState().activeBrand?.id).toBe("brand-1");
+  });
+
+  test("handles empty brands list", async () => {
+    (brandsV2Api.mine as jest.Mock).mockResolvedValue({
+      data: { brands: [] },
+    });
+
+    await useBusinessStore.getState().fetchBrands();
+
     const state = useBusinessStore.getState();
-    expect(state.businesses.length).toBe(2);
-    expect(state.activeBusiness?.id).toBe("biz-1");
+    expect(state.brands).toEqual([]);
+    expect(state.activeBrand).toBeNull();
     expect(state.isLoading).toBe(false);
-    expect(state.brands.length).toBe(2);
-    expect(state.activeBrand?.id).toBe("biz-1");
-    expect(state.activeBrand?.name).toBe("Le Family's");
+  });
+
+  test("handles API error", async () => {
+    (brandsV2Api.mine as jest.Mock).mockRejectedValue(new Error("Network error"));
+
+    await useBusinessStore.getState().fetchBrands();
+
+    const state = useBusinessStore.getState();
+    expect(state.isLoading).toBe(false);
+    expect(state.error).toBe("Network error");
   });
 });
 
 describe("businessStore — switchBusiness", () => {
-  test("change la business active", async () => {
-    useBusinessStore.getState().startListening("user-1");
-    capturedCallback!(mockBusinesses);
-    await new Promise((r) => setTimeout(r, 50));
-    useBusinessStore.getState().switchBusiness("biz-2");
-    const state = useBusinessStore.getState();
-    expect(state.activeBusiness?.id).toBe("biz-2");
-    expect(state.activeBrand?.name).toBe("Pizza Roma");
+  test("switches active brand", async () => {
+    (brandsV2Api.mine as jest.Mock).mockResolvedValue({
+      data: { brands: mockBrands },
+    });
+    await useBusinessStore.getState().fetchBrands();
+
+    useBusinessStore.getState().switchBusiness("brand-2");
+
+    expect(useBusinessStore.getState().activeBrand?.id).toBe("brand-2");
+    expect(useBusinessStore.getState().activeBrand?.name).toBe("Restaurant B");
   });
 
-  test("ne change rien si bizId invalide", async () => {
-    useBusinessStore.getState().startListening("user-1");
-    capturedCallback!(mockBusinesses);
-    await new Promise((r) => setTimeout(r, 50));
+  test("ignores invalid brand id", async () => {
+    (brandsV2Api.mine as jest.Mock).mockResolvedValue({
+      data: { brands: mockBrands },
+    });
+    await useBusinessStore.getState().fetchBrands();
+
     useBusinessStore.getState().switchBusiness("invalid");
-    expect(useBusinessStore.getState().activeBusiness?.id).toBe("biz-1");
+
+    expect(useBusinessStore.getState().activeBrand?.id).toBe("brand-1");
   });
 });
 
-describe("businessStore — getters", () => {
-  test("getActiveBrand retourne le brand actif", async () => {
-    useBusinessStore.getState().startListening("user-1");
-    capturedCallback!(mockBusinesses);
-    await new Promise((r) => setTimeout(r, 50));
-    const brand = useBusinessStore.getState().getActiveBrand();
-    expect(brand?.id).toBe("biz-1");
-    expect(brand?.brand_type).toBe("restaurant");
-  });
+describe("businessStore — reset", () => {
+  test("resets to initial state", async () => {
+    (brandsV2Api.mine as jest.Mock).mockResolvedValue({
+      data: { brands: mockBrands },
+    });
+    await useBusinessStore.getState().fetchBrands();
 
-  test("getBrands retourne tous les brands", async () => {
-    useBusinessStore.getState().startListening("user-1");
-    capturedCallback!(mockBusinesses);
-    await new Promise((r) => setTimeout(r, 50));
-    const brands = useBusinessStore.getState().getBrands();
-    expect(brands.length).toBe(2);
-  });
-});
-
-describe("businessStore — stopListening & reset", () => {
-  test("stopListening appelle unsubscribe", () => {
-    useBusinessStore.getState().startListening("user-1");
-    useBusinessStore.getState().stopListening();
-    expect(mockUnsubscribe).toHaveBeenCalled();
-  });
-
-  test("reset remet tout à zéro", async () => {
-    useBusinessStore.getState().startListening("user-1");
-    capturedCallback!(mockBusinesses);
-    await new Promise((r) => setTimeout(r, 50));
     useBusinessStore.getState().reset();
+
     const state = useBusinessStore.getState();
-    expect(state.businesses).toEqual([]);
-    expect(state.activeBusiness).toBeNull();
+    expect(state.brands).toEqual([]);
+    expect(state.activeBrand).toBeNull();
     expect(state.isLoading).toBe(true);
+  });
+});
+
+describe("businessStore — helpers", () => {
+  test("getActiveBrand returns current active", async () => {
+    (brandsV2Api.mine as jest.Mock).mockResolvedValue({
+      data: { brands: mockBrands },
+    });
+    await useBusinessStore.getState().fetchBrands();
+
+    const brand = useBusinessStore.getState().getActiveBrand();
+    expect(brand?.name).toBe("Restaurant A");
+  });
+
+  test("getBrands returns all brands", async () => {
+    (brandsV2Api.mine as jest.Mock).mockResolvedValue({
+      data: { brands: mockBrands },
+    });
+    await useBusinessStore.getState().fetchBrands();
+
+    const brands = useBusinessStore.getState().getBrands();
+    expect(brands).toHaveLength(2);
   });
 });

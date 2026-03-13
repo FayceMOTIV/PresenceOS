@@ -3,9 +3,12 @@ PresenceOS - API v2 Router
 """
 from fastapi import APIRouter
 
-from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout, dish_recognition, video, images, ai_video, social_publish, video_templates
+from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout, dish_recognition, video, images, ai_video, social_publish, video_templates, me
 
 api_v2_router = APIRouter()
+
+# Me — Current user info + brands (bridge Firebase → PostgreSQL)
+api_v2_router.include_router(me.router, prefix="/me", tags=["Me"])
 
 # Social Publishing (Blotato + Upload-Post fallback)
 api_v2_router.include_router(social.router, prefix="/social", tags=["Social v2"])

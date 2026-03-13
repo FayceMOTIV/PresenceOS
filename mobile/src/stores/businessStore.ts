@@ -1,43 +1,23 @@
-// PresenceOS Mobile — Business Store (Zustand + Firestore)
-// Replaces brandStore for Firestore-backed business management.
-// Maps Firestore businesses to v1-compatible Brand objects.
+// PresenceOS Mobile — Business Store (Zustand + Backend API)
+// Fetches brands from PostgreSQL via /api/v2/me/brands.
+// PostgreSQL brand IDs are the source of truth for all API calls.
 
 import { create } from "zustand";
 import * as SecureStore from "expo-secure-store";
 import type { Brand } from "@/types";
-import {
-  subscribeToMyBusinesses,
-  FirestoreBusiness,
-} from "@/services/businessService";
-import type { Unsubscribe } from "firebase/firestore";
+import { brandsV2Api } from "@/lib/api";
 
 const ACTIVE_BIZ_KEY = "active_business_id";
 
-/** Convert a Firestore business to a v1-compatible Brand object. */
-function toBrand(biz: FirestoreBusiness): Brand {
-  return {
-    id: biz.id,
-    name: biz.name,
-    slug: biz.slug,
-    brand_type: biz.businessType,
-    description: biz.description,
-    logo_url: biz.logoUrl,
-  };
-}
-
 interface BusinessState {
-  businesses: FirestoreBusiness[];
-  activeBusiness: FirestoreBusiness | null;
-  isLoading: boolean;
-
-  // v1-compat accessors (computed)
   brands: Brand[];
   activeBrand: Brand | null;
+  isLoading: boolean;
+  error: string | null;
 }
 
 interface BusinessActions {
-  startListening: (uid: string) => void;
-  stopListening: () => void;
+  fetchBrands: () => Promise<void>;
   switchBusiness: (bizId: string) => void;
   getActiveBrand: () => Brand | null;
   getBrands: () => Brand[];
@@ -46,88 +26,65 @@ interface BusinessActions {
 
 type BusinessStore = BusinessState & BusinessActions;
 
-let _unsubscribe: Unsubscribe | null = null;
-
 export const useBusinessStore = create<BusinessStore>((set, get) => ({
-  businesses: [],
-  activeBusiness: null,
-  isLoading: true,
   brands: [],
   activeBrand: null,
+  isLoading: true,
+  error: null,
 
-  startListening: (uid) => {
-    // Prevent duplicate listeners
-    if (_unsubscribe) _unsubscribe();
+  fetchBrands: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await brandsV2Api.mine();
+      const brands: Brand[] = (res.data.brands ?? []).map((b: any) => ({
+        id: b.id,
+        name: b.name,
+        slug: b.slug,
+        brand_type: b.brand_type,
+        description: b.description,
+        logo_url: b.logo_url,
+      }));
 
-    _unsubscribe = subscribeToMyBusinesses(uid, async (businesses) => {
-      const active = businesses.filter((b) => b.isActive);
-
-      // Restore previously selected business
+      // Restore previously selected brand
       let savedId: string | null = null;
       try {
         savedId = await SecureStore.getItemAsync(ACTIVE_BIZ_KEY);
       } catch {}
 
-      const restored = savedId
-        ? active.find((b) => b.id === savedId)
-        : null;
-      const activeBiz = restored || active[0] || null;
+      const restored = savedId ? brands.find((b) => b.id === savedId) : null;
+      const activeBrand = restored || brands[0] || null;
 
-      set({
-        businesses: active,
-        activeBusiness: activeBiz,
-        isLoading: false,
-        brands: active.map(toBrand),
-        activeBrand: activeBiz ? toBrand(activeBiz) : null,
-      });
+      set({ brands, activeBrand, isLoading: false });
 
-      // Persist active choice
-      if (activeBiz) {
-        SecureStore.setItemAsync(ACTIVE_BIZ_KEY, activeBiz.id).catch(() => {});
+      if (activeBrand) {
+        SecureStore.setItemAsync(ACTIVE_BIZ_KEY, activeBrand.id).catch(() => {});
       }
-    });
-  },
-
-  stopListening: () => {
-    if (_unsubscribe) {
-      _unsubscribe();
-      _unsubscribe = null;
+    } catch (err: any) {
+      set({
+        isLoading: false,
+        error: err.message || "Erreur chargement des marques",
+      });
     }
   },
 
   switchBusiness: (bizId) => {
-    const { businesses } = get();
-    const found = businesses.find((b) => b.id === bizId);
+    const { brands } = get();
+    const found = brands.find((b) => b.id === bizId);
     if (found) {
-      set({
-        activeBusiness: found,
-        activeBrand: toBrand(found),
-      });
+      set({ activeBrand: found });
       SecureStore.setItemAsync(ACTIVE_BIZ_KEY, bizId).catch(() => {});
     }
   },
 
-  getActiveBrand: () => {
-    const { activeBusiness } = get();
-    return activeBusiness ? toBrand(activeBusiness) : null;
-  },
-
-  getBrands: () => {
-    const { businesses } = get();
-    return businesses.map(toBrand);
-  },
+  getActiveBrand: () => get().activeBrand,
+  getBrands: () => get().brands,
 
   reset: () => {
-    if (_unsubscribe) {
-      _unsubscribe();
-      _unsubscribe = null;
-    }
     set({
-      businesses: [],
-      activeBusiness: null,
-      isLoading: true,
       brands: [],
       activeBrand: null,
+      isLoading: true,
+      error: null,
     });
     SecureStore.deleteItemAsync(ACTIVE_BIZ_KEY).catch(() => {});
   },
