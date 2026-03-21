@@ -27,6 +27,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { useBusinessStore } from "@/stores/businessStore";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 import { addNotificationResponseListener, removeNotificationSubscriptions } from "@/lib/pushNotifications";
+import { useOTAUpdate } from "@/hooks/useOTAUpdate";
 
 // Navigation ref for programmatic navigation (e.g. from push notification taps)
 export const navigationRef = createNavigationContainerRef<any>();
@@ -38,6 +39,9 @@ const AuthStack = createNativeStackNavigator();
 export { AuthContext, BrandContext };
 
 export default function App() {
+  // OTA updates — check for JS updates on every app launch
+  useOTAUpdate();
+
   // Firebase auth store
   const authStore = useAuthStore();
   const { isAuthenticated, isLoading: authLoading, isInitializing, user } = authStore;

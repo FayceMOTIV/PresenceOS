@@ -1,0 +1,11 @@
+name: OTA Update on push to main
+on:
+  push:
+    branches:
+      - main
+jobs:
+  send_updates:
+    name: Send OTA update
+    type: update
+    params:
+      channel: production
