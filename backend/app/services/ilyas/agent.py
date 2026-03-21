@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
+from app.data.niches import detect_niche, get_niche_system_prompt
 from app.models.ai_proposal import AIProposal
 from app.models.brand import Brand, BrandVoice, KnowledgeItem
 from app.models.cm_session import CmMessage, CmSession
@@ -122,27 +123,44 @@ class IlyasAgent:
         """Build a rich system prompt with brand context, brain, and memories."""
         sections: list[str] = []
 
-        # ── Persona ──
-        sections.append(
-            "Tu es Ilyas, le Community Manager IA personnel de ce restaurant. "
-            "Tu n'es PAS un assistant générique — tu es un CM pro, passionné, "
-            "qui connaît parfaitement ce restaurant et son identité. "
-            "Tu tutoies le restaurateur, tu es direct et enthousiaste."
-        )
+        # ── Niche-aware Persona (Niche Engine) ──
+        business_type = brand.niche or (brand.brand_type.value if brand.brand_type else "restaurant")
+        niche_profile = detect_niche(business_type)
+
+        # Build Mem0 memories for niche prompt
+        niche_memories_text = ""
+        try:
+            niche_memories = await self._memory.search(
+                query="business DNA brand values audience editorial voice",
+                user_id=user_id,
+                limit=8,
+            )
+            if niche_memories:
+                niche_memories_text = "\n".join(
+                    m.get("memory", m.get("text", str(m)))
+                    for m in niche_memories
+                )
+        except Exception:
+            pass
+
+        locations = ", ".join(brand.locations) if brand.locations else "non renseigné"
+        brand_dna_for_niche = {
+            "name": brand.name,
+            "description": brand.description or "",
+            "values": "",
+            "voice": "",
+            "target_audience": "",
+            "location": locations,
+            "memories": niche_memories_text,
+        }
+
+        niche_system_prompt = get_niche_system_prompt(niche_profile, brand_dna_for_niche)
+        sections.append(niche_system_prompt)
 
         # ── Business DNA (Sprint 4) ──
         dna_section = await self._get_dna_context(str(brand.id))
         if dna_section:
             sections.append(dna_section)
-
-        # ── Brand Identity (same pattern as cm_chat_service.py) ──
-        niche = brand.niche or (brand.brand_type.value if brand.brand_type else "restaurant")
-        locations = ", ".join(brand.locations) if brand.locations else "non renseigné"
-        sections.append(
-            f"Restaurant : « {brand.name} »\n"
-            f"Niche : {niche}\n"
-            f"Localisation : {locations}"
-        )
 
         if brand.description:
             sections.append(f"Description : {brand.description}")
@@ -467,7 +485,13 @@ class IlyasAgent:
             for _round in range(MAX_TOOL_ROUNDS + 1):
                 response = await client.messages.create(
                     model=settings.ilyas_model,
-                    system=system_prompt,
+                    system=[
+                        {
+                            "type": "text",
+                            "text": system_prompt,
+                            "cache_control": {"type": "ephemeral"},
+                        }
+                    ],
                     messages=claude_messages,
                     tools=ILYAS_TOOLS,
                     max_tokens=1024,

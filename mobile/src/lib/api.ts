@@ -416,6 +416,9 @@ export const brandsApi = {
 // ── Brands v2 (PostgreSQL — source of truth for brand IDs) ──
 export const brandsV2Api = {
   mine: () => requestV2("GET", "/me/brands"),
+  setNiche: (brandId: string, businessType: string) =>
+    requestV2("POST", `/brands/${brandId}/niche?business_type=${encodeURIComponent(businessType)}`),
+  listNiches: () => requestV2("GET", "/brands/niches/list"),
 };
 
 // ── Video Generation ──

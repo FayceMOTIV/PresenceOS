@@ -3,7 +3,7 @@ PresenceOS - API v2 Router
 """
 from fastapi import APIRouter
 
-from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout, dish_recognition, video, images, ai_video, social_publish, video_templates, me
+from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout, dish_recognition, video, images, ai_video, social_publish, video_templates, me, brands
 
 api_v2_router = APIRouter()
 
@@ -48,3 +48,6 @@ api_v2_router.include_router(social_publish.router, prefix="/publish", tags=["So
 
 # Video Templates — Breakout V4 + Cinematic Food
 api_v2_router.include_router(video_templates.router, prefix="/templates", tags=["Video Templates"])
+
+# Brands — Niche Engine (Sprint Niche)
+api_v2_router.include_router(brands.router, prefix="/brands", tags=["Brands v2"])
