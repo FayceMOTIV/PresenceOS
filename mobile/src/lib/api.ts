@@ -808,4 +808,74 @@ export const warRoomApi = {
   },
 };
 
+// ── Analytics v2 (Cross-platform analytics — Sprint 8) ──
+
+export const analyticsV2Api = {
+  summary: (brandId: string, period: "7d" | "30d" | "90d" = "30d") =>
+    requestV2("GET", `/brands/${brandId}/analytics/summary`, {
+      params: { period },
+    }),
+
+  activity: (brandId: string, period: "7d" | "30d" | "90d" = "30d") =>
+    requestV2("GET", `/brands/${brandId}/analytics/activity`, {
+      params: { period },
+    }),
+
+  insights: (brandId: string) =>
+    requestV2("GET", `/brands/${brandId}/analytics/insights`),
+};
+
+// ── Validation v2 (Approval queue — Sprint 8) ──
+
+export const validationV2Api = {
+  pending: (brandId: string, limit = 20, offset = 0) =>
+    requestV2("GET", `/brands/${brandId}/validation/pending`, {
+      params: { limit, offset },
+    }),
+
+  approve: (brandId: string, postId: string) =>
+    requestV2("POST", `/brands/${brandId}/validation/${postId}/approve`),
+
+  reject: (brandId: string, postId: string, reason?: string) =>
+    requestV2("POST", `/brands/${brandId}/validation/${postId}/reject`, {
+      body: reason ? { reason } : undefined,
+    }),
+};
+
+// ── Settings v2 (Brand settings — Sprint 8) ──
+
+export const settingsV2Api = {
+  get: (brandId: string) =>
+    requestV2("GET", `/brands/${brandId}/settings`),
+
+  update: (brandId: string, data: Record<string, any>) =>
+    requestV2("PATCH", `/brands/${brandId}/settings`, {
+      body: data,
+    }),
+};
+
+// ── Brain Mem0 v2 (Memory CRUD — Sprint 8) ──
+
+export const brainMem0Api = {
+  listMemories: (brandId: string) =>
+    requestV2("GET", `/brain/${brandId}/memories`),
+
+  addMemory: (brandId: string, content: string, metadata?: Record<string, any>) =>
+    requestV2("POST", `/brain/${brandId}/memories`, {
+      body: { content, metadata: metadata ?? null },
+    }),
+
+  deleteMemory: (brandId: string, memoryId: string) =>
+    requestV2("DELETE", `/brain/${brandId}/memories/${memoryId}`),
+};
+
+// ── CM Suggest v2 (Haiku quick replies — Sprint 8) ──
+
+export const cmSuggestApi = {
+  suggest: (brandId: string, message: string, platform = "instagram", context?: string) =>
+    requestV2("POST", `/cm/${brandId}/suggest`, {
+      body: { message, platform, context: context ?? null },
+    }),
+};
+
 export default api;

@@ -3,7 +3,7 @@ PresenceOS - API v2 Router
 """
 from fastapi import APIRouter
 
-from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout, dish_recognition, video, images, ai_video, social_publish, video_templates, me, brands, calendar, war_room
+from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout, dish_recognition, video, images, ai_video, social_publish, video_templates, me, brands, calendar, war_room, analytics_v2, validation, settings, brain, cm_suggest
 
 api_v2_router = APIRouter()
 
@@ -57,3 +57,18 @@ api_v2_router.include_router(calendar.router, prefix="/calendar", tags=["Calenda
 
 # War Room — Ilyas multimodal strategic analysis (Sprint 3)
 api_v2_router.include_router(war_room.router, prefix="/war-room", tags=["War Room"])
+
+# Analytics v2 — Cross-platform analytics (Sprint 8)
+api_v2_router.include_router(analytics_v2.router, prefix="/brands", tags=["Analytics v2"])
+
+# Validation — Approval queue for autopilot pending posts (Sprint 8)
+api_v2_router.include_router(validation.router, tags=["Validation v2"])
+
+# Settings — Brand settings management (Sprint 8)
+api_v2_router.include_router(settings.router, tags=["Settings v2"])
+
+# Brain — Mem0 CRUD (Sprint 8)
+api_v2_router.include_router(brain.router, prefix="/brain", tags=["Brain v2"])
+
+# CM Suggest — Haiku quick reply suggestions (Sprint 8)
+api_v2_router.include_router(cm_suggest.router, prefix="/cm", tags=["CM Suggest"])

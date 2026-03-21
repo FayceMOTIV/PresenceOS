@@ -69,3 +69,10 @@ class Mem0Memory:
         result = await self._run_sync(client.get_all, user_id=user_id)
         memories = result if isinstance(result, list) else result.get("results", [])
         return memories
+
+    async def delete(self, memory_id: str) -> bool:
+        """Delete a specific memory by its Mem0 ID. Returns True on success."""
+        client = self._get_client()
+        await self._run_sync(client.delete, memory_id=memory_id)
+        logger.debug("Mem0 memory deleted", memory_id=memory_id)
+        return True
