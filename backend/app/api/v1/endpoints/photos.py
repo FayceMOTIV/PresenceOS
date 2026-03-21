@@ -10,6 +10,8 @@ import structlog
 from fastapi import APIRouter, File, UploadFile, HTTPException, Query
 from pydantic import BaseModel
 
+from app.api.v1.deps import CurrentUser
+
 from app.services.photo_enhancer import (
     PhotoEnhancerService,
     PhotoStyle,
@@ -92,6 +94,7 @@ class CompareResponse(BaseModel):
 
 @router.post("/enhance", response_model=EnhanceResponse)
 async def enhance_photo(
+    current_user: CurrentUser,
     file: UploadFile = File(...),
     style: PhotoStyle = Query(default=PhotoStyle.INSTAGRAM),
     ai_analysis: bool = Query(default=False, description="Include AI vision analysis"),
@@ -125,6 +128,7 @@ async def enhance_photo(
 
 @router.post("/quality", response_model=QualityResponse)
 async def check_quality(
+    current_user: CurrentUser,
     file: UploadFile = File(...),
 ):
     """Quick quality assessment of a photo without enhancement.
@@ -142,6 +146,7 @@ async def check_quality(
 
 @router.post("/enhance/all-styles", response_model=AllStylesResponse)
 async def enhance_all_styles(
+    current_user: CurrentUser,
     file: UploadFile = File(...),
 ):
     """Generate enhanced previews for all 4 style presets.
@@ -158,7 +163,7 @@ async def enhance_all_styles(
 
 
 @router.get("/compare/{enhance_id}", response_model=CompareResponse)
-async def get_comparison(enhance_id: str):
+async def get_comparison(enhance_id: str, current_user: CurrentUser):
     """Get before/after comparison for a previously enhanced photo."""
     # Check for enhanced files
     for ext in ("jpg", "png"):

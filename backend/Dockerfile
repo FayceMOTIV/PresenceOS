@@ -47,5 +47,5 @@ CMD sh -c "\
   elif [ \"$SERVICE_ROLE\" = 'beat' ]; then \
     celery -A app.workers.celery_app beat --loglevel=info; \
   else \
-    alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}; \
+    alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 140; \
   fi"

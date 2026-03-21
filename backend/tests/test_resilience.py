@@ -133,11 +133,12 @@ class TestGracefulDegradation:
 class TestChatInDegradedMode:
     @pytest.mark.asyncio
     async def test_chat_upload_works(self, client):
-        """Upload endpoint works without DB."""
+        """Upload endpoint requires auth (dev token in dev mode)."""
         fake_image = io.BytesIO(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
         response = await client.post(
             "/api/v1/chat/upload",
             files={"file": ("test.jpg", fake_image, "image/jpeg")},
+            headers={"Authorization": "Bearer dev-token-presenceos"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -146,10 +147,11 @@ class TestChatInDegradedMode:
 
     @pytest.mark.asyncio
     async def test_chat_message_works(self, client):
-        """Chat message endpoint works without DB."""
+        """Chat message endpoint requires auth (dev token in dev mode)."""
         response = await client.post(
             "/api/v1/chat/message",
             json={"msg_type": "text", "text": "hello"},
+            headers={"Authorization": "Bearer dev-token-presenceos"},
         )
         assert response.status_code == 200
         data = response.json()

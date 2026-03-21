@@ -140,8 +140,8 @@ class IlyasAgent:
                     m.get("memory", m.get("text", str(m)))
                     for m in niche_memories
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Mem0 niche memories retrieval failed", error=str(e))
 
         locations = ", ".join(brand.locations) if brand.locations else "non renseigné"
         brand_dna_for_niche = {
@@ -640,8 +640,8 @@ class IlyasAgent:
         mem0_memories: list[dict] = []
         try:
             mem0_memories = await self._memory.get_all(user_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Mem0 get_all failed for context", error=str(e), user_id=user_id)
 
         return {
             "system_prompt_length": len(system_prompt),

@@ -239,7 +239,8 @@ class AutoPilotOrchestrator:
         import json
         try:
             data = json.loads(response.choices[0].message.content)
-        except Exception:
+        except Exception as e:
+            logger.warning("Story JSON parse failed — using fallback", story_type=story_type, error=str(e))
             data = {"text_overlay": f"Story {story_type}", "interactive_data": {}}
 
         story = InstagramStory(

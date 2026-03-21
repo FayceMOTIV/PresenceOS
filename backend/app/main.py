@@ -19,30 +19,10 @@ from app.core.config import settings
 from app.core.database import engine, init_db
 from app.core.resilience import registry, ServiceStatus
 
-try:
-    import sentry_sdk
-    from sentry_sdk.integrations.fastapi import FastApiIntegration
+from app.core.observability import init_sentry, capture_exception, get_logger as obs_get_logger
 
-    def _filter_sensitive_data(event):
-        if 'request' in event and 'data' in event['request']:
-            data = event['request']['data']
-            if isinstance(data, dict):
-                for key in ['password', 'token', 'api_key', 'secret']:
-                    if key in data:
-                        data[key] = '[FILTERED]'
-        return event
-
-    # Initialize Sentry if configured
-    if settings.sentry_dsn:
-        sentry_sdk.init(
-            dsn=settings.sentry_dsn,
-            environment=getattr(settings, "environment", "production"),
-            traces_sample_rate=0.1,
-            integrations=[FastApiIntegration()],
-            before_send=lambda event, hint: _filter_sensitive_data(event),
-        )
-except ImportError:
-    pass  # sentry_sdk not installed — skip Sentry integration
+# Initialize Sentry via centralized observability module
+init_sentry()
 from app.core.degraded_middleware import DegradedModeMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.rate_limit import limiter
@@ -98,7 +78,8 @@ async def _probe_redis():
         await r.aclose()
         registry.update("redis", ServiceStatus.HEALTHY)
         return True
-    except Exception:
+    except Exception as e:
+        obs_get_logger("health").warning("Redis probe failed", error=str(e), error_type=type(e).__name__)
         registry.update("redis", ServiceStatus.UNAVAILABLE)
         return False
 

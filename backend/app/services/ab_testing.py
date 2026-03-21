@@ -190,7 +190,9 @@ Reponds uniquement la phrase, sans guillemets."""
                 messages=[{"role": "user", "content": prompt}],
             )
             insight = response.content[0].text.strip()
-        except Exception:
+        except Exception as e:
+            from app.core.observability import get_logger
+            get_logger(__name__).warning("AB testing AI insight generation failed", error=str(e))
             insight = f"La variante {winner} a mieux performe sur cette audience."
 
         test.winner = winner

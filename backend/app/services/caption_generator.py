@@ -136,5 +136,6 @@ async def generate_hashtags(
     try:
         data = json.loads(response.choices[0].message.content)
         return data.get("hashtags", [])
-    except Exception:
+    except Exception as e:
+        logger.warning("Hashtag generation JSON parse failed", error=str(e))
         return []

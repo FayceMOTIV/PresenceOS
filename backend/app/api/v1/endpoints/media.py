@@ -140,7 +140,10 @@ async def upload_media(
                 "original_filename": file.filename or "",
             },
         )
-    except Exception:
+    except Exception as e:
+        from app.core.observability import get_logger, capture_exception
+        get_logger(__name__).error("Storage service unavailable during upload", error=str(e))
+        capture_exception(e, {"context": "media_upload_storage"})
         raise HTTPException(
             status_code=503,
             detail="Service de stockage indisponible",
@@ -153,7 +156,7 @@ async def upload_media(
         try:
             dish_uuid = UUID(linked_dish_id)
         except ValueError:
-            pass
+            logger.debug(f"Invalid dish UUID ignored: {linked_dish_id}")
 
     asset = MediaAsset(
         brand_id=brand_id,

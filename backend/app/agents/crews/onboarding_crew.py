@@ -483,7 +483,7 @@ def run_onboarding_extraction(website_url: str) -> dict:
         try:
             return json.loads(json_match.group())
         except json.JSONDecodeError:
-            pass
+            logger.warning("Failed to parse onboarding JSON from AI response")
 
     return {
         "business_name": "",
@@ -717,7 +717,9 @@ def _run_competitor_analysis(competitors_text: str) -> Optional[dict]:
                 "summary": content[:300] if content else "Contenu non accessible",
                 "scraped": True,
             })
-        except Exception:
+        except Exception as e:
+            from app.core.observability import get_logger
+            get_logger(__name__).warning("Competitor scraping failed", url=url, error=str(e))
             competitors.append({
                 "url": url,
                 "name": url,

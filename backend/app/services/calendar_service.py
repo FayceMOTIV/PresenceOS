@@ -4,6 +4,10 @@ Seasonal events + optimal posting slots.
 """
 from datetime import datetime, timezone, timedelta
 
+from app.core.observability import get_logger
+
+_logger = get_logger(__name__)
+
 SEASONAL_EVENTS = [
     {"month": 1, "day": 1, "name": "Nouvel An", "theme": "voeux, nouveau départ"},
     {"month": 1, "day": 6, "name": "Épiphanie", "theme": "galette des rois"},
@@ -59,8 +63,8 @@ def get_upcoming_events(days_ahead: int = 14) -> list[dict]:
                 "date": now.isoformat(),
                 "days_until": 0,
             })
-    except Exception:
-        pass
+    except Exception as e:
+        _logger.warning("Ramadan date parsing failed", error=str(e))
 
     return sorted(events, key=lambda e: e.get("days_until", 999))
 

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, case
 from sqlalchemy.orm import Session
 
-from app.api.v1.deps import CurrentUser, DBSession
+from app.api.v1.deps import CurrentUser, DBSession, get_brand
 from app.models.media import MediaAsset, VoiceNote, MediaType, MediaSource
 from app.schemas.media import (
     MediaAssetResponse,
@@ -40,6 +40,7 @@ async def list_media_assets(
     offset: int = Query(0, ge=0),
 ):
     """List media assets for a brand with optional filters."""
+    await get_brand(brand_id, current_user, db)
     query = select(MediaAsset).where(MediaAsset.brand_id == brand_id)
 
     if media_type:
@@ -47,14 +48,14 @@ async def list_media_assets(
             mt = MediaType(media_type)
             query = query.where(MediaAsset.media_type == mt)
         except ValueError:
-            pass
+            logger.debug(f"Invalid media_type filter ignored: {media_type}")
 
     if source:
         try:
             ms = MediaSource(source)
             query = query.where(MediaAsset.source == ms)
         except ValueError:
-            pass
+            logger.debug(f"Invalid source filter ignored: {source}")
 
     if not archived:
         query = query.where(MediaAsset.is_archived == False)
@@ -109,6 +110,9 @@ async def get_media_asset(
     if not asset:
         raise HTTPException(status_code=404, detail="Asset non trouve")
 
+    # Verify brand ownership
+    await get_brand(asset.brand_id, current_user, db)
+
     return MediaAssetResponse(
         id=str(asset.id),
         brand_id=str(asset.brand_id),
@@ -151,6 +155,9 @@ async def update_media_asset(
 
     if not asset:
         raise HTTPException(status_code=404, detail="Asset non trouve")
+
+    # Verify brand ownership
+    await get_brand(asset.brand_id, current_user, db)
 
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -225,6 +232,9 @@ async def delete_media_asset(
     if not asset:
         raise HTTPException(status_code=404, detail="Asset non trouve")
 
+    # Verify brand ownership
+    await get_brand(asset.brand_id, current_user, db)
+
     # Delete from S3
     storage = get_storage_service()
     await storage.delete_file(asset.storage_key)
@@ -252,6 +262,7 @@ async def list_voice_notes(
     offset: int = Query(0, ge=0),
 ):
     """List voice notes for a brand."""
+    await get_brand(brand_id, current_user, db)
     query = select(VoiceNote).where(VoiceNote.brand_id == brand_id)
 
     if transcribed_only:
@@ -301,6 +312,9 @@ async def get_voice_note(
     if not note:
         raise HTTPException(status_code=404, detail="Voice note non trouvee")
 
+    # Verify brand ownership
+    await get_brand(note.brand_id, current_user, db)
+
     return VoiceNoteResponse(
         id=str(note.id),
         brand_id=str(note.brand_id),
@@ -334,6 +348,9 @@ async def delete_voice_note(
     if not note:
         raise HTTPException(status_code=404, detail="Voice note non trouvee")
 
+    # Verify brand ownership
+    await get_brand(note.brand_id, current_user, db)
+
     storage = get_storage_service()
     await storage.delete_file(note.storage_key)
 
@@ -356,6 +373,7 @@ async def get_media_stats(
     current_user: CurrentUser,
 ):
     """Get media library statistics for a brand."""
+    await get_brand(brand_id, current_user, db)
     # Count assets by type and source
     asset_result = await db.execute(
         select(

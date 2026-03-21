@@ -132,8 +132,8 @@ class ConversationStore:
                 )
                 await r.ping()
                 self._redis = r
-            except Exception:
-                logger.warning("Redis not available, using in-memory fallback")
+            except Exception as e:
+                logger.warning("Redis not available, using in-memory fallback", error=str(e))
                 self._redis = _InMemoryRedis()
         return self._redis
 
@@ -864,7 +864,8 @@ class ConversationEngine:
                 )
                 name = result.scalar_one_or_none()
                 return name or "Restaurant"
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to load brand name — using fallback", error=str(e))
             return "Restaurant"
 
     async def _get_brand_info(self, brand_id: str) -> dict:
@@ -927,7 +928,8 @@ class ConversationEngine:
                 )
                 platforms = result.scalar_one_or_none()
                 return platforms if platforms else ["instagram"]
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to load config platforms — using fallback", error=str(e))
             return ["instagram"]
 
     def _parse_platforms(self, text: str) -> list[str]:

@@ -20,6 +20,7 @@ import httpx
 import structlog
 
 from app.core.config import settings
+from app.core.timeouts import get_http_timeout
 from app.services.storage import get_storage_service
 
 logger = structlog.get_logger()
@@ -151,7 +152,7 @@ class CinematicFoodService:
         """Download video from fal.ai and persist to S3."""
         storage = get_storage_service()
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=get_http_timeout("video_download")) as client:
             resp = await client.get(fal_url)
             resp.raise_for_status()
             video_bytes = resp.content

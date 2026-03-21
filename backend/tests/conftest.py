@@ -31,7 +31,8 @@ async def _check_db_connection(engine) -> bool:
                 __import__("sqlalchemy").text("SELECT 1")
             )
         return True
-    except Exception:
+    except Exception as e:
+        print(f"[conftest] DB connection check failed: {e}")
         return False
 
 

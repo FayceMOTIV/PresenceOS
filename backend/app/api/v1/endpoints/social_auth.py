@@ -15,7 +15,7 @@ import httpx
 import structlog
 
 from app.core.config import settings
-from app.api.v1.deps import CurrentUser, DBSession
+from app.api.v1.deps import CurrentUser, DBSession, get_brand
 
 logger = structlog.get_logger()
 
@@ -82,13 +82,17 @@ def _verify_state(signed_state: str) -> bool:
 async def initiate_oauth(
     brand_id: str,
     platform: str,
+    current_user: CurrentUser,
+    db: DBSession,
     redirect_url: str = Query(...),
-    current_user: CurrentUser = None,
 ):
     """
     Generate an OAuth URL for the given platform.
     The mobile app opens this URL with expo-web-browser.openAuthSessionAsync().
     """
+    from uuid import UUID as _UUID
+    await get_brand(_UUID(brand_id), current_user, db)
+
     supported = {"instagram", "facebook", "tiktok"}
     if platform not in supported:
         raise HTTPException(400, f"Platform '{platform}' not supported. Use: {supported}")
@@ -161,11 +165,13 @@ async def oauth_callback(
 
 
 @router.get("/facebook-pages/{brand_id}", response_model=FacebookPagesResponse)
-async def list_facebook_pages(brand_id: str, current_user: CurrentUser = None):
+async def list_facebook_pages(brand_id: str, current_user: CurrentUser, db: DBSession):
     """
     List Facebook Pages accessible by the authenticated user.
     Used for the page picker modal in the mobile app.
     """
+    from uuid import UUID as _UUID
+    await get_brand(_UUID(brand_id), current_user, db)
     logger.info("Listing Facebook pages", brand_id=brand_id)
 
     # In production, this would use the stored Facebook access token
@@ -179,12 +185,15 @@ async def list_facebook_pages(brand_id: str, current_user: CurrentUser = None):
 async def select_facebook_page(
     brand_id: str,
     req: SelectPageRequest,
-    current_user: CurrentUser = None,
+    current_user: CurrentUser,
+    db: DBSession,
 ):
     """
     Select a Facebook Page (and its linked Instagram Business account)
     as the publishing target for this brand.
     """
+    from uuid import UUID as _UUID
+    await get_brand(_UUID(brand_id), current_user, db)
     logger.info(
         "Selecting Facebook page",
         brand_id=brand_id,

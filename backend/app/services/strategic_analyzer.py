@@ -302,7 +302,8 @@ Analyse et construis un plan stratégique. Réponds UNIQUEMENT en JSON valide :
                 if clean.startswith("json"):
                     clean = clean[4:]
             return json.loads(clean.strip())
-        except Exception:
+        except Exception as e:
+            logger.warning("Strategic analyzer JSON parse failed — using raw text", error=str(e))
             return {"ilyas_response": text, "urgency": "medium"}
 
     async def _save_to_memory(

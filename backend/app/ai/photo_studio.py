@@ -209,8 +209,8 @@ class PhotoStudio:
             try:
                 from app.services.storage import get_storage_service
                 self._storage = get_storage_service()
-            except Exception:
-                logger.warning("Storage service not available")
+            except Exception as e:
+                logger.warning("Storage service not available", error=str(e))
         return self._storage
 
     def _get_model(self, model_id: str):

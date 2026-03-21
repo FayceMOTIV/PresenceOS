@@ -9,6 +9,7 @@ import structlog
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.api.v1.deps import CurrentUser, DBSession, get_brand
 from app.services.content_repurposer import ContentRepurposerService
 
 logger = structlog.get_logger()
@@ -60,13 +61,15 @@ class PackageResponse(BaseModel):
 # ── Endpoints ──────────────────────────────────────────────
 
 @router.post("/repurpose", response_model=PackageResponse)
-async def repurpose_content(request: RepurposeRequest):
+async def repurpose_content(request: RepurposeRequest, current_user: CurrentUser, db: DBSession):
     """Transform one piece of content into multiple platform-adapted formats.
 
     Generates up to 7 variants (Instagram Post, Reel, Story, TikTok,
     Facebook, GBP, LinkedIn) with adapted captions, hashtags, CTAs,
     and media crop specifications.
     """
+    from uuid import UUID
+    await get_brand(UUID(request.brand_id), current_user, db)
     service = _get_service()
     result = service.repurpose(
         brand_id=request.brand_id,
@@ -79,7 +82,7 @@ async def repurpose_content(request: RepurposeRequest):
 
 
 @router.get("/package/{package_id}", response_model=PackageResponse)
-async def get_package(package_id: str):
+async def get_package(package_id: str, current_user: CurrentUser):
     """Retrieve a previously generated content package."""
     service = _get_service()
     result = service.get_package(package_id)

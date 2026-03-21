@@ -358,8 +358,9 @@ class CalendarIntelligence:
                 lines.append(weather)
                 # Content opportunity based on weather
                 lines.append("→ Adapte tes propositions à la météo (terrasse si beau temps, plats réconfortants si froid/pluie)")
-        except Exception:
-            pass  # Weather is optional — never block on it
+        except Exception as e:
+            from app.core.observability import get_logger
+            get_logger(__name__).info("Weather context unavailable (optional)", error=str(e))
 
         # Seasonal hints based on niche
         niche = (brand_niche or "").lower()

@@ -45,7 +45,8 @@ async def handle_telegram_webhook(request: Request):
 
     try:
         update = await request.json()
-    except Exception:
+    except Exception as e:
+        logger.warning("Telegram webhook received invalid JSON", error=str(e))
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
     # Process asynchronously

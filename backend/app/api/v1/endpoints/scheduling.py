@@ -9,6 +9,7 @@ import structlog
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
+from app.api.v1.deps import CurrentUser, DBSession, get_brand
 from app.services.smart_scheduler import SmartSchedulerService
 
 logger = structlog.get_logger()
@@ -68,6 +69,8 @@ class ScheduledPost(BaseModel):
 @router.get("/optimal-times/{brand_id}", response_model=list[TimeSlot])
 async def get_optimal_times(
     brand_id: str,
+    current_user: CurrentUser,
+    db: DBSession,
     platform: str = Query(default="instagram"),
     count: int = Query(default=5, le=20),
     timezone_offset: int = Query(default=1, description="Hours from UTC"),
@@ -77,6 +80,8 @@ async def get_optimal_times(
     Uses restaurant industry benchmarks (Sprout Social / Later 2025).
     Returns time slots sorted by engagement score.
     """
+    from uuid import UUID
+    await get_brand(UUID(brand_id), current_user, db)
     service = _get_service()
     return service.get_optimal_times(brand_id, platform, timezone_offset, count)
 
@@ -84,21 +89,27 @@ async def get_optimal_times(
 @router.get("/next-optimal/{brand_id}", response_model=TimeSlot)
 async def get_next_optimal(
     brand_id: str,
+    current_user: CurrentUser,
+    db: DBSession,
     platform: str = Query(default="instagram"),
     timezone_offset: int = Query(default=1),
 ):
     """Get the single next best time slot for a platform."""
+    from uuid import UUID
+    await get_brand(UUID(brand_id), current_user, db)
     service = _get_service()
     return service.get_next_optimal(brand_id, platform, timezone_offset)
 
 
 @router.post("/schedule", response_model=ScheduledPost)
-async def schedule_post(request: ScheduleRequest):
+async def schedule_post(request: ScheduleRequest, current_user: CurrentUser, db: DBSession):
     """Schedule a post for the optimal time or a specific time.
 
     If scheduled_at is provided, uses that time.
     If use_optimal is True (default), picks the next best slot.
     """
+    from uuid import UUID
+    await get_brand(UUID(request.brand_id), current_user, db)
     service = _get_service()
     result = service.schedule_post(
         brand_id=request.brand_id,
@@ -117,23 +128,29 @@ async def schedule_post(request: ScheduleRequest):
 @router.get("/calendar/{brand_id}")
 async def get_calendar(
     brand_id: str,
+    current_user: CurrentUser,
+    db: DBSession,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
 ):
     """Get calendar view with scheduled posts and optimal time hints."""
+    from uuid import UUID
+    await get_brand(UUID(brand_id), current_user, db)
     service = _get_service()
     return service.get_calendar(brand_id, start_date, end_date)
 
 
 @router.get("/scheduled/{brand_id}", response_model=list[ScheduledPost])
-async def get_scheduled_posts(brand_id: str):
+async def get_scheduled_posts(brand_id: str, current_user: CurrentUser, db: DBSession):
     """List all scheduled posts for a brand."""
+    from uuid import UUID
+    await get_brand(UUID(brand_id), current_user, db)
     service = _get_service()
     return service.get_scheduled(brand_id)
 
 
 @router.patch("/reschedule/{post_id}", response_model=ScheduledPost)
-async def reschedule_post(post_id: str, request: RescheduleRequest):
+async def reschedule_post(post_id: str, request: RescheduleRequest, current_user: CurrentUser):
     """Move a scheduled post to a different time."""
     service = _get_service()
     result = service.reschedule(post_id, request.new_datetime)
@@ -143,7 +160,7 @@ async def reschedule_post(post_id: str, request: RescheduleRequest):
 
 
 @router.delete("/cancel/{post_id}")
-async def cancel_post(post_id: str):
+async def cancel_post(post_id: str, current_user: CurrentUser):
     """Cancel a scheduled post."""
     service = _get_service()
     if not service.cancel(post_id):

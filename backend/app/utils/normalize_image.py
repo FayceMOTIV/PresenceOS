@@ -37,8 +37,9 @@ def normalize_image(raw_bytes: bytes, max_size: int = 2048, quality: int = 85) -
         from PIL import ImageOps
 
         img = ImageOps.exif_transpose(img)
-    except Exception:
-        pass
+    except Exception as e:
+        from app.core.observability import get_logger
+        get_logger(__name__).info("EXIF transpose failed — continuing with original orientation", error=str(e))
 
     # Resize if too large
     if max(img.size) > max_size:

@@ -253,7 +253,9 @@ class SmartSchedulerService:
                     return entry["score"]
             # Off-peak
             return 50
-        except Exception:
+        except Exception as e:
+            from app.core.observability import get_logger
+            get_logger(__name__).warning("Score calculation failed for time slot", error=str(e), platform=platform)
             return 50
 
 

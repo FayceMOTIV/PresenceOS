@@ -928,6 +928,6 @@ async def _generate_whatsapp_content(task, pending_post_id: str):
             logger.error("WhatsApp content generation failed", error=str(e))
             try:
                 task.retry(countdown=30)
-            except Exception:
-                pass
+            except Exception as retry_err:
+                logger.error("WhatsApp content task retry also failed", error=str(retry_err))
             return {"status": "error", "message": str(e)}

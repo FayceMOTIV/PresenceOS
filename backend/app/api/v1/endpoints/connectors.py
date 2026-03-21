@@ -306,8 +306,9 @@ async def disconnect_connector(
         handler = get_connector_handler(connector.platform)
         access_token = handler.decrypt_token(connector.access_token_encrypted)
         await handler.revoke_token(access_token)
-    except Exception:
-        pass  # Ignore revocation failures
+    except Exception as e:
+        from app.core.observability import get_logger
+        get_logger(__name__).warning("Token revocation failed (best effort)", error=str(e), platform=connector.platform)
 
     # Mark as disconnected
     connector.status = ConnectorStatus.REVOKED

@@ -201,7 +201,7 @@ async def list_pending_posts(
             status_enum = PendingPostStatus(status_filter)
             query = query.where(PendingPost.status == status_enum)
         except ValueError:
-            pass
+            logger.debug(f"Invalid status filter ignored: {status_filter}")
 
     result = await db.execute(query)
     return result.scalars().all()
@@ -217,6 +217,8 @@ async def get_pending_post(
     current_user: CurrentUser,
 ):
     """Get a single pending post."""
+    from app.api.v1.deps import get_brand
+
     result = await db.execute(
         select(PendingPost).where(PendingPost.id == pending_post_id)
     )
@@ -227,6 +229,9 @@ async def get_pending_post(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Pending post not found.",
         )
+
+    # Verify brand ownership
+    await get_brand(pending.brand_id, current_user, db)
 
     return pending
 
@@ -242,6 +247,8 @@ async def action_pending_post(
     current_user: CurrentUser,
 ):
     """Approve or reject a pending post from the dashboard."""
+    from app.api.v1.deps import get_brand
+
     result = await db.execute(
         select(PendingPost)
         .options(selectinload(PendingPost.config))
@@ -254,6 +261,9 @@ async def action_pending_post(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Pending post not found.",
         )
+
+    # Verify brand ownership
+    await get_brand(pending.brand_id, current_user, db)
 
     if pending.status != PendingPostStatus.PENDING:
         raise HTTPException(
@@ -303,7 +313,7 @@ async def action_pending_post(
             if posting_time < datetime.now(timezone.utc):
                 posting_time += timedelta(days=1)
         except ValueError:
-            pass
+            logger.debug(f"Invalid posting time format, using now: {pending.config.preferred_posting_time}")
 
     # Create scheduled post
     scheduled = ScheduledPost(

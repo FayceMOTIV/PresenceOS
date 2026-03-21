@@ -306,8 +306,8 @@ class CMChatService:
             if status and status.get("total_memories", 0) > 0:
                 maturity = status.get("maturity_pct", 0)
                 return f"STYLE VISUEL : Cerveau visuel actif ({maturity}% maturité). Adapte tes suggestions visuelles au style appris."
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Visual brain preferences lookup failed", error=str(e), brand_id=str(brand_id))
         return None
 
     # ── Session management ───────────────────────────────────────────────────

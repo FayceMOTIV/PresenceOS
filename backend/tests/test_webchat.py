@@ -130,7 +130,7 @@ async def test_chat_engine_with_webchat():
 
 @pytest.mark.asyncio
 async def test_chat_upload_endpoint():
-    """POST /chat/upload accepts an image file (no auth, no DB)."""
+    """POST /chat/upload accepts an image file (requires auth — dev token in dev mode)."""
     import io
     from httpx import ASGITransport, AsyncClient
     from app.main import app
@@ -141,6 +141,7 @@ async def test_chat_upload_endpoint():
         response = await ac.post(
             "/api/v1/chat/upload",
             files={"file": ("test.jpg", fake_image, "image/jpeg")},
+            headers={"Authorization": "Bearer dev-token-presenceos"},
         )
     assert response.status_code == 200
     data = response.json()

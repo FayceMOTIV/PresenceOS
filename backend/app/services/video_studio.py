@@ -12,6 +12,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.timeouts import get_http_timeout
 from app.services.visual_brain import VisualBrain
 
 logger = structlog.get_logger()
@@ -114,7 +115,7 @@ class VideoStudio:
             if not storage:
                 return fal_url
 
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=get_http_timeout("video_download")) as client:
                 resp = await client.get(fal_url)
                 resp.raise_for_status()
                 video_bytes = resp.content

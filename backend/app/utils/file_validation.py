@@ -84,7 +84,9 @@ async def validate_image_upload(file: UploadFile) -> tuple[bytes, str]:
         pass  # PIL not available, skip dimension check
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
+        from app.core.observability import get_logger
+        get_logger(__name__).warning("Image validation failed", error=str(e))
         raise HTTPException(status_code=400, detail="Fichier image invalide ou corrompu")
 
     file_hash = hashlib.sha256(contents).hexdigest()

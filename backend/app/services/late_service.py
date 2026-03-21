@@ -185,7 +185,8 @@ class LateService:
                     headers=_headers(),
                 )
                 return resp.status_code == 200
-        except Exception:
+        except Exception as e:
+            logger.warning("Late API health check failed", error=str(e))
             return False
 
 

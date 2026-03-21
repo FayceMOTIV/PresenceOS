@@ -43,8 +43,8 @@ class TrendingService:
             await r.ping()
             self._redis = r
             return r
-        except Exception:
-            logger.warning("Redis not available for trends cache, using in-memory fallback")
+        except Exception as e:
+            logger.warning("Redis not available for trends cache, using in-memory fallback", error=str(e))
             return None
 
     async def get_trending_hashtags(
@@ -69,8 +69,8 @@ class TrendingService:
                 if cached:
                     logger.info("Trends cache hit", key=cache_key)
                     return json.loads(cached)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Trends cache read failed", key=cache_key, error=str(e))
 
         # Fetch from Google Trends
         try:
@@ -85,8 +85,8 @@ class TrendingService:
                 await redis_client.set(
                     cache_key, json.dumps(hashtags), ex=CACHE_TTL_SECONDS
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Trends cache write failed", key=cache_key, error=str(e))
 
         return hashtags
 
@@ -122,8 +122,8 @@ class TrendingService:
                             value = int(row.get("value", 0))
                             tag = "#" + query.replace(" ", "").lower()
                             results.append({"tag": tag, "score": min(value, 100)})
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("pytrends related_queries failed", error=str(e))
 
             # Get related topics
             try:
@@ -136,8 +136,8 @@ class TrendingService:
                             if title:
                                 tag = "#" + title.replace(" ", "").lower()
                                 results.append({"tag": tag, "score": 70})
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("pytrends related_topics failed", error=str(e))
 
             # Deduplicate
             seen: set[str] = set()

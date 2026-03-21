@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.deps import CurrentUser, DBSession
 from app.core.database import get_db
 from app.models.autopilot import AutopilotConfig
 from app.models.brand import Brand
@@ -66,7 +67,8 @@ async def _get_optional_db():
         async for session in get_db():
             yield session
             return
-    except Exception:
+    except Exception as e:
+        logger.warning("DB session unavailable for chat — operating in degraded mode", error=str(e))
         yield None
 
 
@@ -90,13 +92,15 @@ async def _resolve_brand(db: Optional[AsyncSession]) -> tuple[str, str]:
         config = result.scalar_one_or_none()
         config_id = str(config.id) if config else str(brand.id)
         return str(brand.id), config_id
-    except Exception:
+    except Exception as e:
+        logger.warning("Brand resolution failed — using fallback IDs", error=str(e))
         return FALLBACK_BRAND_ID, FALLBACK_CONFIG_ID
 
 
 @router.post("/message", response_model=ChatResponse)
 async def send_message(
     request: ChatMessageRequest,
+    current_user: CurrentUser,
     db: Optional[AsyncSession] = Depends(_get_optional_db),
 ):
     """Send a message through ConversationEngine and get AI responses."""
@@ -171,6 +175,7 @@ async def send_message(
 
 @router.post("/upload", response_model=UploadResponse)
 async def upload_media(
+    current_user: CurrentUser,
     file: UploadFile = File(...),
 ):
     """Upload a photo/video for use in chat messages."""

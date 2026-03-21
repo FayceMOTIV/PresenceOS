@@ -42,7 +42,7 @@ def run_trends_crew(
         try:
             return json.loads(json_match.group())
         except json.JSONDecodeError:
-            pass
+            logger.warning("Failed to parse trends JSON from AI response")
 
     return {
         "trends": [],

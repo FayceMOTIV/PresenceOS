@@ -181,8 +181,10 @@ async def generate_draft(
                 {"title": k.title, "content": k.content, "type": k.knowledge_type.value}
                 for k in knowledge_result.scalars().all()
             ]
-        except Exception:
-            pass  # Continue without RAG if it fails
+        except Exception as e:
+            from app.core.observability import get_logger, capture_exception
+            get_logger(__name__).warning("RAG embedding lookup failed — continuing without", error=str(e))
+            capture_exception(e, {"context": "ai_rag_embedding_lookup"})
 
     ai_service = AIService()
 

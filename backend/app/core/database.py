@@ -8,6 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
+from app.core.observability import get_logger
+
+_logger = get_logger(__name__)
 
 # Create async engine
 engine = create_async_engine(
@@ -48,8 +51,8 @@ async def init_db() -> None:
     try:
         async with engine.begin() as conn:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-    except Exception:
-        pass
+    except Exception as e:
+        _logger.warning("pgvector extension unavailable — vector features disabled", error=str(e))
 
     # Create tables in a clean connection
     async with engine.begin() as conn:

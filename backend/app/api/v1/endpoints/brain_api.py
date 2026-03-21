@@ -4,13 +4,11 @@ PresenceOS - Brain API Endpoints
 import uuid
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import CurrentUser, DBSession, get_brand
-from app.core.database import get_db
 from app.models.brain import BrainMemory, UGCPost
 from app.services.brand_brain import BrandBrain
 from app.services.visual_brain import VisualBrain
@@ -53,13 +51,15 @@ class AddUGCRequest(BaseModel):
     source_url: str | None = None
 
 
-# ── Brain Status (public — no auth) ─────────────────────────
+# ── Brain Status ─────────────────────────────────────────────
 
 @router.get("/{brand_id}/status")
 async def get_brain_status(
     brand_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser,
+    db: DBSession,
 ):
+    await get_brand(brand_id, current_user, db)
     brain = BrandBrain(brand_id, db)
     return await brain.get_brain_status()
 
@@ -103,13 +103,15 @@ async def trigger_reflection(
     return {"result": result}
 
 
-# ── Visual Brain (public — no auth) ─────────────────────────
+# ── Visual Brain ─────────────────────────────────────────────
 
 @router.get("/{brand_id}/visual/status")
 async def get_visual_brain_status(
     brand_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser,
+    db: DBSession,
 ):
+    await get_brand(brand_id, current_user, db)
     vb = VisualBrain(brand_id, db)
     return await vb.get_visual_brain_status()
 
@@ -137,24 +139,29 @@ async def extract_dna(
     return {"brand_dna": dna}
 
 
-# ── Analytics (public — no auth) ────────────────────────────
+# ── Analytics ────────────────────────────────────────────────
 
 @router.get("/{brand_id}/analytics")
 async def get_analytics(
     brand_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DBSession,
     days: int = 30,
-    db: AsyncSession = Depends(get_db),
 ):
+    await get_brand(brand_id, current_user, db)
     return await get_analytics_overview(brand_id, db, days)
 
 
-# ── Calendar (public — no auth) ─────────────────────────────
+# ── Calendar ─────────────────────────────────────────────────
 
 @router.get("/{brand_id}/calendar/upcoming")
 async def get_calendar_events(
     brand_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DBSession,
     days_ahead: int = 14,
 ):
+    await get_brand(brand_id, current_user, db)
     return {"events": get_upcoming_events(days_ahead)}
 
 
@@ -179,9 +186,11 @@ async def add_ugc(
 @router.get("/{brand_id}/ugc")
 async def get_ugc_list(
     brand_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DBSession,
     permission_status: str | None = None,
-    db: AsyncSession = Depends(get_db),
 ):
+    await get_brand(brand_id, current_user, db)
     posts = await list_ugc(brand_id, db, permission_status)
     return {
         "ugc_posts": [
@@ -203,13 +212,10 @@ async def get_ugc_list(
 async def get_ugc_dm_template(
     brand_id: uuid.UUID,
     author_username: str,
-    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser,
+    db: DBSession,
 ):
-    from app.models.brand import Brand
-    result = await db.execute(select(Brand).where(Brand.id == brand_id))
-    brand = result.scalar_one_or_none()
-    if not brand:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Brand not found")
+    brand = await get_brand(brand_id, current_user, db)
     dm = await generate_permission_request_dm(author_username, brand.name)
     return {"dm_text": dm}
 

@@ -86,7 +86,9 @@ class BlotatoClient:
                 detail = ""
                 try:
                     detail = response.json().get("message", response.text[:200])
-                except Exception:
+                except Exception as e:
+                    from app.core.observability import get_logger
+                    get_logger(__name__).debug("Blotato error response not JSON", error=str(e))
                     detail = response.text[:200]
                 raise BlotatoError(
                     f"Blotato API error {response.status_code}: {detail}"

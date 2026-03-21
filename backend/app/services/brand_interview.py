@@ -32,8 +32,8 @@ async def _get_redis():
         r = aioredis.from_url(settings.redis_url, decode_responses=True)
         await r.ping()
         return r
-    except Exception:
-        logger.warning("Redis not available for interview sessions")
+    except Exception as e:
+        logger.warning("Redis not available for interview sessions", error=str(e))
         return None
 
 

@@ -62,7 +62,9 @@ class SocialPublisher:
             detail = ""
             try:
                 detail = response.json().get("message", response.text[:300])
-            except Exception:
+            except Exception as e:
+                from app.core.observability import get_logger
+                get_logger(__name__).debug("Upload-Post error response not JSON", error=str(e))
                 detail = response.text[:300]
             raise UploadPostError(
                 f"Erreur Upload-Post {context} ({response.status_code}): {detail}"

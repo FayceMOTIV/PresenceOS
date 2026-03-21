@@ -79,8 +79,10 @@ async def create_knowledge_item(
         )
         item.embedding = embedding
         await db.commit()
-    except Exception:
-        pass  # Log error but don't fail the request
+    except Exception as e:
+        from app.core.observability import get_logger, capture_exception
+        get_logger(__name__).warning("Embedding generation failed for knowledge item", error=str(e), item_id=str(item.id))
+        capture_exception(e, {"context": "knowledge_create_embedding", "item_id": str(item.id)})
 
     return KnowledgeItemResponse.model_validate(item)
 
@@ -146,8 +148,10 @@ async def update_knowledge_item(
             )
             item.embedding = embedding
             await db.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            from app.core.observability import get_logger, capture_exception
+            get_logger(__name__).warning("Embedding re-generation failed for knowledge item", error=str(e), item_id=str(item.id))
+            capture_exception(e, {"context": "knowledge_update_embedding", "item_id": str(item.id)})
 
     return KnowledgeItemResponse.model_validate(item)
 

@@ -5,6 +5,8 @@ from typing import Optional
 from uuid import uuid4
 from datetime import datetime, timezone
 
+from app.api.v1.deps import CurrentUser
+
 router = APIRouter()
 
 
@@ -44,6 +46,7 @@ _extraction_tasks: dict[str, dict] = {}
 async def start_onboarding(
     request: OnboardingStartRequest,
     background_tasks: BackgroundTasks,
+    current_user: CurrentUser,
 ):
     """
     Demarre une session d'onboarding intelligent.
@@ -109,7 +112,7 @@ async def start_onboarding(
 
 
 @router.post("/answer")
-async def submit_onboarding_answer(request: OnboardingAnswerRequest):
+async def submit_onboarding_answer(request: OnboardingAnswerRequest, current_user: CurrentUser):
     """
     Soumet une reponse a une question d'onboarding.
     Retourne l'insight contextuel, l'upsell eventuel, et la question suivante.
@@ -144,7 +147,7 @@ async def submit_onboarding_answer(request: OnboardingAnswerRequest):
 
 
 @router.post("/complete")
-async def complete_onboarding(session_id: str):
+async def complete_onboarding(session_id: str, current_user: CurrentUser):
     """
     Finalise l'onboarding : convertit les donnees collectees en format Brand + BrandVoice.
     """
@@ -167,7 +170,7 @@ async def complete_onboarding(session_id: str):
 
 
 @router.get("/status/{session_id}")
-async def get_onboarding_status(session_id: str):
+async def get_onboarding_status(session_id: str, current_user: CurrentUser):
     """
     Retourne le statut d'une session d'onboarding,
     y compris la progression de l'extraction si applicable.

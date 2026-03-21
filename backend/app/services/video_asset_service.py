@@ -12,6 +12,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.timeouts import get_http_timeout
 from app.models.video_asset import VideoAsset, VideoAssetStatus
 from app.services.storage import get_storage_service
 
@@ -35,7 +36,7 @@ class VideoAssetService:
     ) -> VideoAsset:
         """Download video from fal.ai URL and persist to S3."""
         # Download video from fal.ai
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=get_http_timeout("video_download")) as client:
             resp = await client.get(fal_url)
             resp.raise_for_status()
             video_bytes = resp.content

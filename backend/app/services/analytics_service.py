@@ -128,5 +128,7 @@ async def _generate_ai_insights(metrics: dict, days: int) -> list[str]:
     try:
         data = json.loads(response.choices[0].message.content)
         return data.get("insights", [])
-    except Exception:
+    except Exception as e:
+        from app.core.observability import capture_exception
+        capture_exception(e, {"context": "analytics_ai_insights_parse"})
         return ["Analyse en cours..."]

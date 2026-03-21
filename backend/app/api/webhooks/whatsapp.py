@@ -622,7 +622,7 @@ async def _handle_approve(pending_post_id: str, sender_phone: str):
                     from datetime import timedelta
                     posting_time += timedelta(days=1)
             except ValueError:
-                pass
+                logger.debug("Invalid posting time format in WhatsApp webhook")
 
         # Create ScheduledPost
         scheduled = ScheduledPost(

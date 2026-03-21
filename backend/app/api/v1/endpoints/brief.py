@@ -59,9 +59,11 @@ class BriefRespondRequest(BaseModel):
 @router.get("/{brand_id}/today")
 async def get_today_brief(
     brand_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser,
+    db: DBSession,
 ) -> BriefResponse | dict:
     """Get today's brief status for a brand."""
+    await get_brand(brand_id, current_user, db)
 
     today = date.today()
     stmt = select(DailyBrief).where(
