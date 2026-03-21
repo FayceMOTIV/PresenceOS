@@ -30,6 +30,7 @@ import BrainDashboardScreen from "@/screens/brain/BrainDashboardScreen";
 import AnalyticsScreen from "@/screens/analytics/AnalyticsScreen";
 import SettingsScreen from "@/screens/settings/SettingsScreen";
 import PublishScreen from "@/screens/social/PublishScreen";
+import CalendarScreen from "@/screens/calendar/CalendarScreen";
 
 // ── Types ──
 export type HomeStackParams = {
@@ -70,6 +71,10 @@ export type VideoStackParams = {
 
 export type BreakoutStackParams = {
   BreakoutMain: undefined;
+};
+
+export type CalendarStackParams = {
+  CalendarMain: undefined;
 };
 
 const Tab = createBottomTabNavigator();
@@ -198,6 +203,16 @@ function BreakoutStackScreen() {
   );
 }
 
+// ── Calendar Stack ──
+const CalendarStackNav = createNativeStackNavigator<CalendarStackParams>();
+function CalendarStackScreen() {
+  return (
+    <CalendarStackNav.Navigator screenOptions={{ headerShown: false, headerBackVisible: false }}>
+      <CalendarStackNav.Screen name="CalendarMain" component={CalendarScreen} />
+    </CalendarStackNav.Navigator>
+  );
+}
+
 // ── Tab Navigator ──
 export default function TabNavigator() {
   return (
@@ -230,6 +245,7 @@ export default function TabNavigator() {
             Ilyas: "chatbubble-ellipses",
             Video: "videocam",
             Breakout: "layers",
+            Calendar: "calendar",
             Inbox: "chatbubbles",
           };
           return (
@@ -266,6 +282,11 @@ export default function TabNavigator() {
         name="Breakout"
         component={BreakoutStackScreen}
         options={{ tabBarLabel: "Breakout" }}
+      />
+      <Tab.Screen
+        name="Calendar"
+        component={CalendarStackScreen}
+        options={{ tabBarLabel: "Calendrier" }}
       />
       <Tab.Screen
         name="Inbox"

@@ -3,7 +3,7 @@ PresenceOS - API v2 Router
 """
 from fastapi import APIRouter
 
-from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout, dish_recognition, video, images, ai_video, social_publish, video_templates, me, brands
+from app.api.v2.endpoints import social, ilyas, onboarding, engage, voice, ab_testing, breakout, dish_recognition, video, images, ai_video, social_publish, video_templates, me, brands, calendar
 
 api_v2_router = APIRouter()
 
@@ -51,3 +51,6 @@ api_v2_router.include_router(video_templates.router, prefix="/templates", tags=[
 
 # Brands — Niche Engine (Sprint Niche)
 api_v2_router.include_router(brands.router, prefix="/brands", tags=["Brands v2"])
+
+# Calendar — Editorial calendar with swipe approve/reject (Sprint 2)
+api_v2_router.include_router(calendar.router, prefix="/calendar", tags=["Calendar"])

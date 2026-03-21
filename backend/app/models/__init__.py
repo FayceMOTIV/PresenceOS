@@ -22,6 +22,7 @@ from app.models.video_credits import VideoCredits
 from app.models.cm_session import CmSession, CmMessage
 from app.models.onboarding_state import OnboardingState
 from app.models.video_asset import VideoAsset
+from app.models.calendar_post import CalendarPost
 from app.models.brain import (
     BrainMemory,
     VisualMemory,
@@ -67,4 +68,5 @@ __all__ = [
     "UGCPost",
     "OnboardingState",
     "VideoAsset",
+    "CalendarPost",
 ]

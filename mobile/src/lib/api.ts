@@ -741,4 +741,26 @@ export const videoTemplatesApi = {
     }),
 };
 
+// ── Editorial Calendar ──
+
+export const calendarApi = {
+  getCalendar: (brandId: string, params?: { month?: string; platform?: string; status?: string }) =>
+    requestV2("GET", `/calendar/${brandId}`, { params }),
+
+  generate: (brandId: string, body: { posts_per_day: number; stories_per_day: number; platforms?: string[]; month?: string }) =>
+    requestV2("POST", `/calendar/${brandId}/generate`, {
+      body,
+      timeout: 180_000,
+    }),
+
+  approvePost: (brandId: string, postId: string) =>
+    requestV2("POST", `/calendar/${brandId}/posts/${postId}/approve`),
+
+  rejectPost: (brandId: string, postId: string) =>
+    requestV2("POST", `/calendar/${brandId}/posts/${postId}/reject`),
+
+  approveAll: (brandId: string) =>
+    requestV2("POST", `/calendar/${brandId}/approve-all`),
+};
+
 export default api;
