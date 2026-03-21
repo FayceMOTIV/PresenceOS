@@ -331,3 +331,95 @@ async def generate_video(
     except Exception as exc:
         logger.error("generate_video failed", extra={"brand_id": brand_id, "error": str(exc)})
         raise HTTPException(status_code=500, detail=f"Échec de la génération vidéo : {str(exc)[:200]}")
+
+
+# ── Cinematic Food Video (RS3 — 3-clip T2V) ────────────────────────
+
+
+class CinematicVideoRequest(BaseModel):
+    dish_name: str = Field(..., min_length=1, max_length=200)
+    aspect_ratio: str = Field(default="9:16", pattern="^(9:16|16:9|1:1)$")
+    use_brand_context: bool = Field(default=True)
+
+
+class CinematicVideoResponse(BaseModel):
+    success: bool
+    video_url: str | None
+    clips: list[str]
+    clips_count: int
+    cost_usd: float
+
+
+@router.post(
+    "/brands/{brand_id}/cinematic",
+    response_model=CinematicVideoResponse,
+    summary="Generate 3-clip cinematic food video (3x5s -> 15s)",
+)
+@limiter.limit("3/minute")
+async def cinematic_video(
+    request: Request,
+    brand_id: str,
+    body: CinematicVideoRequest,
+    user: FirebaseUser,
+    db: DBSession,
+):
+    """Generate a cinematic food video from a dish name.
+
+    Uses Kling 2.6 Pro T2V to generate 3 clips in parallel
+    (close-up, overhead, side angle), then assembles them
+    into a single ~15s video via FFmpeg.
+
+    Cost: ~$0.35 per video (3 clips x 5s x $0.07/s).
+    """
+    await verify_brand_access(brand_id, user, db)
+
+    # Optionally fetch brand context from Mem0
+    brand_context = ""
+    if body.use_brand_context:
+        try:
+            from app.services.ilyas.memory import Mem0Memory
+
+            mem0 = Mem0Memory()
+            memories = await mem0.search(
+                query=f"restaurant style, ambiance, food presentation for {body.dish_name}",
+                user_id=f"restaurant_{brand_id}",
+                limit=3,
+            )
+            if memories:
+                context_parts = [
+                    m.get("memory", "") for m in memories if m.get("memory")
+                ]
+                brand_context = " ".join(context_parts)[:500]
+        except Exception as exc:
+            # Non-blocking: proceed without brand context
+            logger.warning(
+                "cinematic_video.mem0_failed",
+                brand_id=brand_id,
+                error=str(exc),
+            )
+
+    from app.services.cinematic_food_service import CinematicFoodService
+
+    try:
+        svc = CinematicFoodService()
+        result = await svc.generate_text_to_video(
+            dish_name=body.dish_name,
+            brand_id=brand_id,
+            aspect_ratio=body.aspect_ratio,
+            brand_context=brand_context,
+        )
+        return CinematicVideoResponse(**result)
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        )
+    except Exception as exc:
+        logger.error(
+            "cinematic_video failed",
+            extra={"brand_id": brand_id, "error": str(exc)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Cinematic video generation failed: {str(exc)[:200]}",
+        )
