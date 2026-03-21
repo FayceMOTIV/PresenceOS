@@ -74,6 +74,28 @@ class OnboardingService:
             state.is_complete = True
             state.dna_snapshot = dna_snapshot
 
+            # Init Mem0 conversational memory with the completed DNA
+            try:
+                from app.services.mem0_service import init_mem0_for_brand
+
+                brand_name = dna_snapshot.get("business_name", "")
+                scrape_data = {}
+                if state.website_url:
+                    scrape_data["website_url"] = state.website_url
+
+                await init_mem0_for_brand(
+                    brand_id=str(brand_id),
+                    brand_name=brand_name,
+                    dna=dna_snapshot,
+                    scrape_data=scrape_data if scrape_data else None,
+                )
+            except Exception as exc:
+                logger.error(
+                    "Mem0 init failed during onboarding completion brand=%s: %s",
+                    brand_id, exc,
+                )
+                # Never crash the onboarding flow if Mem0 fails
+
         await self._db.commit()
         await self._db.refresh(state)
         return state

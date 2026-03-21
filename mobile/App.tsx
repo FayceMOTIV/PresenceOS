@@ -62,10 +62,19 @@ export default function App() {
   }, []);
 
   // ── Fetch brands from backend when authenticated ──
+  // Sprint 7: cancelled flag prevents stale updates on rapid auth changes
+  // Sprint 7: checkCompleted now tries backend first (needs brandId from fetchBrands)
   useEffect(() => {
     if (isAuthenticated && user) {
-      businessStore.fetchBrands();
-      onboardingStore.checkCompleted().then(() => setOnboardingChecked(true));
+      let cancelled = false;
+      businessStore.fetchBrands().then(() => {
+        if (cancelled) return;
+        const brandId = useBusinessStore.getState().activeBrand?.id;
+        onboardingStore.checkCompleted(brandId).then(() => {
+          if (!cancelled) setOnboardingChecked(true);
+        });
+      });
+      return () => { cancelled = true; };
     } else {
       businessStore.reset();
       setOnboardingChecked(false);

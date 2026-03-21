@@ -159,6 +159,74 @@ class OnboardingAgent:
             return ONBOARDING_QUESTIONS[step]
         return None
 
+    def enrich_answer(self, step: int, user_answer: str, brand_name: str = "") -> str:
+        """Enrich the raw user answer with Claude Sonnet before extraction.
+
+        Uses prompt caching (cache_control ephemeral) on the system prompt.
+        Falls back to the raw answer if enrichment fails.
+        """
+        question_def = self.get_question(step)
+        if question_def is None:
+            return user_answer
+
+        try:
+            client = self._get_client()
+            brand_context = f" pour le commerce '{brand_name}'" if brand_name else ""
+
+            response = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=512,
+                temperature=0.3,
+                system=[
+                    {
+                        "type": "text",
+                        "text": (
+                            "Tu es un assistant specialise dans la reformulation et "
+                            "la structuration de reponses d'onboarding pour des commerces "
+                            "(restaurants, boulangeries, bars, etc.).\n\n"
+                            "Ta mission : prendre la reponse brute d'un commercant et la "
+                            "reformuler de facon plus complete, structuree et riche en details, "
+                            "SANS inventer d'informations. Tu enrichis UNIQUEMENT a partir de "
+                            "ce que l'utilisateur a dit.\n\n"
+                            "Regles :\n"
+                            "- Ne JAMAIS inventer de details non mentionnes\n"
+                            "- Reformuler de facon claire et structuree\n"
+                            "- Garder le meme sens que la reponse originale\n"
+                            "- Repondre directement avec la reformulation, sans preambule\n"
+                            "- Repondre en francais"
+                        ),
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Question posee{brand_context} : {question_def['question']}\n\n"
+                            f"Reponse brute du commercant : {user_answer}\n\n"
+                            "Reformule cette reponse de facon plus complete et structuree :"
+                        ),
+                    },
+                ],
+            )
+
+            enriched = response.content[0].text.strip()
+            if enriched and len(enriched) > 5:
+                logger.info(
+                    "Onboarding enrichment step=%d len_raw=%d len_enriched=%d",
+                    step, len(user_answer), len(enriched),
+                )
+                return enriched
+
+            return user_answer
+
+        except Exception as exc:
+            logger.warning(
+                "Onboarding enrichment failed step=%d, falling back to raw: %s",
+                step, exc,
+            )
+            return user_answer
+
     def extract_answer(self, step: int, user_answer: str) -> dict[str, Any]:
         """Use Claude Haiku to extract structured data from user's free-text answer."""
         question_def = self.get_question(step)
@@ -229,8 +297,12 @@ class OnboardingAgent:
         # Load or create DNA
         dna = await self.get_dna(business_id) or BusinessDNA()
 
-        # Extract structured data from answer
-        extracted = self.extract_answer(step, user_answer)
+        # Enrich raw answer with Sonnet before extraction
+        brand_name = dna.business_name or ""
+        enriched_answer = self.enrich_answer(step, user_answer, brand_name=brand_name)
+
+        # Extract structured data from the enriched answer
+        extracted = self.extract_answer(step, enriched_answer)
 
         # Store raw answer
         question_def = self.get_question(step)
