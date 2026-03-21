@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import { Audio } from "expo-av";
 import { Colors } from "@/constants/colors";
@@ -123,6 +124,7 @@ export default function IlyasChatScreen() {
     loadSessions, selectSession, sendMessage, newSession, deleteSession,
   } = useIlyasChat();
 
+  const navigation = useNavigation<any>();
   const brand = useContext(BrandContext);
   const brandId = brand?.activeBrand?.id;
 
@@ -235,6 +237,9 @@ export default function IlyasChatScreen() {
           <Text style={styles.headerTitle}>{activeSession ? activeSession.title : "Ilyas"}</Text>
           {activeSession && <Text style={styles.headerSubtitle}>{activeSession.message_count} messages</Text>}
         </View>
+        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate("WarRoom")}>
+          <Ionicons name="flash" size={20} color={Colors.brand.amber} />
+        </TouchableOpacity>
         <TouchableOpacity style={styles.headerBtn} onPress={newSession}>
           <Ionicons name="create-outline" size={22} color={Colors.brand.primary} />
         </TouchableOpacity>

@@ -763,4 +763,49 @@ export const calendarApi = {
     requestV2("POST", `/calendar/${brandId}/approve-all`),
 };
 
+// ── War Room — Ilyas multimodal strategic analysis ──
+
+export const warRoomApi = {
+  analyzeText: (brandId: string, text: string) =>
+    requestV2("POST", `/war-room/${brandId}/analyze-text`, {
+      body: { text },
+      timeout: 60_000,
+    }),
+
+  analyzeUrl: (brandId: string, url: string) =>
+    requestV2("POST", `/war-room/${brandId}/analyze-url`, {
+      body: { url },
+      timeout: 60_000,
+    }),
+
+  analyzeImage: (brandId: string, image: any, note: string = "") => {
+    const formData = new FormData();
+    formData.append("note", note);
+    formData.append("image", {
+      uri: image.uri,
+      type: image.mimeType || "image/jpeg",
+      name: "photo.jpg",
+    } as unknown as Blob);
+    return requestV2("POST", `/war-room/${brandId}/analyze-image`, {
+      body: formData,
+      isFormData: true,
+      timeout: 60_000,
+    });
+  },
+
+  analyzeAudio: (brandId: string, audioUri: string) => {
+    const formData = new FormData();
+    formData.append("audio", {
+      uri: audioUri,
+      type: "audio/m4a",
+      name: "voice.m4a",
+    } as unknown as Blob);
+    return requestV2("POST", `/war-room/${brandId}/analyze-audio`, {
+      body: formData,
+      isFormData: true,
+      timeout: 60_000,
+    });
+  },
+};
+
 export default api;

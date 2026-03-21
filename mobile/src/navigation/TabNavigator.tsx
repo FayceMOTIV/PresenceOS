@@ -31,6 +31,7 @@ import AnalyticsScreen from "@/screens/analytics/AnalyticsScreen";
 import SettingsScreen from "@/screens/settings/SettingsScreen";
 import PublishScreen from "@/screens/social/PublishScreen";
 import CalendarScreen from "@/screens/calendar/CalendarScreen";
+import WarRoomScreen from "@/screens/warroom/WarRoomScreen";
 
 // ── Types ──
 export type HomeStackParams = {
@@ -55,6 +56,7 @@ export type FilesStackParams = {
 export type IlyasStackParams = {
   IlyasChat: undefined;
   ProposalDetail: { proposalId: string };
+  WarRoom: undefined;
 };
 
 export type InboxStackParams = {
@@ -161,6 +163,11 @@ function IlyasStackScreen() {
     <IlyasStackNav.Navigator screenOptions={{ headerShown: false, headerBackVisible: false }}>
       <IlyasStackNav.Screen name="IlyasChat" component={IlyasChatScreen} />
       <IlyasStackNav.Screen name="ProposalDetail" component={ProposalDetailScreen} />
+      <IlyasStackNav.Screen
+        name="WarRoom"
+        component={WarRoomScreen}
+        options={{ presentation: "modal" }}
+      />
     </IlyasStackNav.Navigator>
   );
 }
